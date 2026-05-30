@@ -1,0 +1,115 @@
+import React from 'react'
+import { Link, useLocation } from 'react-router-dom'
+import { useUIStore } from '@/stores/uiStore'
+import { useAuth } from '@/hooks/useAuth'
+import {
+  LayoutDashboard,
+  FileText,
+  CheckSquare,
+  Clock,
+  AlertCircle,
+  Users,
+  UserCog,
+  Settings,
+  LogOut,
+  Menu,
+  X,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+export function Sidebar() {
+  const { sidebarOpen, toggleSidebar } = useUIStore()
+  const { user, logout } = useAuth()
+  const location = useLocation()
+
+  const menuItems = [
+    { icon: LayoutDashboard, label: 'Panel de Control', href: '/dashboard' },
+    { icon: FileText, label: 'Casos', href: '/cases' },
+    { icon: CheckSquare, label: 'Tareas', href: '/tasks' },
+    { icon: Clock, label: 'Registro de Horas', href: '/hours' },
+    { icon: AlertCircle, label: 'Alertas', href: '/alerts' },
+    { icon: Users, label: 'Clientes', href: '/clients' },
+    { icon: UserCog, label: 'Usuarios', href: '/users' },
+    { icon: Settings, label: 'Configuración', href: '/settings' },
+  ]
+
+  const isActive = (href: string) => location.pathname === href || location.pathname.startsWith(href + '/')
+
+  return (
+    <>
+      <button
+        onClick={toggleSidebar}
+        className="fixed top-4 left-4 z-40 lg:hidden text-slate-700 hover:text-primary-700"
+      >
+        {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={toggleSidebar}
+        />
+      )}
+
+      <aside
+        className={cn(
+          'fixed left-0 top-0 bottom-0 w-64 bg-primary-700 text-white overflow-y-auto transition-all z-40',
+          'lg:translate-x-0',
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+      >
+        <div className="p-6 border-b border-primary-600">
+          <h1 className="text-2xl font-bold">Legal ERP</h1>
+          <p className="text-primary-200 text-sm mt-1">Sistema de Gestión</p>
+        </div>
+
+        <nav className="p-4 space-y-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            const active = isActive(item.href)
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={cn(
+                  'flex items-center gap-3 px-4 py-3 rounded-md transition-colors',
+                  active
+                    ? 'bg-primary-600 text-white'
+                    : 'text-primary-100 hover:bg-primary-600'
+                )}
+              >
+                <Icon size={20} />
+                <span className="font-medium">{item.label}</span>
+              </Link>
+            )
+          })}
+        </nav>
+
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-primary-600">
+          <div className="flex items-center gap-3 mb-4 pb-4 border-b border-primary-600">
+            <div className="h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center">
+              {user?.nombre?.charAt(0).toUpperCase()}
+            </div>
+            <div className="text-sm">
+              <p className="font-medium truncate">{user?.nombre}</p>
+              <p className="text-primary-200 text-xs">{user?.rol}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => logout()}
+            className="w-full flex items-center gap-3 px-4 py-2 text-primary-100 hover:bg-primary-600 rounded-md transition-colors"
+          >
+            <LogOut size={18} />
+            <span>Cerrar Sesión</span>
+          </button>
+        </div>
+      </aside>
+
+      <div className={cn(
+        'transition-all duration-300',
+        sidebarOpen ? 'lg:ml-64' : 'ml-0'
+      )}>
+      </div>
+    </>
+  )
+}
