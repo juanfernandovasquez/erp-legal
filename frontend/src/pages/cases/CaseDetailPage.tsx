@@ -14,14 +14,19 @@ import { CaseProcessSection } from '@/components/cases/CaseProcessSection'
 import { DocumentList } from '@/components/documents/DocumentList'
 import { DocumentUpload } from '@/components/documents/DocumentUpload'
 import { HoursTable } from '@/components/hours/HoursTable'
+import { TaskCard } from '@/components/tasks/TaskCard'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
+import { AlertCard } from '@/components/alerts/AlertCard'
+import { AlertForm } from '@/components/alerts/AlertForm'
+import { useAlerts } from '@/hooks/useAlerts'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { useCases } from '@/hooks/useCases'
-import { formatDate, formatCurrency, getPriorityColor, getTaskStatusColor } from '@/lib/utils'
+import { formatDate, formatCurrency, getPriorityColor, getPriorityLabel, getTaskStatusColor, getTaskStatusLabel, CASE_STATUS_OPTIONS } from '@/lib/utils'
 import { Caso, Tarea, Proceso } from '@/types'
 import {
   ArrowLeft, Calendar, DollarSign, User, Plus, Pencil, Check, X,
-  LayoutGrid, List, ChevronUp, ChevronDown, ChevronsUpDown, AlertCircle,
+  LayoutGrid, List, ChevronUp, ChevronDown, ChevronsUpDown, AlertCircle, Trash2,
 } from 'lucide-react'
 import api from '@/lib/axios'
 
@@ -56,17 +61,12 @@ const STATUS_WEIGHT: Record<string, number> = {
 type SortKey = 'titulo' | 'asignado' | 'prioridad' | 'estado' | 'vencimiento'
 type SortDir = 'asc' | 'desc'
 
-const CASE_STATUS_OPTIONS = [
-  { value: 'activo',   label: 'Activo' },
-  { value: 'inactivo', label: 'Inactivo' },
-]
-
-const INACTIVE_STATUSES = ['inactivo']
+const INACTIVE_STATUSES = ['archivado', 'cerrado', 'inactivo']
 
 export function CaseDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { currentCase, isLoading: caseLoading, fetchCaseById } = useCases()
+  const { currentCase, isLoading: caseLoading, fetchCaseById, setCurrentCase } = useCases()
   const [caso, setCaso] = useState<Caso | null>(currentCase)
   const [tareas, setTareas] = useState<Tarea[]>([])
   const [tareasLoading, setTareasLoading] = useState(false)
@@ -77,19 +77,40 @@ export function CaseDetailPage() {
   const [procesosLoading, setProcesosLoading] = useState(false)
   const [showNewProcessForm, setShowNewProcessForm] = useState(false)
 
+  // Sort
+  const [sortKey, setSortKey] = useState<SortKey | null>(null)
+  const [sortDir, setSortDir] = useState<SortDir>('asc')
+
   // Status editing
   const [editingStatus, setEditingStatus] = useState(false)
   const [newStatus, setNewStatus] = useState('')
   const [savingStatus, setSavingStatus] = useState(false)
   const [statusError, setStatusError] = useState('')
+  const [deletingCase, setDeletingCase] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+
+  // Alerts
+  const {
+    alerts: caseAlerts,
+    isLoading: alertsLoading,
+    fetchCaseAlerts,
+    createAlert,
+    resolveAlert,
+    acknowledgeAlert,
+    deleteAlert,
+  } = useAlerts()
+  const [showAlertForm, setShowAlertForm] = useState(false)
 
   // Guard: don't fetch from API when creating a new case
   const isNew = id === 'new'
 
   useEffect(() => {
     if (id && !isNew) {
+      setCurrentCase(null)
       fetchCaseById(id)
       fetchTareas()
+      fetchProcesos()
+      fetchCaseAlerts(id)
     }
   }, [id])
 
@@ -148,6 +169,18 @@ export function CaseDetailPage() {
     setEditingStatus(true)
   }
 
+  const handleDeleteCase = async () => {
+    if (!caso) return
+    setDeletingCase(true)
+    try {
+      await api.delete(`/cases/${caso.id}`)
+      navigate('/cases')
+    } catch (err: any) {
+      alert(err?.response?.data?.detail || 'Error al eliminar el caso')
+      setDeletingCase(false)
+    }
+  }
+
   // ── sort & group ─────────────────────────────────────────────────────────────
 
   const handleSort = (key: SortKey) => {
@@ -183,10 +216,9 @@ export function CaseDetailPage() {
 
   const groupedTareas = {
     pendiente:   tareas.filter((t) => ['pendiente','todo'].includes(t.estado)),
-    en_progreso: tareas.filter((t) => ['en_progreso','in_progress'].includes(t.estado)),
-    en_revision: tareas.filter((t) => ['en_revision','in_review'].includes(t.estado)),
+    en_progreso: tareas.filter((t) => ['en_progreso','in_progress','en_revision','in_review'].includes(t.estado)),
     completado:  tareas.filter((t) => ['completado','done'].includes(t.estado)),
-    bloqueado:   tareas.filter((t) => ['bloqueado','blocked','cancelado','cancelled'].includes(t.estado)),
+    cancelado:   tareas.filter((t) => ['cancelado','cancelled','rechazado','bloqueado','blocked'].includes(t.estado)),
   }
 
   const SortIcon = ({ col }: { col: SortKey }) => {
@@ -254,12 +286,12 @@ export function CaseDetailPage() {
                 </td>
                 <td className="px-4 py-3 text-center">
                   <Badge variant={getPriorityColor(task.prioridad) as any}>
-                    {PRIORITY_LABEL[task.prioridad] || task.prioridad}
+                    {getPriorityLabel(task.prioridad)}
                   </Badge>
                 </td>
                 <td className="px-4 py-3 text-center">
                   <Badge variant={getTaskStatusColor(task.estado) as any}>
-                    {STATUS_LABEL[task.estado] || task.estado}
+                    {getTaskStatusLabel(task.estado)}
                   </Badge>
                 </td>
                 <td className="px-4 py-3">
@@ -284,11 +316,10 @@ export function CaseDetailPage() {
   const TareasKanbanView = () => (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
       {([
-        { key: 'pendiente',   label: 'Pendientes',  color: 'bg-yellow-400' },
-        { key: 'en_progreso', label: 'En Progreso', color: 'bg-blue-400'   },
-        { key: 'en_revision', label: 'En Revisión', color: 'bg-purple-400' },
-        { key: 'completado',  label: 'Completadas', color: 'bg-green-400'  },
-        { key: 'bloqueado',   label: 'Bloqueadas',  color: 'bg-red-400'    },
+        { key: 'pendiente',   label: 'Pendientes',  color: 'bg-slate-400' },
+        { key: 'en_progreso', label: 'En progreso', color: 'bg-blue-400'  },
+        { key: 'completado',  label: 'Completadas', color: 'bg-green-400' },
+        { key: 'cancelado',   label: 'Canceladas',  color: 'bg-red-400'   },
       ] as const).map(({ key, label, color }) => (
         <div key={key}>
           <div className="flex items-center gap-2 mb-4">
@@ -323,21 +354,42 @@ export function CaseDetailPage() {
     )
   }
 
-  if (caseLoading || !caso) {
+  if (caseLoading) {
     return <LoadingSpinner />
+  }
+
+  if (!caso) {
+    return (
+      <AppLayout>
+        <div className="p-6 max-w-3xl mx-auto text-center py-24 text-slate-500">
+          <p className="text-lg font-medium mb-2">No se encontró el caso</p>
+          <p className="text-sm mb-6">Es posible que el caso no exista o no tengas permisos para verlo.</p>
+          <Button variant="ghost" onClick={() => navigate('/cases')}>
+            Volver a Casos
+          </Button>
+        </div>
+      </AppLayout>
+    )
   }
 
   return (
     <AppLayout>
       <div className="p-6 max-w-7xl mx-auto">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/cases')}
-          className="mb-4 gap-2"
-        >
-          <ArrowLeft size={18} />
-          Volver a Casos
-        </Button>
+        <div className="flex items-center justify-between mb-4">
+          <Button variant="ghost" onClick={() => navigate('/cases')} className="gap-2">
+            <ArrowLeft size={18} />
+            Volver a Casos
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setShowDeleteConfirm(true)}
+            disabled={deletingCase}
+            className="gap-2 text-red-500 hover:text-red-700 hover:bg-red-50"
+          >
+            <Trash2 size={16} />
+            {deletingCase ? 'Eliminando…' : 'Eliminar caso'}
+          </Button>
+        </div>
 
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4 mb-4">
@@ -429,7 +481,7 @@ export function CaseDetailPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="info" onValueChange={(v) => { if (v === 'tareas') { fetchTareas(); fetchProcesos() } }}>
+        <Tabs defaultValue="info">
           <TabsList className="mb-6">
             <TabsTrigger value="info">Información</TabsTrigger>
             <TabsTrigger value="timeline">Línea de Tiempo</TabsTrigger>
@@ -437,6 +489,7 @@ export function CaseDetailPage() {
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
             <TabsTrigger value="equipo">Equipo</TabsTrigger>
             <TabsTrigger value="horas">Horas</TabsTrigger>
+            <TabsTrigger value="alertas">Alertas</TabsTrigger>
           </TabsList>
 
           <TabsContent value="info">
@@ -615,8 +668,80 @@ export function CaseDetailPage() {
           <TabsContent value="horas">
             <HoursTable caseId={caso.id} onUpdate={() => fetchCaseById(caso.id)} />
           </TabsContent>
+
+          <TabsContent value="alertas">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-slate-900">
+                  Alertas del caso
+                  {caseAlerts.length > 0 && (
+                    <span className="ml-2 text-sm font-normal text-slate-500">
+                      ({caseAlerts.filter((a) => !a.isResolved).length} pendiente{caseAlerts.filter((a) => !a.isResolved).length !== 1 ? 's' : ''})
+                    </span>
+                  )}
+                </h3>
+                <Button
+                  size="sm"
+                  variant={showAlertForm ? 'ghost' : 'default'}
+                  className="gap-2"
+                  onClick={() => setShowAlertForm((v) => !v)}
+                >
+                  <Plus size={15} />
+                  {showAlertForm ? 'Cancelar' : 'Nueva alerta'}
+                </Button>
+              </div>
+
+              {showAlertForm && (
+                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                  <AlertForm
+                    fixedCaseId={caso.id}
+                    onSuccess={() => {
+                      setShowAlertForm(false)
+                      fetchCaseAlerts(caso.id)
+                    }}
+                    onCancel={() => setShowAlertForm(false)}
+                    onCreate={createAlert}
+                  />
+                </div>
+              )}
+
+              {alertsLoading ? (
+                <LoadingSpinner />
+              ) : caseAlerts.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">
+                  <div className="text-3xl mb-3">🔔</div>
+                  <p className="font-medium text-slate-600 mb-1">Sin alertas</p>
+                  <p className="text-sm">Crea una alerta para hacer seguimiento de plazos y eventos importantes.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {caseAlerts.map((alert) => (
+                    <AlertCard
+                      key={alert.id}
+                      alert={alert}
+                      onResolve={(id, notes) => resolveAlert(id, notes)}
+                      onAcknowledge={(id) => acknowledgeAlert(id)}
+                      onDelete={(id) => deleteAlert(id).then(() => fetchCaseAlerts(caso.id))}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabsContent>
         </Tabs>
       </div>
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="Eliminar caso"
+        description={`¿Estás seguro de que deseas eliminar "${caso?.titulo}"? Esta acción no se puede deshacer.`}
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        variant="danger"
+        isLoading={deletingCase}
+        onConfirm={handleDeleteCase}
+      />
+
       {selectedTask && (
         <TaskDetailModal
           task={selectedTask}

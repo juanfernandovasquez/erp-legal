@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar } from '@/components/ui/avatar'
 import { Tarea } from '@/types'
-import { formatDate, getPriorityColor, getTaskStatusColor } from '@/lib/utils'
+import { formatDate, getPriorityColor, getPriorityLabel, getTaskStatusColor, getTaskStatusLabel } from '@/lib/utils'
 import { Calendar, AlertCircle, Briefcase } from 'lucide-react'
 
 interface TaskCardProps {
@@ -34,7 +34,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
           <div className="flex items-start justify-between gap-2">
             <h3 className="font-semibold text-slate-900">{task.titulo}</h3>
             <Badge variant={getPriorityColor(task.prioridad) as any}>
-              {task.prioridad}
+              {getPriorityLabel(task.prioridad)}
             </Badge>
           </div>
 
@@ -59,7 +59,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
               )}
             </div>
             <Badge variant={getTaskStatusColor(task.estado) as any}>
-              {task.estado}
+              {getTaskStatusLabel(task.estado)}
             </Badge>
           </div>
 

@@ -10,6 +10,15 @@ interface AuthStore extends AuthState {
   setUser: (user: User | null) => void
 }
 
+/** Normaliza el objeto user del backend al tipo User del frontend */
+function normalizeUser(raw: any) {
+  return {
+    ...raw,
+    nombre: raw.nombre ?? raw.full_name ?? raw.name ?? '',
+    rol:    raw.rol    ?? raw.role ?? '',
+  }
+}
+
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
   accessToken: localStorage.getItem('accessToken'),
@@ -29,7 +38,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       localStorage.setItem('refreshToken', refreshToken)
 
       set({
-        user,
+        user: normalizeUser(user),
         accessToken,
         refreshToken,
         isAuthenticated: true,
@@ -60,7 +69,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       localStorage.setItem('refreshToken', refreshToken)
 
       set({
-        user,
+        user: normalizeUser(user),
         accessToken,
         refreshToken,
         isAuthenticated: true,
@@ -95,7 +104,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       const response = await api.get('/auth/me')
       // Backend returns { data: { user, law_firm, permissions }, meta: {} }
       const { user } = response.data.data
-      set({ user, isAuthenticated: true })
+      set({ user: normalizeUser(user), isAuthenticated: true })
     } catch (error) {
       localStorage.removeItem('accessToken')
       localStorage.removeItem('refreshToken')

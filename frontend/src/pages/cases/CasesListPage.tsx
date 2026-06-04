@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { Pagination } from '@/components/common/Pagination'
 import { useCases } from '@/hooks/useCases'
 import { FileText, Plus } from 'lucide-react'
+import { CASE_STATUS_OPTIONS } from '@/lib/utils'
 
 export function CasesListPage() {
   const navigate = useNavigate()
@@ -45,9 +46,8 @@ export function CasesListPage() {
           <Select
             placeholder="Filtrar por estado"
             options={[
-              { value: '',         label: 'Todos los estados' },
-              { value: 'activo',   label: 'Activo' },
-              { value: 'inactivo', label: 'Inactivo' },
+              { value: '', label: 'Todos los estados' },
+              ...CASE_STATUS_OPTIONS,
             ]}
             value={statusFilter}
             onChange={(e) => {

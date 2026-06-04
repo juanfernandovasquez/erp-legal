@@ -582,6 +582,7 @@ async def list_case_tasks(
 ):
     import uuid as uuid_module
     from app.models.task import Task
+    from sqlalchemy.orm import selectinload as _selectinload
 
     try:
         case_uuid = uuid_module.UUID(case_id)
@@ -595,7 +596,11 @@ async def list_case_tasks(
     result = await db.execute(
         select(Task)
         .where(and_(Task.case_id == case_uuid, Task.is_deleted == False))
-        .options(selectinload(Task.assignee))
+        .options(
+            _selectinload(Task.assignee),
+            _selectinload(Task.case),
+            _selectinload(Task.process),
+        )
         .order_by(Task.created_at.desc())
     )
     tasks = result.scalars().all()
@@ -604,6 +609,9 @@ async def list_case_tasks(
         {
             "id": str(t.id),
             "casoId": str(t.case_id),
+            "casoTitulo": t.case.title if t.case else None,
+            "procesoId": str(t.process_id) if t.process_id else None,
+            "procesoTitulo": t.process.titulo if t.process else None,
             "titulo": t.title,
             "descripcion": t.description,
             "estado": t.status,
@@ -614,6 +622,7 @@ async def list_case_tasks(
             } if t.assignee_id else None,
             "asignadoAId": str(t.assignee_id) if t.assignee_id else None,
             "fechaVencimiento": t.due_date.isoformat() if t.due_date else None,
+            "completadoEn": t.completed_date.isoformat() if t.completed_date else None,
             "createdAt": t.created_at.isoformat() if t.created_at else None,
             "updatedAt": t.updated_at.isoformat() if t.updated_at else None,
         }

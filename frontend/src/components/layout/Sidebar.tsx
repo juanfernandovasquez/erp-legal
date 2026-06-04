@@ -17,6 +17,18 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
+const ROLE_LABELS: Record<string, string> = {
+  admin_firma:     'Administrador',
+  abogado_senior:  'Abogado Senior',
+  abogado_junior:  'Abogado Junior',
+  abogado:         'Abogado',
+  paralegal:       'Paralegal',
+  asistente:       'Asistente',
+  practicante:     'Practicante',
+  contador:        'Contador',
+  super_admin:     'Super Admin',
+}
+
 export function Sidebar() {
   const { sidebarOpen, toggleSidebar } = useUIStore()
   const { user, logout } = useAuth()
@@ -88,11 +100,11 @@ export function Sidebar() {
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-primary-600">
           <div className="flex items-center gap-3 mb-4 pb-4 border-b border-primary-600">
             <div className="h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center">
-              {user?.nombre?.charAt(0).toUpperCase()}
+              {user?.nombre?.charAt(0).toUpperCase() ?? '?'}
             </div>
             <div className="text-sm">
               <p className="font-medium truncate">{user?.nombre}</p>
-              <p className="text-primary-200 text-xs">{user?.rol}</p>
+              <p className="text-primary-200 text-xs">{ROLE_LABELS[user?.rol ?? ''] ?? user?.rol}</p>
             </div>
           </div>
           <button

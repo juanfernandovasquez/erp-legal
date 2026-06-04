@@ -117,7 +117,7 @@ export function DashboardPage() {
             {/* Cases */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-slate-900">Casos Recientes</h2>
+                <h2 className="text-base font-semibold text-slate-900">Casos Recientes</h2>
                 <button
                   onClick={() => navigate('/cases')}
                   className="text-sm text-primary-600 hover:text-primary-800 font-medium"
@@ -145,7 +145,7 @@ export function DashboardPage() {
             {/* Tasks */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-slate-900">Tareas Pendientes</h2>
+                <h2 className="text-base font-semibold text-slate-900">Tareas Pendientes</h2>
                 <button
                   onClick={() => navigate('/tasks')}
                   className="text-sm text-primary-600 hover:text-primary-800 font-medium"
@@ -168,7 +168,7 @@ export function DashboardPage() {
           {/* Sidebar: Alerts */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-slate-900">Alertas</h2>
+              <h2 className="text-base font-semibold text-slate-900">Alertas</h2>
               <button
                 onClick={() => navigate('/alerts')}
                 className="text-sm text-primary-600 hover:text-primary-800 font-medium"

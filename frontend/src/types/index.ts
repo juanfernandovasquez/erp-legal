@@ -147,14 +147,21 @@ export interface Horas {
 
 export interface Alerta {
   id: string
+  casoId: string
   bufeteId: string
+  tipo: string                        // alert_type del backend
+  severidad: 'info' | 'warning' | 'critical'
   titulo: string
-  descripcion: string
-  severidad: 'info' | 'advertencia' | 'error'
-  estado: 'pendiente' | 'revisado' | 'resuelto'
-  casoId?: string
-  tareaId?: string
-  usuarioCreadorId: string
+  mensaje: string
+  fechaAlerta: string
+  fechaVencimiento?: string
+  estado: 'pendiente' | 'reconocida' | 'leida' | 'resuelta'
+  isRead: boolean
+  isAcknowledged: boolean
+  acknowledgedAt?: string
+  isResolved: boolean
+  resolvedAt?: string
+  resolutionNotes?: string
   createdAt: string
   updatedAt: string
 }

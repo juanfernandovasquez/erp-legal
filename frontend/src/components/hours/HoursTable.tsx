@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Horas } from '@/types'
 import { formatDate } from '@/lib/utils'
 import { Loader, Trash2 } from 'lucide-react'
@@ -16,6 +17,7 @@ export function HoursTable({ caseId, onUpdate }: HoursTableProps) {
   const [horas, setHoras] = useState<Horas[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
   useEffect(() => {
     fetchHoras()
@@ -34,17 +36,16 @@ export function HoursTable({ caseId, onUpdate }: HoursTableProps) {
     }
   }
 
-  const handleDelete = async (horasId: string) => {
-    if (!confirm('¿Está seguro de que desea eliminar este registro?')) return
-
-    setDeleting(horasId)
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(deleteTarget)
+    setDeleteTarget(null)
     try {
-      await api.delete(`/hours/${horasId}`)
-      setHoras(horas.filter((h) => h.id !== horasId))
+      await api.delete(`/hours/${deleteTarget}`)
+      setHoras((prev) => prev.filter((h) => h.id !== deleteTarget))
       onUpdate?.()
     } catch (error) {
       console.error('Error deleting horas:', error)
-      alert('Error al eliminar registro')
     } finally {
       setDeleting(null)
     }
@@ -59,6 +60,7 @@ export function HoursTable({ caseId, onUpdate }: HoursTableProps) {
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>Registro de Horas</CardTitle>
@@ -95,7 +97,7 @@ export function HoursTable({ caseId, onUpdate }: HoursTableProps) {
                     <TableCell>{h.usuario?.nombre}</TableCell>
                     <TableCell>
                       <button
-                        onClick={() => handleDelete(h.id)}
+                        onClick={() => setDeleteTarget(h.id)}
                         disabled={deleting === h.id}
                         className="text-red-600 hover:text-red-700 p-1"
                       >
@@ -110,5 +112,17 @@ export function HoursTable({ caseId, onUpdate }: HoursTableProps) {
         )}
       </CardContent>
     </Card>
+
+    <ConfirmDialog
+      open={!!deleteTarget}
+      onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+      title="Eliminar registro de horas"
+      description="¿Estás seguro de que deseas eliminar este registro? Esta acción no se puede deshacer."
+      confirmLabel="Eliminar"
+      variant="danger"
+      isLoading={!!deleting}
+      onConfirm={confirmDelete}
+    />
+    </>
   )
 }

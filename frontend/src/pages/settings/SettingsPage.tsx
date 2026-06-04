@@ -57,7 +57,7 @@ export function SettingsPage() {
                 </div>
 
                 <div className="pt-4 border-t border-slate-200">
-                  <Button variant="secondary">Editar Perfil</Button>
+                  <Button variant="secondary" disabled title="Próximamente">Editar Perfil</Button>
                 </div>
               </CardContent>
             </Card>
@@ -94,7 +94,7 @@ export function SettingsPage() {
                 </div>
 
                 <div className="pt-4 border-t border-slate-200">
-                  <Button variant="secondary">Actualizar Contraseña</Button>
+                  <Button variant="secondary" disabled title="Próximamente">Actualizar Contraseña</Button>
                 </div>
               </CardContent>
             </Card>
@@ -134,7 +134,7 @@ export function SettingsPage() {
                 </div>
 
                 <div className="pt-4 border-t border-slate-200">
-                  <Button variant="secondary">Guardar Preferencias</Button>
+                  <Button variant="secondary" disabled title="Próximamente">Guardar Preferencias</Button>
                 </div>
               </CardContent>
             </Card>

@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Caso } from '@/types'
 import api from '@/lib/axios'
+import { CASE_STATUS_OPTIONS } from '@/lib/utils'
 
 const caseSchema = z.object({
   titulo: z.string().min(3, 'El título debe tener al menos 3 caracteres'),
@@ -32,6 +33,7 @@ export function CaseForm({ onSuccess, initialData, defaultClienteId }: CaseFormP
   const [clientes, setClientes] = useState<any[]>([])
   const [abogados, setAbogados] = useState<any[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
   const {
     register,
@@ -75,13 +77,15 @@ export function CaseForm({ onSuccess, initialData, defaultClienteId }: CaseFormP
 
   const onSubmit = async (data: CaseFormData) => {
     setIsSubmitting(true)
+    setSubmitError('')
     try {
       const endpoint = initialData ? `/cases/${initialData.id}` : '/cases'
       const method = initialData ? 'patch' : 'post'
       const response = await api[method](endpoint, data)
       onSuccess(response.data.data)
-    } catch (error) {
-      console.error('Error submitting form:', error)
+    } catch (error: any) {
+      const msg = error?.response?.data?.detail || error?.response?.data?.message || 'Error al guardar el caso'
+      setSubmitError(typeof msg === 'string' ? msg : JSON.stringify(msg))
     } finally {
       setIsSubmitting(false)
     }
@@ -94,6 +98,11 @@ export function CaseForm({ onSuccess, initialData, defaultClienteId }: CaseFormP
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {submitError && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{submitError}</p>
+            </div>
+          )}
           <Input
             label="Título del Caso"
             placeholder="Ej: Demanda laboral contra XYZ"
@@ -150,14 +159,7 @@ export function CaseForm({ onSuccess, initialData, defaultClienteId }: CaseFormP
             <Select
               label="Estado"
               placeholder="Selecciona un estado"
-              options={[
-                { value: 'activo', label: 'Activo' },
-                { value: 'en_progreso', label: 'En Progreso' },
-                { value: 'pendiente', label: 'Pendiente' },
-                { value: 'en_pausa', label: 'En Pausa' },
-                { value: 'cerrado', label: 'Cerrado' },
-                { value: 'archivado', label: 'Archivado' },
-              ]}
+              options={CASE_STATUS_OPTIONS}
               {...register('estado')}
             />
           )}

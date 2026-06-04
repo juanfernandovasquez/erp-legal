@@ -199,7 +199,17 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
     if result.scalars().first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
+            detail="El email ya está registrado",
+        )
+
+    # Check if firm name already exists
+    result = await db.execute(
+        select(LawFirm).where(LawFirm.name == request.firm_name)
+    )
+    if result.scalars().first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ya existe un bufete registrado con ese nombre",
         )
 
     # Create law firm

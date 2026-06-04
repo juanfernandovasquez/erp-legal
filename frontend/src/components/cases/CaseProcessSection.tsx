@@ -180,13 +180,16 @@ export function CaseProcessSection({
           {/* Add task form */}
           {addingTask && (
             <div className="border border-blue-100 rounded-lg p-4 bg-blue-50/40">
+              <p className="text-sm font-semibold text-slate-700 mb-3">Nueva tarea</p>
               <TaskForm
                 caseId={caseId}
                 processId={proceso.id}
+                inline
                 onSuccess={(nueva) => {
                   onTareaCreated(nueva)
                   setAddingTask(false)
                 }}
+                onCancel={() => setAddingTask(false)}
               />
             </div>
           )}

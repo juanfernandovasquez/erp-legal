@@ -1,64 +1,176 @@
-import React from 'react'
-import { Card, CardContent } from '@/components/ui/card'
+import React, { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Alerta } from '@/types'
-import { formatDate, getAlertSeverityColor } from '@/lib/utils'
-import { AlertCircle, CheckCircle, X } from 'lucide-react'
+import {
+  formatDate,
+  getAlertSeverityColor, getAlertSeverityLabel,
+  getAlertStatusColor, getAlertStatusLabel,
+  getAlertTypeLabel,
+} from '@/lib/utils'
+import { AlertTriangle, Info, AlertCircle, Calendar, CheckCircle, Eye, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 
 interface AlertCardProps {
   alert: Alerta
-  onDismiss?: () => void
-  onResolve?: () => void
+  onResolve?: (alertId: string, notes?: string) => Promise<void>
+  onAcknowledge?: (alertId: string) => Promise<void>
+  onDelete?: (alertId: string) => void
 }
 
-export function AlertCard({ alert, onDismiss, onResolve }: AlertCardProps) {
-  const icons = {
-    info: AlertCircle,
-    advertencia: AlertCircle,
-    error: AlertCircle,
+const SEVERITY_ICONS: Record<string, React.ReactNode> = {
+  critical: <AlertCircle size={16} className="text-red-600" />,
+  warning:  <AlertTriangle size={16} className="text-yellow-600" />,
+  info:     <Info size={16} className="text-blue-600" />,
+}
+
+const SEVERITY_BORDER: Record<string, string> = {
+  critical: 'border-l-4 border-l-red-500',
+  warning:  'border-l-4 border-l-yellow-500',
+  info:     'border-l-4 border-l-blue-400',
+}
+
+export function AlertCard({ alert, onResolve, onAcknowledge, onDelete }: AlertCardProps) {
+  const [expanded, setExpanded] = useState(false)
+  const [resolutionNote, setResolutionNote] = useState('')
+  const [showResolveForm, setShowResolveForm] = useState(false)
+  const [isActing, setIsActing] = useState(false)
+
+  const isOverdue = alert.fechaVencimiento && !alert.isResolved
+    && new Date(alert.fechaVencimiento) < new Date()
+
+  const handleResolve = async () => {
+    if (!onResolve) return
+    setIsActing(true)
+    try {
+      await onResolve(alert.id, resolutionNote || undefined)
+      setShowResolveForm(false)
+      setResolutionNote('')
+    } finally {
+      setIsActing(false)
+    }
   }
 
-  const Icon = icons[alert.severidad] || AlertCircle
+  const handleAcknowledge = async () => {
+    if (!onAcknowledge) return
+    setIsActing(true)
+    try { await onAcknowledge(alert.id) }
+    finally { setIsActing(false) }
+  }
 
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex gap-4">
-          <Icon size={24} className="text-primary-700 flex-shrink-0 mt-1" />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <h3 className="font-semibold text-slate-900">{alert.titulo}</h3>
-              <Badge variant={getAlertSeverityColor(alert.severidad) as any}>
-                {alert.severidad}
-              </Badge>
-            </div>
-            <p className="text-sm text-slate-600 mb-3">{alert.descripcion}</p>
-            <p className="text-xs text-slate-500">{formatDate(new Date(alert.createdAt))}</p>
+    <div className={`bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden ${SEVERITY_BORDER[alert.severidad] ?? ''} ${alert.isResolved ? 'opacity-60' : ''}`}>
+      {/* Header */}
+      <div
+        className="flex items-start gap-3 p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+        onClick={() => setExpanded((v) => !v)}
+      >
+        <div className="mt-0.5 flex-shrink-0">
+          {SEVERITY_ICONS[alert.severidad] ?? SEVERITY_ICONS.info}
+        </div>
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="font-semibold text-sm text-slate-900 truncate">{alert.titulo}</span>
+            <Badge variant={getAlertSeverityColor(alert.severidad) as any}>
+              {getAlertSeverityLabel(alert.severidad)}
+            </Badge>
+            <Badge variant={getAlertStatusColor(alert.estado) as any}>
+              {getAlertStatusLabel(alert.estado)}
+            </Badge>
           </div>
-          {alert.estado === 'pendiente' && (
-            <div className="flex items-center gap-2 flex-shrink-0">
-              {onResolve && (
+          <div className="flex items-center gap-3 text-xs text-slate-500">
+            <span>{getAlertTypeLabel(alert.tipo)}</span>
+            {alert.fechaVencimiento && (
+              <span className={`flex items-center gap-1 ${isOverdue ? 'text-red-600 font-medium' : ''}`}>
+                <Calendar size={11} />
+                {isOverdue ? 'Venció: ' : 'Vence: '}
+                {formatDate(alert.fechaVencimiento)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-shrink-0 text-slate-400">
+          {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </div>
+      </div>
+
+      {/* Expanded body */}
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-slate-100 pt-3 space-y-3">
+          <p className="text-sm text-slate-600">{alert.mensaje}</p>
+
+          {alert.isResolved && alert.resolutionNotes && (
+            <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-800">
+              <span className="font-medium">Resolución: </span>{alert.resolutionNotes}
+            </div>
+          )}
+
+          {/* Resolve form */}
+          {showResolveForm && !alert.isResolved && (
+            <div className="space-y-2">
+              <textarea
+                value={resolutionNote}
+                onChange={(e) => setResolutionNote(e.target.value)}
+                placeholder="Nota de resolución (opcional)..."
+                rows={2}
+                className="w-full text-sm border border-slate-200 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              />
+              <div className="flex gap-2">
                 <button
-                  onClick={onResolve}
-                  className="p-2 text-green-600 hover:bg-green-50 rounded transition-colors"
-                  title="Marcar como resuelto"
+                  onClick={handleResolve}
+                  disabled={isActing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-md hover:bg-green-700 disabled:opacity-50 transition-colors"
                 >
-                  <CheckCircle size={18} />
+                  <CheckCircle size={13} />
+                  {isActing ? 'Guardando…' : 'Confirmar resolución'}
+                </button>
+                <button
+                  onClick={() => setShowResolveForm(false)}
+                  className="px-3 py-1.5 text-xs text-slate-600 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          {!alert.isResolved && (
+            <div className="flex items-center gap-2 pt-1">
+              {!alert.isAcknowledged && onAcknowledge && (
+                <button
+                  onClick={handleAcknowledge}
+                  disabled={isActing}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-slate-700 border border-slate-200 rounded-md hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                >
+                  <Eye size={13} />
+                  Reconocer
                 </button>
               )}
-              {onDismiss && (
+              {onResolve && !showResolveForm && (
                 <button
-                  onClick={onDismiss}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                  title="Descartar"
+                  onClick={() => setShowResolveForm(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-green-700 border border-green-200 rounded-md hover:bg-green-50 transition-colors"
                 >
-                  <X size={18} />
+                  <CheckCircle size={13} />
+                  Resolver
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={() => onDelete(alert.id)}
+                  className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-600 border border-red-100 rounded-md hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 size={13} />
+                  Eliminar
                 </button>
               )}
             </div>
           )}
+
+          <p className="text-xs text-slate-400">Creada: {formatDate(alert.createdAt)}</p>
         </div>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   )
 }

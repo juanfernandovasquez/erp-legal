@@ -27,6 +27,8 @@ interface HoursFormProps {
 export function HoursForm({ onSuccess, caseId }: HoursFormProps) {
   const [casos, setCasos] = useState<any[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [submitSuccess, setSubmitSuccess] = useState(false)
 
   const {
     register,
@@ -57,14 +59,16 @@ export function HoursForm({ onSuccess, caseId }: HoursFormProps) {
 
   const onSubmit = async (data: HoursFormData) => {
     setIsSubmitting(true)
+    setSubmitError('')
+    setSubmitSuccess(false)
     try {
-      // Hours are posted per case: /cases/{case_id}/hours
       const caseIdValue = (data as any).casoId
       await api.post(`/cases/${caseIdValue}/hours`, data)
+      setSubmitSuccess(true)
       onSuccess()
-    } catch (error) {
-      console.error('Error submitting form:', error)
-      alert('Error al registrar horas')
+    } catch (error: any) {
+      const msg = error?.response?.data?.detail || 'Error al registrar horas'
+      setSubmitError(typeof msg === 'string' ? msg : JSON.stringify(msg))
     } finally {
       setIsSubmitting(false)
     }
@@ -77,6 +81,16 @@ export function HoursForm({ onSuccess, caseId }: HoursFormProps) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {submitError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+              <p className="text-sm text-red-600">{submitError}</p>
+            </div>
+          )}
+          {submitSuccess && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+              <p className="text-sm text-green-700">✓ Horas registradas correctamente</p>
+            </div>
+          )}
           <Select
             label="Caso"
             placeholder="Selecciona un caso"

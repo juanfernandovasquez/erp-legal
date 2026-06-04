@@ -33,7 +33,7 @@ export function CaseCard({ caso }: CaseCardProps) {
               <div className="flex items-center gap-2">
                 <Calendar size={16} className="text-slate-400" />
                 <span className="text-sm text-slate-600">
-                  {formatDate(new Date(caso.fechaApertura))}
+                  {formatDate(caso.fechaApertura)}
                 </span>
               </div>
 

@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Tarea } from '@/types'
-import { formatDate, getPriorityColor, getTaskStatusColor } from '@/lib/utils'
+import { formatDate, getPriorityColor, getPriorityLabel, getTaskStatusColor, getTaskStatusLabel, TASK_STATUS_OPTIONS } from '@/lib/utils'
 import api from '@/lib/axios'
 import { useNavigate } from 'react-router-dom'
 
@@ -23,6 +23,7 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [users, setUsers] = useState<any[]>([])
+  const [procesos, setProcesos] = useState<any[]>([])
 
   const [titulo, setTitulo] = useState(task.titulo)
   const [descripcion, setDescripcion] = useState(task.descripcion || '')
@@ -32,15 +33,25 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
   const [fechaVencimiento, setFechaVencimiento] = useState(
     task.fechaVencimiento ? task.fechaVencimiento.split('T')[0] : ''
   )
+  const [procesoId, setProcesoId] = useState(task.procesoId || '')
 
   useEffect(() => {
     fetchUsers()
+    fetchProcesos()
   }, [])
 
   const fetchUsers = async () => {
     try {
       const res = await api.get('/users?limit=100')
       setUsers(res.data.data || [])
+    } catch {}
+  }
+
+  const fetchProcesos = async () => {
+    if (!task.casoId) return
+    try {
+      const res = await api.get(`/cases/${task.casoId}/processes`)
+      setProcesos(res.data.data || [])
     } catch {}
   }
 
@@ -54,6 +65,7 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
         prioridad,
         asignadoAId: asignadoAId || null,
         fechaVencimiento: fechaVencimiento || null,
+        procesoId: procesoId || null,
       })
       onSave(res.data.data)
       setIsEditing(false)
@@ -85,6 +97,7 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
     setPrioridad(task.prioridad)
     setAsignadoAId(task.asignadoAId || '')
     setFechaVencimiento(task.fechaVencimiento ? task.fechaVencimiento.split('T')[0] : '')
+    setProcesoId(task.procesoId || '')
     setIsEditing(false)
   }
 
@@ -111,10 +124,10 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
             )}
             <div className="flex items-center gap-2 mt-2">
               <Badge variant={getPriorityColor(isEditing ? prioridad : task.prioridad) as any}>
-                {isEditing ? prioridad : task.prioridad}
+                {getPriorityLabel(isEditing ? prioridad : task.prioridad)}
               </Badge>
               <Badge variant={getTaskStatusColor(isEditing ? estado : task.estado) as any}>
-                {isEditing ? estado : task.estado}
+                {getTaskStatusLabel(isEditing ? estado : task.estado)}
               </Badge>
               {isOverdue && (
                 <span className="text-xs text-red-600 font-medium">⚠️ Vencida</span>
@@ -137,14 +150,7 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
             <div className="grid grid-cols-2 gap-4">
               <Select
                 label="Estado"
-                options={[
-                  { value: 'todo', label: 'Pendiente' },
-                  { value: 'in_progress', label: 'En progreso' },
-                  { value: 'in_review', label: 'En revisión' },
-                  { value: 'done', label: 'Completado' },
-                  { value: 'blocked', label: 'Bloqueado' },
-                  { value: 'cancelled', label: 'Cancelado' },
-                ]}
+                options={TASK_STATUS_OPTIONS}
                 value={estado}
                 onChange={(e) => setEstado(e.target.value as any)}
               />
@@ -244,6 +250,33 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
                 <ExternalLink size={12} />
               </button>
             </div>
+          </div>
+
+          {/* Proceso */}
+          <div>
+            <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
+              <Flag size={15} />
+              <span>Proceso</span>
+              {!task.procesoId && (
+                <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
+                  Sin proceso asignado
+                </span>
+              )}
+            </div>
+            {isEditing ? (
+              <Select
+                options={[
+                  { value: '', label: '— Sin proceso —' },
+                  ...procesos.map((p) => ({ value: p.id, label: `${p.orden}. ${p.titulo}` })),
+                ]}
+                value={procesoId}
+                onChange={(e) => setProcesoId(e.target.value)}
+              />
+            ) : (
+              <p className="text-sm text-slate-700">
+                {task.procesoTitulo || <span className="italic text-slate-400">Sin proceso asignado</span>}
+              </p>
+            )}
           </div>
 
           {/* Metadata */}

@@ -31,27 +31,18 @@ export function CaseTimeline({ caseId }: CaseTimelineProps) {
     }
   }
 
-  const getEventIcon = (tipo: string) => {
-    const icons: Record<string, any> = {
-      audiencia: Calendar,
-      reunion: Users,
-      documento: FileText,
-      notificacion: Bell,
-      otro: FileText,
-    }
-    return icons[tipo] || FileText
+  const EVENT_CONFIG: Record<string, { label: string; color: string; Icon: any }> = {
+    audiencia:           { label: 'Audiencia',       color: 'info',      Icon: Calendar },
+    reunion:             { label: 'Reunión',          color: 'secondary', Icon: Users    },
+    documento:           { label: 'Documento',        color: 'default',   Icon: FileText },
+    notificacion:        { label: 'Notificación',     color: 'warning',   Icon: Bell     },
+    proceso_iniciado:    { label: 'Proceso iniciado', color: 'info',      Icon: Calendar },
+    proceso_completado:  { label: 'Proceso completado', color: 'success', Icon: Calendar },
+    otro:                { label: 'Otro',             color: 'default',   Icon: FileText },
   }
 
-  const getEventColor = (tipo: string) => {
-    const colors: Record<string, string> = {
-      audiencia: 'info',
-      reunion: 'secondary',
-      documento: 'default',
-      notificacion: 'warning',
-      otro: 'default',
-    }
-    return colors[tipo] || 'default'
-  }
+  const getEventConfig = (tipo: string) =>
+    EVENT_CONFIG[tipo] ?? { label: tipo, color: 'default', Icon: FileText }
 
   return (
     <Card>
@@ -68,7 +59,7 @@ export function CaseTimeline({ caseId }: CaseTimelineProps) {
         ) : (
           <div className="space-y-4">
             {eventos.map((evento, index) => {
-              const Icon = getEventIcon(evento.tipo)
+              const { label, color, Icon } = getEventConfig(evento.tipo)
               return (
                 <div key={evento.id} className="flex gap-4">
                   <div className="flex flex-col items-center gap-2">
@@ -82,8 +73,8 @@ export function CaseTimeline({ caseId }: CaseTimelineProps) {
                   <div className="pb-4 flex-1 pt-1">
                     <div className="flex items-center gap-2 mb-1">
                       <h4 className="font-semibold text-slate-900">{evento.titulo}</h4>
-                      <Badge variant={getEventColor(evento.tipo) as any}>
-                        {evento.tipo}
+                      <Badge variant={color as any}>
+                        {label}
                       </Badge>
                     </div>
                     {evento.descripcion && (

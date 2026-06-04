@@ -13,47 +13,17 @@ import {
   ChevronUp, ChevronDown, ChevronsUpDown,
 } from 'lucide-react'
 import { Tarea } from '@/types'
-import { formatDate, getPriorityColor, getTaskStatusColor } from '@/lib/utils'
+import {
+  formatDate, getPriorityColor, getPriorityLabel,
+  getTaskStatusColor, getTaskStatusLabel, TASK_STATUS_OPTIONS,
+} from '@/lib/utils'
 import api from '@/lib/axios'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-const STATUS_LABEL: Record<string, string> = {
-  pendiente:   'Pendiente',
-  todo:        'Pendiente',
-  en_progreso: 'En Progreso',
-  in_progress: 'En Progreso',
-  en_revision: 'En Revisión',
-  in_review:   'En Revisión',
-  completado:  'Completado',
-  done:        'Completado',
-  bloqueado:   'Bloqueado',
-  blocked:     'Bloqueado',
-  cancelado:   'Cancelado',
-  cancelled:   'Cancelado',
-}
-
-const PRIORITY_LABEL: Record<string, string> = {
-  urgente: 'Urgente',
-  alta:    'Alta',
-  media:   'Media',
-  baja:    'Baja',
-}
-
-// Numeric weights for meaningful sorting
-const PRIORITY_WEIGHT: Record<string, number> = {
-  urgente: 4, alta: 3, media: 2, baja: 1,
-}
-
-const STATUS_WEIGHT: Record<string, number> = {
-  pendiente: 1, todo: 1,
-  en_progreso: 2, in_progress: 2,
-  en_revision: 3, in_review: 3,
-  completado: 4, done: 4,
-  bloqueado: 5, blocked: 5,
-  cancelado: 6, cancelled: 6,
-}
+const PRIORITY_WEIGHT: Record<string, number> = { urgente: 4, alta: 3, media: 2, baja: 1 }
+const STATUS_WEIGHT: Record<string, number>   = { pendiente: 1, todo: 1, en_progreso: 2, in_progress: 2, completado: 3, done: 3, cancelado: 4, cancelled: 4 }
 
 type SortKey = 'titulo' | 'caso' | 'asignado' | 'prioridad' | 'estado' | 'vencimiento'
 type SortDir = 'asc' | 'desc'
@@ -184,10 +154,9 @@ export function TasksPage() {
 
   const groupedTasks = {
     pendiente:   tasks.filter((t) => ['pendiente','todo'].includes(t.estado)),
-    en_progreso: tasks.filter((t) => ['en_progreso','in_progress'].includes(t.estado)),
-    en_revision: tasks.filter((t) => ['en_revision','in_review'].includes(t.estado)),
+    en_progreso: tasks.filter((t) => ['en_progreso','in_progress','en_revision','in_review'].includes(t.estado)),
     completado:  tasks.filter((t) => ['completado','done'].includes(t.estado)),
-    bloqueado:   tasks.filter((t) => ['bloqueado','blocked','cancelado','cancelled'].includes(t.estado)),
+    cancelado:   tasks.filter((t) => ['cancelado','cancelled','rechazado','bloqueado','blocked'].includes(t.estado)),
   }
 
   // ── list view ──────────────────────────────────────────────────────────────
@@ -259,14 +228,14 @@ export function TasksPage() {
                 {/* Prioridad */}
                 <td className="px-4 py-3 text-center">
                   <Badge variant={getPriorityColor(task.prioridad) as any}>
-                    {PRIORITY_LABEL[task.prioridad] || task.prioridad}
+                    {getPriorityLabel(task.prioridad)}
                   </Badge>
                 </td>
 
                 {/* Estado */}
                 <td className="px-4 py-3 text-center">
                   <Badge variant={getTaskStatusColor(task.estado) as any}>
-                    {STATUS_LABEL[task.estado] || task.estado}
+                    {getTaskStatusLabel(task.estado)}
                   </Badge>
                 </td>
 
@@ -293,13 +262,12 @@ export function TasksPage() {
   // ── kanban view ────────────────────────────────────────────────────────────
 
   const KanbanView = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
       {([
-        { key: 'pendiente',   label: 'Pendientes',  color: 'bg-yellow-400' },
-        { key: 'en_progreso', label: 'En Progreso', color: 'bg-blue-400'   },
-        { key: 'en_revision', label: 'En Revisión', color: 'bg-purple-400' },
+        { key: 'pendiente',   label: 'Pendientes',  color: 'bg-slate-400'  },
+        { key: 'en_progreso', label: 'En progreso', color: 'bg-blue-400'   },
         { key: 'completado',  label: 'Completadas', color: 'bg-green-400'  },
-        { key: 'bloqueado',   label: 'Bloqueadas',  color: 'bg-red-400'    },
+        { key: 'cancelado',   label: 'Canceladas',  color: 'bg-red-400'    },
       ] as const).map(({ key, label, color }) => (
         <div key={key}>
           <div className="flex items-center gap-2 mb-4">
@@ -380,13 +348,8 @@ export function TasksPage() {
             <Select
               placeholder="Estado"
               options={[
-                { value: '',            label: 'Todos los estados' },
-                { value: 'pendiente',   label: 'Pendiente' },
-                { value: 'en_progreso', label: 'En progreso' },
-                { value: 'en_revision', label: 'En revisión' },
-                { value: 'completado',  label: 'Completado' },
-                { value: 'bloqueado',   label: 'Bloqueado' },
-                { value: 'cancelado',   label: 'Cancelado' },
+                { value: '', label: 'Todos los estados' },
+                ...TASK_STATUS_OPTIONS,
               ]}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}

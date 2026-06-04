@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Documento } from '@/types'
 import { formatDate } from '@/lib/utils'
 import { FileText, Download, Trash2, Loader } from 'lucide-react'
@@ -33,17 +34,18 @@ export function DocumentList({ caseId, onDelete }: DocumentListProps) {
     }
   }
 
-  const handleDelete = async (documentoId: string) => {
-    if (!confirm('¿Está seguro de que desea eliminar este documento?')) return
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
 
-    setDeleting(documentoId)
+  const confirmDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(deleteTarget)
+    setDeleteTarget(null)
     try {
-      await api.delete(`/documents/documents/${documentoId}`)
-      setDocumentos(documentos.filter((d) => d.id !== documentoId))
+      await api.delete(`/documents/${deleteTarget}`)
+      setDocumentos((prev) => prev.filter((d) => d.id !== deleteTarget))
       onDelete?.()
     } catch (error) {
       console.error('Error deleting document:', error)
-      alert('Error al eliminar documento')
     } finally {
       setDeleting(null)
     }
@@ -59,6 +61,7 @@ export function DocumentList({ caseId, onDelete }: DocumentListProps) {
   }
 
   return (
+    <>
     <Card>
       <CardHeader>
         <CardTitle>Documentos</CardTitle>
@@ -99,7 +102,7 @@ export function DocumentList({ caseId, onDelete }: DocumentListProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDelete(doc.id)}
+                    onClick={() => setDeleteTarget(doc.id)}
                     disabled={deleting === doc.id}
                     className="text-red-600 hover:text-red-700"
                   >
@@ -112,5 +115,17 @@ export function DocumentList({ caseId, onDelete }: DocumentListProps) {
         )}
       </CardContent>
     </Card>
+
+    <ConfirmDialog
+      open={!!deleteTarget}
+      onOpenChange={(open) => { if (!open) setDeleteTarget(null) }}
+      title="Eliminar documento"
+      description="¿Estás seguro de que deseas eliminar este documento? Esta acción no se puede deshacer."
+      confirmLabel="Eliminar"
+      variant="danger"
+      isLoading={!!deleting}
+      onConfirm={confirmDelete}
+    />
+    </>
   )
 }

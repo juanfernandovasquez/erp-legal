@@ -1,70 +1,95 @@
 import { useState } from 'react'
-import { Alerta, PaginatedResponse } from '@/types'
+import { Alerta } from '@/types'
 import api from '@/lib/axios'
 
 export function useAlerts() {
   const [alerts, setAlerts] = useState<Alerta[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pagination, setPagination] = useState({
-    page: 1,
-    pageSize: 10,
-    total: 0,
-    totalPages: 0,
-  })
+  const [summary, setSummary] = useState({ total: 0, pending: 0, resolved: 0, overdue: 0 })
 
-  const fetchAlerts = async (filters = {}) => {
+  const fetchAlerts = async (filters: Record<string, any> = {}) => {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await api.get<PaginatedResponse<Alerta>>('/alerts', { params: filters })
-      const data = response.data.data || []
-      const meta = response.data.meta || {}
-      setAlerts(data)
-      setPagination({ page: meta.page || 1, pageSize: meta.limit || 10, total: meta.total || 0, totalPages: meta.pages || 0 })
+      const params: any = { limit: filters.limit ?? 100 }
+      if (filters.status) params.status = filters.status
+      if (filters.page)   params.page   = filters.page
+      const response = await api.get('/alerts', { params })
+      setAlerts(response.data.data || [])
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al cargar alertas')
+      setError(err.response?.data?.detail || 'Error al cargar alertas')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const createAlert = async (data: any) => {
+  const fetchCaseAlerts = async (caseId: string) => {
     setIsLoading(true)
     setError(null)
     try {
-      const response = await api.post('/alerts', data)
-      setAlerts((prev) => [response.data.data, ...prev])
-      return response.data.data
+      const response = await api.get(`/cases/${caseId}/alerts`)
+      setAlerts(response.data.data || [])
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al crear alerta')
-      throw err
+      setError(err.response?.data?.detail || 'Error al cargar alertas del caso')
     } finally {
       setIsLoading(false)
     }
   }
 
-  const updateAlertStatus = async (alertId: string, estado: string) => {
-    setIsLoading(true)
-    setError(null)
+  const fetchSummary = async () => {
     try {
-      const response = await api.patch(`/alerts/${alertId}`, { status: estado })
-      setAlerts((prev) => prev.map((a) => (a.id === alertId ? response.data.data : a)))
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al actualizar alerta')
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
+      const response = await api.get('/alerts/summary')
+      setSummary(response.data.data ?? { total: 0, pending: 0, resolved: 0, overdue: 0 })
+    } catch {}
+  }
+
+  const createAlert = async (caseId: string, data: {
+    alert_type: string
+    severity: string
+    title: string
+    message: string
+    due_date?: string
+  }) => {
+    const response = await api.post(`/cases/${caseId}/alerts`, data)
+    const newAlert = response.data.data
+    setAlerts((prev) => [newAlert, ...prev])
+    return newAlert
+  }
+
+  const resolveAlert = async (alertId: string, resolutionNotes?: string) => {
+    const response = await api.patch(`/alerts/${alertId}`, {
+      is_resolved: true,
+      resolution_notes: resolutionNotes || null,
+    })
+    const updated = response.data.data
+    setAlerts((prev) => prev.map((a) => (a.id === alertId ? updated : a)))
+    return updated
+  }
+
+  const acknowledgeAlert = async (alertId: string) => {
+    const response = await api.patch(`/alerts/${alertId}`, { is_acknowledged: true })
+    const updated = response.data.data
+    setAlerts((prev) => prev.map((a) => (a.id === alertId ? updated : a)))
+    return updated
+  }
+
+  const deleteAlert = async (alertId: string) => {
+    await api.delete(`/alerts/${alertId}`)
+    setAlerts((prev) => prev.filter((a) => a.id !== alertId))
   }
 
   return {
     alerts,
     isLoading,
     error,
-    pagination,
+    summary,
     fetchAlerts,
+    fetchCaseAlerts,
+    fetchSummary,
     createAlert,
-    updateAlertStatus,
+    resolveAlert,
+    acknowledgeAlert,
+    deleteAlert,
   }
 }
