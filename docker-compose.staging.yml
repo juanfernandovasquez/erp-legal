@@ -8,8 +8,13 @@ services:
 
   backend:
     env_file: .env.staging
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:ErpLegal2024!@postgres:5432/erp_legal
+      DATABASE_URL_SYNC: postgresql://postgres:ErpLegal2024!@postgres:5432/erp_legal
+      ENVIRONMENT: staging
+      DEBUG: "false"
+      SECRET_KEY: c41cdfc2d9b719e5c03c82912e24990adbaf510103acb1c892906387daec5c12
     volumes: []
-    # Single worker — suficiente para testing, ahorra RAM
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 
   frontend:
