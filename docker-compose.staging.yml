@@ -1,6 +1,10 @@
 services:
   postgres:
     env_file: .env.staging
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ErpLegal2024!
+      POSTGRES_DB: erp_legal
 
   backend:
     env_file: .env.staging
