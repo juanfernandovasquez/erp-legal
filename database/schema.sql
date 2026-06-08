@@ -55,14 +55,10 @@ CREATE TABLE users (
     google_id VARCHAR(255) UNIQUE,
     google_email VARCHAR(255),
     role VARCHAR(50) NOT NULL DEFAULT 'abogado_junior',
-    is_active BOOLEAN NOT NULL DEFAULT true,
     is_verified BOOLEAN NOT NULL DEFAULT false,
     phone VARCHAR(20),
     avatar_url VARCHAR(500),
     bio TEXT,
-    job_title VARCHAR(100),
-    department VARCHAR(100),
-    last_login TIMESTAMP WITH TIME ZONE,
     last_password_change TIMESTAMP WITH TIME ZONE,
     mfa_enabled BOOLEAN NOT NULL DEFAULT false,
     mfa_secret VARCHAR(255),
@@ -164,10 +160,14 @@ CREATE TABLE cases (
     defendant VARCHAR(255),
     opponent_representation TEXT,
     budget_amount NUMERIC(12,2),
+    budget_currency VARCHAR(3) DEFAULT 'PEN',
     spent_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
     estimated_completion_date TIMESTAMP WITH TIME ZONE,
     external_case_id VARCHAR(255),
     process_type_id UUID REFERENCES process_types(id) ON DELETE SET NULL,
+    tipo_facturacion VARCHAR(20),
+    moneda_facturacion VARCHAR(3) DEFAULT 'PEN',
+    precio_facturacion NUMERIC(12,2),
     tags JSON,
     notes TEXT,
     created_at TIMESTAMP NOT NULL DEFAULT NOW(),
@@ -178,6 +178,28 @@ CREATE TABLE cases (
     deleted_at TIMESTAMP,
     deleted_by UUID REFERENCES users(id),
     UNIQUE(law_firm_id, case_number)
+);
+
+CREATE TABLE case_processes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    updated_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+    deleted_at TIMESTAMPTZ,
+    deleted_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    case_id UUID NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    law_firm_id UUID NOT NULL REFERENCES law_firms(id) ON DELETE CASCADE,
+    titulo VARCHAR(255) NOT NULL,
+    descripcion TEXT,
+    estado VARCHAR(50) NOT NULL DEFAULT 'pendiente',
+    orden INTEGER NOT NULL DEFAULT 1,
+    fecha_inicio TIMESTAMPTZ,
+    fecha_fin TIMESTAMPTZ,
+    tipo_tarifa VARCHAR(20),
+    tarifa NUMERIC(12,2),
+    moneda VARCHAR(3) DEFAULT 'PEN'
 );
 
 CREATE TABLE case_hierarchy (
@@ -425,7 +447,7 @@ CREATE TABLE case_hours (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     case_id UUID NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
     task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
-    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
     law_firm_id UUID NOT NULL REFERENCES law_firms(id) ON DELETE CASCADE,
     hours NUMERIC(8,2) NOT NULL,
     description TEXT,
@@ -600,7 +622,7 @@ CREATE TABLE ia_analysis_results (
     deleted_by UUID REFERENCES users(id)
 );
 
-CREATE TABLE ia_audit_log (
+CREATE TABLE ia_audit_logs (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     case_id UUID REFERENCES cases(id),
     analysis_id UUID REFERENCES ia_analysis_results(id),
