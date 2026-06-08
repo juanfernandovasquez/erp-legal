@@ -45,7 +45,7 @@ INSERT INTO law_firms (
 -- Admin
 INSERT INTO users (
     id, law_firm_id, first_name, last_name, email, password_hash, role,
-    phone, is_active
+    phone
 ) VALUES (
     '22222222-2222-2222-2222-222222222222'::UUID,
     '11111111-1111-1111-1111-111111111111'::UUID,
@@ -54,14 +54,13 @@ INSERT INTO users (
     'jorge.lopez@lopezabogados.pe',
     '$2b$10$/Wu5JPwsp73MkfcyfPlKXuW0TbBGCjj5SlLHy3XWrwcNcIX./xCOS',
     'admin_firma',
-    '511-987654321',
-    true
+    '511-987654321'
 ) ON CONFLICT DO NOTHING;
 
 -- Senior Lawyer
 INSERT INTO users (
     id, law_firm_id, first_name, last_name, email, password_hash, role,
-    phone, is_active
+    phone
 ) VALUES (
     '33333333-3333-3333-3333-333333333333'::UUID,
     '11111111-1111-1111-1111-111111111111'::UUID,
@@ -70,14 +69,13 @@ INSERT INTO users (
     'maria.rodriguez@lopezabogados.pe',
     '$2b$10$/Wu5JPwsp73MkfcyfPlKXuW0TbBGCjj5SlLHy3XWrwcNcIX./xCOS',
     'abogado_senior',
-    '511-987654322',
-    true
+    '511-987654322'
 ) ON CONFLICT DO NOTHING;
 
 -- Junior Lawyer
 INSERT INTO users (
     id, law_firm_id, first_name, last_name, email, password_hash, role,
-    phone, is_active
+    phone
 ) VALUES (
     '44444444-4444-4444-4444-444444444444'::UUID,
     '11111111-1111-1111-1111-111111111111'::UUID,
@@ -86,8 +84,7 @@ INSERT INTO users (
     'carlos.mendoza@lopezabogados.pe',
     '$2b$10$/Wu5JPwsp73MkfcyfPlKXuW0TbBGCjj5SlLHy3XWrwcNcIX./xCOS',
     'abogado_junior',
-    '511-987654323',
-    true
+    '511-987654323'
 ) ON CONFLICT DO NOTHING;
 
 -- Sample Clients
