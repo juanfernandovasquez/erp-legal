@@ -15,6 +15,7 @@ services:
     ports:
       - "80:80"
     volumes: []
+    command: nginx -g 'daemon off;'
     depends_on:
       - backend
 
