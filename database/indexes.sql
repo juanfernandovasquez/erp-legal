@@ -111,9 +111,9 @@ CREATE INDEX idx_ia_analysis_results_case_id ON ia_analysis_results(case_id) WHE
 CREATE INDEX idx_ia_analysis_results_tipo ON ia_analysis_results(tipo_analisis);
 CREATE INDEX idx_ia_analysis_results_estado ON ia_analysis_results(estado);
 
-CREATE INDEX idx_ia_audit_log_case_id ON ia_audit_log(case_id);
-CREATE INDEX idx_ia_audit_log_analysis_id ON ia_audit_log(analysis_id);
-CREATE INDEX idx_ia_audit_log_timestamp ON ia_audit_log(timestamp);
+CREATE INDEX idx_ia_audit_logs_case_id ON ia_audit_logs(case_id);
+CREATE INDEX idx_ia_audit_logs_analysis_id ON ia_audit_logs(analysis_id);
+CREATE INDEX idx_ia_audit_logs_timestamp ON ia_audit_logs(timestamp);
 
 CREATE INDEX idx_ia_feedback_analysis_id ON ia_feedback(analysis_id) WHERE is_deleted = false;
 CREATE INDEX idx_ia_feedback_user_id ON ia_feedback(user_id) WHERE is_deleted = false;

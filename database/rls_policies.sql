@@ -333,11 +333,11 @@ CREATE POLICY ia_analysis_results_access_via_case ON ia_analysis_results
     ));
 
 -- ============================================================================
--- IA_AUDIT_LOG RLS POLICIES
+-- IA_AUDIT_LOGS RLS POLICIES
 -- ============================================================================
 
-DROP POLICY IF EXISTS ia_audit_log_access_via_case ON ia_audit_log;
-CREATE POLICY ia_audit_log_access_via_case ON ia_audit_log
+DROP POLICY IF EXISTS ia_audit_logs_access_via_case ON ia_audit_logs;
+CREATE POLICY ia_audit_logs_access_via_case ON ia_audit_logs
     USING (case_id IS NULL OR case_id IN (
         SELECT id FROM cases
         WHERE law_firm_id = current_setting('app.current_law_firm_id')::UUID
