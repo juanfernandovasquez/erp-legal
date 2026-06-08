@@ -1,0 +1,77 @@
+#!/bin/bash
+# proteger-bd: verifica que el push no ponga en riesgo la BD de staging
+
+REMOTE="$1"
+
+echo ""
+echo "[proteger-bd] Verificando push hacia '$REMOTE'..."
+
+# Leer los refs que se van a pushear
+while read local_ref local_sha remote_ref remote_sha; do
+
+    # Si es rama nueva, comparar contra HEAD~1
+    if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+        CHANGED=$(git diff-tree --no-commit-id -r --name-only "$local_sha" 2>/dev/null || echo "")
+        DIFF_CONTENT=$(git show "$local_sha" 2>/dev/null || echo "")
+    else
+        CHANGED=$(git diff --name-only "$remote_sha" "$local_sha" 2>/dev/null || echo "")
+        DIFF_CONTENT=$(git diff "$remote_sha" "$local_sha" 2>/dev/null || echo "")
+    fi
+
+    # ─────────────────────────────────────────────
+    # CHECK 1: comandos peligrosos en el diff
+    # ─────────────────────────────────────────────
+    DANGER=$(echo "$DIFF_CONTENT" | grep "^+" | grep -E "down\s+-v|down\s+--volumes|volume\s+rm\s+.*postgres" || true)
+    if [ -n "$DANGER" ]; then
+        echo ""
+        echo "❌ BLOQUEADO [proteger-bd]: Se detectó un comando que borraría la BD de staging:"
+        echo ""
+        echo "$DANGER"
+        echo ""
+        echo "  Usa 'docker compose ... down' SIN el flag -v para no borrar los volúmenes."
+        echo "  Para saltarte esta verificación (bajo tu responsabilidad): git push --no-verify"
+        echo ""
+        exit 1
+    fi
+
+    # ─────────────────────────────────────────────
+    # CHECK 2: modelos SQLAlchemy sin migración
+    # ─────────────────────────────────────────────
+    MODELS=$(echo "$CHANGED" | grep "^backend/app/models/" || true)
+    if [ -n "$MODELS" ]; then
+        MIGRATIONS=$(echo "$CHANGED" | grep "^backend/alembic/versions/" || true)
+        if [ -z "$MIGRATIONS" ]; then
+            echo ""
+            echo "❌ BLOQUEADO [proteger-bd]: Modelos SQLAlchemy modificados sin migración de Alembic:"
+            echo ""
+            echo "$MODELS"
+            echo ""
+            echo "  Si agregaste o modificaste columnas/tablas, crea la migración primero:"
+            echo "    cd backend"
+            echo "    alembic revision --autogenerate -m 'descripcion_del_cambio'"
+            echo ""
+            echo "  Si el cambio no afecta el schema (solo lógica): git push --no-verify"
+            echo ""
+            exit 1
+        fi
+    fi
+
+    # ─────────────────────────────────────────────
+    # CHECK 3: volumen de postgres sigue montado
+    # ─────────────────────────────────────────────
+    COMPOSE_CHANGED=$(echo "$CHANGED" | grep "docker-compose" || true)
+    if [ -n "$COMPOSE_CHANGED" ]; then
+        if ! grep -q "postgres_data" docker-compose.yml 2>/dev/null; then
+            echo ""
+            echo "❌ BLOQUEADO [proteger-bd]: El volumen de postgres no está definido en docker-compose.yml"
+            echo "  La BD de staging quedaría sin persistencia."
+            echo ""
+            exit 1
+        fi
+    fi
+
+done
+
+echo "[proteger-bd] ✅ Push seguro — la BD de staging no corre riesgo."
+echo ""
+exit 0
