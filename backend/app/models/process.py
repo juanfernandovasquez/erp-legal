@@ -4,7 +4,7 @@ import uuid
 from typing import Optional
 from datetime import datetime
 
-from sqlalchemy import String, Text, Boolean, DateTime, ForeignKey, Integer
+from sqlalchemy import String, Text, Boolean, DateTime, ForeignKey, Integer, Numeric
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -46,6 +46,13 @@ class CaseProcess(BaseModel):
     fecha_fin: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+
+    # Billing
+    # tipo_tarifa: 'plana' | 'por_horas'
+    tipo_tarifa: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    tarifa: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+    # moneda: 'PEN' | 'USD'
+    moneda: Mapped[Optional[str]] = mapped_column(String(3), nullable=True, default="PEN")
 
     # Relationships
     case: Mapped["Case"] = relationship(

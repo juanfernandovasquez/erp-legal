@@ -84,7 +84,7 @@ export function DocumentList({ caseId, onDelete }: DocumentListProps) {
                     <div className="flex items-center gap-2 text-xs text-slate-600 mt-1">
                       <Badge variant="secondary">{doc.tipo}</Badge>
                       <span>{(doc.tamaño / 1024).toFixed(2)} KB</span>
-                      <span>{formatDate(new Date(doc.fechaCarga))}</span>
+                      <span>{formatDate(doc.fechaCarga)}</span>
                     </div>
                     {doc.descripcion && (
                       <p className="text-sm text-slate-600 mt-1 line-clamp-1">{doc.descripcion}</p>

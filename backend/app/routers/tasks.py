@@ -15,12 +15,31 @@ from sqlalchemy.orm import selectinload, contains_eager
 from app.database import get_db
 from app.utils.responses import success_response, paginated_response
 from app.utils.auth import get_current_user
-from app.models import User, Case, Task, CaseProcess
+from app.models import User, Case, Task, CaseProcess, CaseHours, Client
+from app.models.case import CaseClient
 from app.models.case import CaseClient
 from app.services.audit_service import audit_log
 from app.services.case_service import check_case_team_access
 
 router = APIRouter(tags=["tasks"])
+
+
+async def _get_client_names(db: AsyncSession, case_ids: set) -> dict:
+    """Return {case_id_str: client_name} for the primary client of each case."""
+    if not case_ids:
+        return {}
+    rows = (await db.execute(
+        select(CaseClient.case_id, Client.name)
+        .join(Client, Client.id == CaseClient.client_id)
+        .where(
+            and_(
+                CaseClient.case_id.in_(case_ids),
+                CaseClient.is_primary == True,
+                CaseClient.is_deleted == False,
+            )
+        )
+    )).all()
+    return {str(row.case_id): row.name for row in rows}
 
 # Cases with these statuses are considered "inactive".
 # Tasks that belong to inactive cases are hidden from global/my-tasks views
@@ -28,8 +47,9 @@ router = APIRouter(tags=["tasks"])
 INACTIVE_CASE_STATUSES = ["inactivo"]
 
 
-def _format_task(task: Task) -> dict:
+def _format_task(task: Task, client_names: dict | None = None) -> dict:
     """Convert Task model to Spanish-named dict for frontend Tarea type."""
+    names = client_names or {}
     assignee_data = None
     if task.assignee:
         assignee_data = {
@@ -38,7 +58,6 @@ def _format_task(task: Task) -> dict:
             "email": task.assignee.email,
             "rol": task.assignee.role,
             "bufeteId": str(task.assignee.law_firm_id),
-            "estado": "activo" if task.assignee.is_active else "inactivo",
             "createdAt": task.assignee.created_at.isoformat() if task.assignee.created_at else None,
             "updatedAt": task.assignee.updated_at.isoformat() if task.assignee.updated_at else None,
         }
@@ -48,14 +67,16 @@ def _format_task(task: Task) -> dict:
         "casoTitulo": task.case.title if task.case else None,
         "procesoId": str(task.process_id) if task.process_id else None,
         "procesoTitulo": task.process.titulo if task.process else None,
+        "clienteNombre": names.get(str(task.case_id)),
         "titulo": task.title,
         "descripcion": task.description,
         "estado": task.status,
         "prioridad": task.priority,
         "asignadoA": assignee_data,
         "asignadoAId": str(task.assignee_id) if task.assignee_id else None,
-        "fechaVencimiento": task.due_date.isoformat() if task.due_date else None,
-        "completadoEn": task.completed_date.isoformat() if task.completed_date else None,
+        "fechaPresentacion": task.presentation_date.date().isoformat() if task.presentation_date else None,
+        "fechaVencimiento": task.due_date.date().isoformat() if task.due_date else None,
+        "completadoEn": task.completed_date.date().isoformat() if task.completed_date else None,
         "createdAt": task.created_at.isoformat() if task.created_at else None,
         "updatedAt": task.updated_at.isoformat() if task.updated_at else None,
     }
@@ -64,7 +85,7 @@ def _format_task(task: Task) -> dict:
 @router.get("/tasks", response_model=dict, summary="List all tasks for the law firm")
 async def list_all_tasks(
     page: int = Query(1, ge=1),
-    limit: int = Query(100, ge=1, le=200),
+    limit: int = Query(100, ge=1, le=500),
     status_filter: Optional[str] = Query(None, alias="status"),
     priority_filter: Optional[str] = Query(None, alias="priority"),
     assignee_filter: Optional[str] = Query(None, alias="assignee"),
@@ -141,11 +162,17 @@ async def list_all_tasks(
     # explicitly (the user navigated into that case on purpose).
     if not case_filter:
         count_q = count_q.join(Case, Case.id == Task.case_id).where(
-            Case.status.notin_(INACTIVE_CASE_STATUSES)
+            Case.status.notin_(INACTIVE_CASE_STATUSES),
+            Case.is_deleted == False,
         )
         main_q = main_q.join(Case, Case.id == Task.case_id).where(
-            Case.status.notin_(INACTIVE_CASE_STATUSES)
+            Case.status.notin_(INACTIVE_CASE_STATUSES),
+            Case.is_deleted == False,
         )
+    else:
+        # Even when filtering by a specific case, exclude deleted cases
+        count_q = count_q.join(Case, Case.id == Task.case_id).where(Case.is_deleted == False)
+        main_q = main_q.join(Case, Case.id == Task.case_id).where(Case.is_deleted == False)
 
     if client_uuid is not None:
         count_q = (
@@ -166,7 +193,8 @@ async def list_all_tasks(
     result = await db.execute(query)
     tasks = result.scalars().all()
 
-    data = [_format_task(t) for t in tasks]
+    client_names = await _get_client_names(db, {t.case_id for t in tasks})
+    data = [_format_task(t, client_names) for t in tasks]
     pages = (total + limit - 1) // limit if total > 0 else 1
     return paginated_response(data=data, total=total, page=page, pages=pages, limit=limit, meta={})
 
@@ -220,7 +248,8 @@ async def get_my_tasks(
 
     logger.warning(f"[my-tasks] tasks found: {len(tasks)}")
 
-    data = [_format_task(t) for t in tasks]
+    client_names = await _get_client_names(db, {t.case_id for t in tasks})
+    data = [_format_task(t, client_names) for t in tasks]
     pages = (total + limit - 1) // limit if total > 0 else 1
     return paginated_response(data=data, total=total, page=page, pages=pages, limit=limit, meta={})
 
@@ -286,15 +315,28 @@ async def create_task(
     priority = request.get("prioridad") or request.get("priority") or "medium"
     assignee_id = request.get("asignadoAId") or request.get("assignee_id")
     due_date_str = request.get("fechaVencimiento") or request.get("due_date")
+    presentation_date_str = request.get("fechaPresentacion") or request.get("presentation_date")
     task_status = request.get("estado") or request.get("status") or "todo"
     process_id_raw = request.get("procesoId") or request.get("process_id")
+
+    def _parse_date(s: str):
+        """Parse date string, normalizing date-only strings to noon UTC to avoid timezone shifts."""
+        normalized = s if "T" in s else s + "T12:00:00"
+        return datetime.fromisoformat(normalized)
 
     due_date = None
     if due_date_str:
         try:
-            due_date = datetime.fromisoformat(due_date_str)
+            due_date = _parse_date(due_date_str)
         except Exception:
             due_date = None
+
+    presentation_date = None
+    if presentation_date_str:
+        try:
+            presentation_date = _parse_date(presentation_date_str)
+        except Exception:
+            presentation_date = None
 
     assignee_uuid = None
     if assignee_id:
@@ -324,6 +366,7 @@ async def create_task(
         status=task_status,
         priority=priority,
         due_date=due_date,
+        presentation_date=presentation_date,
         assignee_id=assignee_uuid,
         process_id=process_uuid,
         is_deleted=False,
@@ -436,14 +479,29 @@ async def update_task(
         else:
             task.assignee_id = None
 
+    def _parse_date(s: str):
+        normalized = s if "T" in s else s + "T12:00:00"
+        return datetime.fromisoformat(normalized)
+
     if "fechaVencimiento" in request and request["fechaVencimiento"]:
         try:
-            task.due_date = datetime.fromisoformat(request["fechaVencimiento"])
+            task.due_date = _parse_date(request["fechaVencimiento"])
         except Exception:
             pass
     elif "due_date" in request and request["due_date"]:
         try:
-            task.due_date = datetime.fromisoformat(request["due_date"])
+            task.due_date = _parse_date(request["due_date"])
+        except Exception:
+            pass
+
+    if "fechaPresentacion" in request and request["fechaPresentacion"]:
+        try:
+            task.presentation_date = _parse_date(request["fechaPresentacion"])
+        except Exception:
+            pass
+    elif "presentation_date" in request and request["presentation_date"]:
+        try:
+            task.presentation_date = _parse_date(request["presentation_date"])
         except Exception:
             pass
 
@@ -454,39 +512,55 @@ async def update_task(
                 task.process_id = uuid_module.UUID(raw_proc)
             except (ValueError, AttributeError):
                 pass
-        else:
-            task.process_id = None
-
-    task.updated_at = datetime.utcnow()
-    await db.commit()
-
-    # Reload with assignee and case
-    result = await db.execute(
-        select(Task).where(Task.id == task_uuid).options(selectinload(Task.assignee), selectinload(Task.case), selectinload(Task.process))
-    )
-    task = result.scalars().first()
-
-    return success_response(data=_format_task(task), meta={})
 
 
-@router.delete("/tasks/{task_id}", response_model=dict, summary="Delete task")
+
+
+@router.delete("/tasks/{task_id}", response_model=dict, summary="Soft-delete a task and its hours")
 async def delete_task(
     task_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Soft-deletes a task AND all hour records associated with it.
+    Does not affect the user who created/was assigned to the task.
+    """
+    from sqlalchemy import update as sa_update
+
     try:
         task_uuid = uuid_module.UUID(task_id)
     except (ValueError, AttributeError):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
-    task = await db.get(Task, task_uuid)
+    result = await db.execute(select(Task).where(Task.id == task_uuid))
+    task = result.scalars().first()
 
     if not task or task.is_deleted or task.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
+    now = datetime.utcnow()
+
+    # Soft-delete associated hours first
+    await db.execute(
+        sa_update(CaseHours)
+        .where(CaseHours.task_id == task_uuid, CaseHours.is_deleted == False)
+        .values(is_deleted=True, deleted_at=now)
+    )
+
+    # Soft-delete the task
     task.is_deleted = True
-    task.deleted_at = datetime.utcnow()
+    task.deleted_at = now
     await db.commit()
 
-    return success_response(data={"message": "Task deleted"}, meta={})
+    await audit_log(
+        db=db,
+        law_firm_id=current_user.law_firm_id,
+        user_id=current_user.id,
+        action="DELETE",
+        entity_type="Task",
+        entity_id=task.id,
+        description=f"Task deleted: {task.title}",
+    )
+
+    return success_response(data={"message": "Task and its hours deleted"}, meta={})

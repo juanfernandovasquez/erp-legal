@@ -67,7 +67,7 @@ export function TaskCard({ task, onClick }: TaskCardProps) {
             <div className={`flex items-center gap-1 text-sm ${isOverdue ? 'text-red-600' : 'text-slate-600'}`}>
               {isOverdue && <AlertCircle size={14} />}
               <Calendar size={14} />
-              <span>{formatDate(new Date(task.fechaVencimiento))}</span>
+              <span>{formatDate(task.fechaVencimiento)}</span>
             </div>
           )}
         </div>

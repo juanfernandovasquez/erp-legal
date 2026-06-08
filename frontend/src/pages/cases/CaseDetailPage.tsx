@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,11 +9,12 @@ import { CaseStatusBadge } from '@/components/cases/CaseStatusBadge'
 import { CaseTimeline } from '@/components/cases/CaseTimeline'
 import { CaseTeamList } from '@/components/cases/CaseTeamList'
 import { CaseForm } from '@/components/cases/CaseForm'
-import { ProcessForm } from '@/components/cases/ProcessForm'
-import { CaseProcessSection } from '@/components/cases/CaseProcessSection'
+import { TaskForm } from '@/components/tasks/TaskForm'
 import { DocumentList } from '@/components/documents/DocumentList'
 import { DocumentUpload } from '@/components/documents/DocumentUpload'
 import { HoursTable } from '@/components/hours/HoursTable'
+import { HoursForm } from '@/components/hours/HoursForm'
+import { CaseUpdates } from '@/components/cases/CaseUpdates'
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 import { AlertCard } from '@/components/alerts/AlertCard'
@@ -23,10 +24,10 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { useCases } from '@/hooks/useCases'
 import { formatDate, formatCurrency, getPriorityColor, getPriorityLabel, getTaskStatusColor, getTaskStatusLabel, CASE_STATUS_OPTIONS } from '@/lib/utils'
-import { Caso, Tarea, Proceso } from '@/types'
+import { Caso, Tarea } from '@/types'
 import {
   ArrowLeft, Calendar, DollarSign, User, Plus, Pencil, Check, X,
-  LayoutGrid, List, ChevronUp, ChevronDown, ChevronsUpDown, AlertCircle, Trash2,
+  LayoutGrid, List, ChevronUp, ChevronDown, ChevronsUpDown, AlertCircle, Trash2, RefreshCw,
 } from 'lucide-react'
 import api from '@/lib/axios'
 
@@ -58,7 +59,7 @@ const STATUS_WEIGHT: Record<string, number> = {
   cancelado: 6, cancelled: 6,
 }
 
-type SortKey = 'titulo' | 'asignado' | 'prioridad' | 'estado' | 'vencimiento'
+type SortKey = 'titulo' | 'asignado' | 'prioridad' | 'estado' | 'presentacion' | 'vencimiento'
 type SortDir = 'asc' | 'desc'
 
 const INACTIVE_STATUSES = ['archivado', 'cerrado', 'inactivo']
@@ -66,16 +67,18 @@ const INACTIVE_STATUSES = ['archivado', 'cerrado', 'inactivo']
 export function CaseDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const defaultTab = searchParams.get('tab') || 'info'
   const { currentCase, isLoading: caseLoading, fetchCaseById, setCurrentCase } = useCases()
   const [caso, setCaso] = useState<Caso | null>(currentCase)
   const [tareas, setTareas] = useState<Tarea[]>([])
   const [tareasLoading, setTareasLoading] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Tarea | null>(null)
 
-  // Processes
-  const [procesos, setProcesos] = useState<Proceso[]>([])
-  const [procesosLoading, setProcesosLoading] = useState(false)
   const [showNewProcessForm, setShowNewProcessForm] = useState(false)
+  const [tareasView, setTareasView] = useState<'grid' | 'list'>('list')
+  const [horasKey, setHorasKey] = useState(0)
+  const [showHorasForm, setShowHorasForm] = useState(false)
 
   // Sort
   const [sortKey, setSortKey] = useState<SortKey | null>(null)
@@ -88,6 +91,7 @@ export function CaseDetailPage() {
   const [statusError, setStatusError] = useState('')
   const [deletingCase, setDeletingCase] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [editingCase, setEditingCase] = useState(false)
 
   // Alerts
   const {
@@ -109,7 +113,6 @@ export function CaseDetailPage() {
       setCurrentCase(null)
       fetchCaseById(id)
       fetchTareas()
-      fetchProcesos()
       fetchCaseAlerts(id)
     }
   }, [id])
@@ -128,19 +131,6 @@ export function CaseDetailPage() {
       console.error('Error fetching tareas:', error)
     } finally {
       setTareasLoading(false)
-    }
-  }
-
-  const fetchProcesos = async () => {
-    if (!id || isNew) return
-    setProcesosLoading(true)
-    try {
-      const res = await api.get(`/cases/${id}/processes`)
-      setProcesos(res.data.data || [])
-    } catch (err) {
-      console.error('Error fetching procesos:', err)
-    } finally {
-      setProcesosLoading(false)
     }
   }
 
@@ -204,6 +194,11 @@ export function CaseDetailPage() {
         diff = (PRIORITY_WEIGHT[a.prioridad] || 0) - (PRIORITY_WEIGHT[b.prioridad] || 0)
       } else if (sortKey === 'estado') {
         diff = (STATUS_WEIGHT[a.estado] || 0) - (STATUS_WEIGHT[b.estado] || 0)
+      } else if (sortKey === 'presentacion') {
+        if (!a.fechaPresentacion && !b.fechaPresentacion) diff = 0
+        else if (!a.fechaPresentacion) return 1
+        else if (!b.fechaPresentacion) return -1
+        else diff = new Date(a.fechaPresentacion).getTime() - new Date(b.fechaPresentacion).getTime()
       } else if (sortKey === 'vencimiento') {
         if (!a.fechaVencimiento && !b.fechaVencimiento) diff = 0
         else if (!a.fechaVencimiento) return 1
@@ -238,7 +233,7 @@ export function CaseDetailPage() {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
-            <th className={`${thClass('titulo')} text-left w-[32%]`} onClick={() => handleSort('titulo')}>
+            <th className={`${thClass('titulo')} text-left w-[28%]`} onClick={() => handleSort('titulo')}>
               Tarea <SortIcon col="titulo" />
             </th>
             <th className={`${thClass('asignado')} text-left`} onClick={() => handleSort('asignado')}>
@@ -249,6 +244,9 @@ export function CaseDetailPage() {
             </th>
             <th className={`${thClass('estado')} text-center`} onClick={() => handleSort('estado')}>
               Estado <SortIcon col="estado" />
+            </th>
+            <th className={`${thClass('presentacion')} text-left`} onClick={() => handleSort('presentacion')}>
+              Presentación <SortIcon col="presentacion" />
             </th>
             <th className={`${thClass('vencimiento')} text-left`} onClick={() => handleSort('vencimiento')}>
               Vencimiento <SortIcon col="vencimiento" />
@@ -268,41 +266,43 @@ export function CaseDetailPage() {
                   idx % 2 === 0 ? '' : 'bg-slate-50/40'
                 }`}
               >
-                <td className="px-4 py-3">
-                  <p className="font-medium text-slate-900 truncate max-w-[260px]">{task.titulo}</p>
-                  {task.descripcion && (
-                    <p className="text-xs text-slate-400 truncate max-w-[260px] mt-0.5">{task.descripcion}</p>
-                  )}
+                <td className="px-4 py-3 align-top">
+                  <p className="font-medium text-slate-900 leading-snug">{task.titulo}</p>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 align-top">
                   {task.asignadoA ? (
-                    <div className="flex items-center gap-1.5">
-                      <User size={13} className="text-slate-400 flex-shrink-0" />
-                      <span className="text-slate-700 truncate max-w-[150px]">{task.asignadoA.nombre}</span>
+                    <div className="flex items-start gap-1.5">
+                      <User size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-700">{task.asignadoA.nombre}</span>
                     </div>
                   ) : (
                     <span className="text-slate-400 italic text-xs">Sin asignar</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-center">
+                <td className="px-4 py-3 text-center align-top">
                   <Badge variant={getPriorityColor(task.prioridad) as any}>
                     {getPriorityLabel(task.prioridad)}
                   </Badge>
                 </td>
-                <td className="px-4 py-3 text-center">
+                <td className="px-4 py-3 text-center align-top">
                   <Badge variant={getTaskStatusColor(task.estado) as any}>
                     {getTaskStatusLabel(task.estado)}
                   </Badge>
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 text-sm text-slate-600 align-top">
+                  {task.fechaPresentacion
+                    ? formatDate(task.fechaPresentacion)
+                    : <span className="text-slate-400 italic text-xs">—</span>}
+                </td>
+                <td className="px-4 py-3 align-top">
                   {task.fechaVencimiento ? (
                     <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-600 font-medium' : 'text-slate-600'}`}>
                       {isOverdue && <AlertCircle size={13} />}
                       <Calendar size={13} className="flex-shrink-0" />
-                      <span>{formatDate(new Date(task.fechaVencimiento))}</span>
+                      <span>{formatDate(task.fechaVencimiento)}</span>
                     </div>
                   ) : (
-                    <span className="text-slate-400 italic text-xs">Sin fecha</span>
+                    <span className="text-slate-400 italic text-xs">—</span>
                   )}
                 </td>
               </tr>
@@ -376,19 +376,26 @@ export function CaseDetailPage() {
     <AppLayout>
       <div className="p-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-4">
-          <Button variant="ghost" onClick={() => navigate('/cases')} className="gap-2">
-            <ArrowLeft size={18} />
+          <Button variant="ghost" size="sm" onClick={() => navigate('/cases')} className="gap-2">
+            <ArrowLeft size={16} />
             Volver a Casos
           </Button>
-          <Button
-            variant="ghost"
-            onClick={() => setShowDeleteConfirm(true)}
-            disabled={deletingCase}
-            className="gap-2 text-red-500 hover:text-red-700 hover:bg-red-50"
-          >
-            <Trash2 size={16} />
-            {deletingCase ? 'Eliminando…' : 'Eliminar caso'}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setEditingCase(true)} className="gap-2">
+              <Pencil size={14} />
+              Editar caso
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={deletingCase}
+              className="gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+            >
+              <Trash2 size={14} />
+              {deletingCase ? 'Eliminando…' : 'Eliminar caso'}
+            </Button>
+          </div>
         </div>
 
         <div className="mb-8">
@@ -410,13 +417,10 @@ export function CaseDetailPage() {
               )}
 
               {!editingStatus ? (
-                <button
-                  onClick={openStatusEditor}
-                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-blue-600 transition-colors"
-                >
-                  <Pencil size={11} />
+                <Button variant="outline" size="sm" onClick={openStatusEditor} className="gap-1.5">
+                  <RefreshCw size={13} />
                   Cambiar estado
-                </button>
+                </Button>
               ) : (
                 <div className="flex flex-col items-end gap-2 bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
                   <select
@@ -458,15 +462,19 @@ export function CaseDetailPage() {
                 <Calendar size={14} />
                 Abierto
               </p>
-              <p className="font-medium text-slate-900">{formatDate(new Date(caso.fechaApertura))}</p>
+              <p className="font-medium text-slate-900">{formatDate(caso.fechaApertura)}</p>
             </div>
-            {caso.montoAsegurado && (
+            {caso.tipoFacturacion && caso.precioFacturacion != null && (
               <div className="bg-white p-4 rounded-lg border border-slate-200">
                 <p className="text-xs text-slate-600 uppercase font-semibold mb-1 flex items-center gap-1">
                   <DollarSign size={14} />
-                  Monto
+                  Facturación
                 </p>
-                <p className="font-medium text-slate-900">{formatCurrency(caso.montoAsegurado)}</p>
+                <p className="font-medium text-slate-900">
+                  {caso.monedaFacturacion === 'USD' ? '$' : 'S/'}{' '}
+                  {caso.precioFacturacion.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                  {caso.tipoFacturacion === 'por_horas' ? '/h' : ' flat'}
+                </p>
               </div>
             )}
             {caso.abogadoPrincipal && (
@@ -481,7 +489,7 @@ export function CaseDetailPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="info">
+        <Tabs defaultValue={defaultTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="info">Información</TabsTrigger>
             <TabsTrigger value="timeline">Línea de Tiempo</TabsTrigger>
@@ -489,6 +497,7 @@ export function CaseDetailPage() {
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
             <TabsTrigger value="equipo">Equipo</TabsTrigger>
             <TabsTrigger value="horas">Horas</TabsTrigger>
+            <TabsTrigger value="actualizaciones">Actualizaciones</TabsTrigger>
             <TabsTrigger value="alertas">Alertas</TabsTrigger>
           </TabsList>
 
@@ -516,7 +525,7 @@ export function CaseDetailPage() {
                     {caso.fechaCierre && (
                       <div>
                         <p className="text-sm text-slate-600 font-medium">Fecha de Cierre</p>
-                        <p className="text-slate-900">{formatDate(new Date(caso.fechaCierre))}</p>
+                        <p className="text-slate-900">{formatDate(caso.fechaCierre)}</p>
                       </div>
                     )}
                   </CardContent>
@@ -535,11 +544,11 @@ export function CaseDetailPage() {
                     </div>
                     <div>
                       <p className="text-xs text-slate-600 uppercase font-semibold mb-1">Creado</p>
-                      <p className="text-sm text-slate-900">{formatDate(new Date(caso.createdAt))}</p>
+                      <p className="text-sm text-slate-900">{formatDate(caso.createdAt)}</p>
                     </div>
                     <div>
                       <p className="text-xs text-slate-600 uppercase font-semibold mb-1">Actualizado</p>
-                      <p className="text-sm text-slate-900">{formatDate(new Date(caso.updatedAt))}</p>
+                      <p className="text-sm text-slate-900">{formatDate(caso.updatedAt)}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -551,37 +560,56 @@ export function CaseDetailPage() {
             <CaseTimeline caseId={caso.id} />
           </TabsContent>
 
+
+
           <TabsContent value="tareas">
             <div className="space-y-4">
-
               {/* Header */}
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-900">
-                  Procesos del Caso
-                  {procesos.length > 0 && (
+                <h3 className="text-base font-semibold text-slate-900">
+                  Tareas
+                  {tareas.length > 0 && (
                     <span className="ml-2 text-sm font-normal text-slate-500">
-                      ({procesos.length} proceso{procesos.length !== 1 ? 's' : ''}, {tareas.length} tarea{tareas.length !== 1 ? 's' : ''})
+                      ({tareas.length} tarea{tareas.length !== 1 ? 's' : ''})
                     </span>
                   )}
                 </h3>
-                <Button
-                  className="gap-2"
-                  onClick={() => setShowNewProcessForm((v) => !v)}
-                  variant={showNewProcessForm ? 'ghost' : 'default'}
-                >
-                  <Plus size={16} />
-                  {showNewProcessForm ? 'Cancelar' : 'Nuevo proceso'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  {/* View toggle */}
+                  <div className="flex items-center bg-slate-100 rounded-lg p-1 gap-1">
+                    <button
+                      onClick={() => setTareasView('grid')}
+                      className={`p-1.5 rounded-md transition-colors ${tareasView === 'grid' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      <LayoutGrid size={14} />
+                    </button>
+                    <button
+                      onClick={() => setTareasView('list')}
+                      className={`p-1.5 rounded-md transition-colors ${tareasView === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      <List size={14} />
+                    </button>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setShowNewProcessForm((v) => !v)}
+                    variant={showNewProcessForm ? 'ghost' : 'default'}
+                  >
+                    <Plus size={15} />
+                    {showNewProcessForm ? 'Cancelar' : 'Nueva tarea'}
+                  </Button>
+                </div>
               </div>
 
-              {/* New process form */}
+              {/* New task form */}
               {showNewProcessForm && (
-                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                  <p className="text-sm font-semibold text-slate-700 mb-3">Crear nuevo proceso</p>
-                  <ProcessForm
+                <div className="bg-white border border-blue-100 rounded-xl p-5 shadow-sm">
+                  <TaskForm
                     caseId={caso.id}
-                    onSuccess={(nuevo) => {
-                      setProcesos((prev) => [...prev, nuevo])
+                    inline
+                    onSuccess={(nueva) => {
+                      setTareas((prev) => [...prev, nueva])
                       setShowNewProcessForm(false)
                     }}
                     onCancel={() => setShowNewProcessForm(false)}
@@ -590,61 +618,22 @@ export function CaseDetailPage() {
               )}
 
               {/* Content */}
-              {procesosLoading ? (
+              {tareasLoading ? (
                 <LoadingSpinner />
-              ) : procesos.length === 0 ? (
+              ) : tareas.length === 0 ? (
                 <div className="text-center py-16 text-slate-400">
-                  <div className="text-4xl mb-3">📋</div>
-                  <p className="font-medium text-slate-600 mb-1">Sin procesos aún</p>
-                  <p className="text-sm">Crea el primer proceso para empezar a organizar las tareas del caso.</p>
+                  <div className="text-3xl mb-3">📋</div>
+                  <p className="font-medium text-slate-600 mb-1">Sin tareas aún</p>
+                  <p className="text-sm">Crea la primera tarea para empezar a registrar el trabajo.</p>
+                </div>
+              ) : tareasView === 'grid' ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {tareas.map((t) => (
+                    <TaskCard key={t.id} task={t} onClick={() => setSelectedTask(t)} />
+                  ))}
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {procesos.map((proc) => (
-                    <CaseProcessSection
-                      key={proc.id}
-                      proceso={proc}
-                      tareas={tareas.filter((t) => t.procesoId === proc.id)}
-                      caseId={caso.id}
-                      onProcesoUpdated={(updated) =>
-                        setProcesos((prev) => prev.map((p) => (p.id === updated.id ? updated : p)))
-                      }
-                      onProcesoDeleted={(deletedId) =>
-                        setProcesos((prev) => prev.filter((p) => p.id !== deletedId))
-                      }
-                      onTareaCreated={(nueva) => setTareas((prev) => [...prev, nueva])}
-                      onTareaClick={(t) => setSelectedTask(t)}
-                    />
-                  ))}
-
-                  {/* Tasks without a process (legacy) */}
-                  {tareas.filter((t) => !t.procesoId).length > 0 && (
-                    <div className="border border-dashed border-slate-300 rounded-xl p-4 bg-slate-50/50">
-                      <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">
-                        Tareas sin proceso asignado
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {tareas
-                          .filter((t) => !t.procesoId)
-                          .map((t) => (
-                            <div
-                              key={t.id}
-                              className="opacity-70 cursor-pointer"
-                              onClick={() => setSelectedTask(t)}
-                            >
-                              {/* Reuse TaskCard but muted */}
-                              <div className="bg-white border border-slate-200 rounded-lg p-3 hover:border-blue-300 hover:shadow-sm transition-all">
-                                <p className="text-sm font-medium text-slate-700 truncate">{t.titulo}</p>
-                                {t.descripcion && (
-                                  <p className="text-xs text-slate-400 truncate mt-0.5">{t.descripcion}</p>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <TareasListView />
               )}
             </div>
           </TabsContent>
@@ -666,96 +655,119 @@ export function CaseDetailPage() {
           </TabsContent>
 
           <TabsContent value="horas">
-            <HoursTable caseId={caso.id} onUpdate={() => fetchCaseById(caso.id)} />
-          </TabsContent>
-
-          <TabsContent value="alertas">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-slate-900">
-                  Alertas del caso
-                  {caseAlerts.length > 0 && (
-                    <span className="ml-2 text-sm font-normal text-slate-500">
-                      ({caseAlerts.filter((a) => !a.isResolved).length} pendiente{caseAlerts.filter((a) => !a.isResolved).length !== 1 ? 's' : ''})
-                    </span>
-                  )}
-                </h3>
+              <div className="flex justify-end">
                 <Button
                   size="sm"
-                  variant={showAlertForm ? 'ghost' : 'default'}
                   className="gap-2"
-                  onClick={() => setShowAlertForm((v) => !v)}
+                  onClick={() => setShowHorasForm(true)}
                 >
                   <Plus size={15} />
-                  {showAlertForm ? 'Cancelar' : 'Nueva alerta'}
+                  Registrar horas
                 </Button>
               </div>
 
-              {showAlertForm && (
-                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
-                  <AlertForm
-                    fixedCaseId={caso.id}
-                    onSuccess={() => {
-                      setShowAlertForm(false)
-                      fetchCaseAlerts(caso.id)
-                    }}
-                    onCancel={() => setShowAlertForm(false)}
-                    onCreate={createAlert}
-                  />
-                </div>
-              )}
-
-              {alertsLoading ? (
-                <LoadingSpinner />
-              ) : caseAlerts.length === 0 ? (
-                <div className="text-center py-12 text-slate-400">
-                  <div className="text-3xl mb-3">🔔</div>
-                  <p className="font-medium text-slate-600 mb-1">Sin alertas</p>
-                  <p className="text-sm">Crea una alerta para hacer seguimiento de plazos y eventos importantes.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {caseAlerts.map((alert) => (
-                    <AlertCard
-                      key={alert.id}
-                      alert={alert}
-                      onResolve={(id, notes) => resolveAlert(id, notes)}
-                      onAcknowledge={(id) => acknowledgeAlert(id)}
-                      onDelete={(id) => deleteAlert(id).then(() => fetchCaseAlerts(caso.id))}
-                    />
-                  ))}
-                </div>
-              )}
+              <HoursTable
+                key={horasKey}
+                caseId={caso.id}
+                tareas={tareas.map((t) => ({ id: t.id, titulo: t.titulo, fechaPresentacion: t.fechaPresentacion }))}
+                moneda={caso.monedaFacturacion ?? 'PEN'}
+                tipoFacturacion={caso.tipoFacturacion ?? null}
+                onUpdate={() => setHorasKey((k) => k + 1)}
+              />
             </div>
           </TabsContent>
+
+          <TabsContent value="actualizaciones">
+            <CaseUpdates caseId={caso.id} />
+          </TabsContent>
+
         </Tabs>
       </div>
-      <ConfirmDialog
-        open={showDeleteConfirm}
-        onOpenChange={setShowDeleteConfirm}
-        title="Eliminar caso"
-        description={`¿Estás seguro de que deseas eliminar "${caso?.titulo}"? Esta acción no se puede deshacer.`}
-        confirmLabel="Eliminar"
-        cancelLabel="Cancelar"
-        variant="danger"
-        isLoading={deletingCase}
-        onConfirm={handleDeleteCase}
-      />
 
+      {/* ── Modal: detalle / edición de tarea ─────────────────────────────── */}
       {selectedTask && (
         <TaskDetailModal
           task={selectedTask}
           onClose={() => setSelectedTask(null)}
           onSave={(updated) => {
-            setTareas((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-            setSelectedTask(updated)
+            setSelectedTask(null)
+            fetchCaseById(caso.id)
           }}
           onDelete={(taskId) => {
-            setTareas((prev) => prev.filter((t) => t.id !== taskId))
             setSelectedTask(null)
+            fetchCaseById(caso.id)
           }}
         />
       )}
+
+      {/* ── Modal: registrar horas ─────────────────────────────────────────── */}
+      {showHorasForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-xl max-h-[88vh] flex flex-col">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
+              <h2 className="text-base font-semibold text-slate-900">Registrar horas</h2>
+              <button
+                onClick={() => setShowHorasForm(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                <span className="sr-only">Cerrar</span>✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <HoursForm
+                caseId={caso.id}
+                tipoFacturacion={caso.tipoFacturacion ?? null}
+                defaultRate={caso.precioFacturacion ?? 0}
+                defaultMoneda={caso.monedaFacturacion ?? 'PEN'}
+                onSuccess={() => {
+                  setShowHorasForm(false)
+                  setHorasKey((k) => k + 1)
+                }}
+                onCancel={() => setShowHorasForm(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: editar caso ───────────────────────────────────────────── */}
+      {editingCase && caso && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900">Editar caso</h2>
+              <button
+                onClick={() => setEditingCase(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+            <CaseForm
+              initialData={caso}
+              inline
+              onSuccess={(updatedCaso) => {
+                setCaso(updatedCaso)
+                setEditingCase(false)
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* ── Confirm: eliminar caso ─────────────────────────────────────────── */}
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={setShowDeleteConfirm}
+        title="¿Eliminar caso?"
+        description={`Esta acción eliminará permanentemente "${caso.titulo}" y todos sus datos asociados. No se puede deshacer.`}
+        confirmLabel={deletingCase ? 'Eliminando…' : 'Sí, eliminar'}
+        cancelLabel="Cancelar"
+        onConfirm={handleDeleteCase}
+        variant="danger"
+      />
+
     </AppLayout>
   )
 }

@@ -64,6 +64,7 @@ class Task(BaseModel):
 
     # Dates
     due_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    presentation_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_date: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -163,10 +164,10 @@ class CaseHours(BaseModel):
         nullable=True,
     )
 
-    user_id: Mapped[uuid.UUID] = mapped_column(
+    user_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False,
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
     )
 
     law_firm_id: Mapped[uuid.UUID] = mapped_column(
@@ -305,3 +306,4 @@ class TaskSchedule(BaseModel):
 # Import at the end to avoid circular imports
 from app.models.case import Case
 from app.models.user import User
+from app.models.law_firm import LawFirm

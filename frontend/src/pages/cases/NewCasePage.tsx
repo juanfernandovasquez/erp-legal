@@ -23,7 +23,7 @@ export function NewCasePage() {
           Volver
         </Button>
 
-        <h1 className="text-3xl font-bold text-slate-900 mb-6">Nuevo Caso</h1>
+        <h1 className="text-3xl font-bold text-slate-900 mb-6">Nuevo Proceso</h1>
 
         <CaseForm onSuccess={handleSuccess} defaultClienteId={defaultClienteId} />
       </div>

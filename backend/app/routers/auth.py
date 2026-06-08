@@ -62,12 +62,6 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
             detail="Invalid email or password",
         )
 
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive",
-        )
-
     # Get law firm info
     law_firm = await db.get(LawFirm, user.law_firm_id)
 
@@ -233,7 +227,6 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
         password_hash=get_password_hash(request.password),
         law_firm_id=law_firm.id,
         role="admin_firma",
-        is_active=True,
         is_deleted=False,
     )
     db.add(admin_user)
@@ -305,7 +298,6 @@ async def get_me(
                 "full_name": current_user.get_full_name(),
                 "role": current_user.role,
                 "law_firm_id": str(current_user.law_firm_id),
-                "is_active": current_user.is_active,
                 "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
             },
             "law_firm": {

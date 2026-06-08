@@ -16,6 +16,7 @@ const taskSchema = z.object({
   descripcion: z.string().min(10, 'La descripción debe tener al menos 10 caracteres'),
   prioridad: z.enum(['baja', 'media', 'alta', 'urgente']),
   asignadoAId: z.string().nonempty('El responsable es requerido'),
+  fechaPresentacion: z.string().nonempty('La fecha de presentación es requerida'),
   fechaVencimiento: z.string().nonempty('La fecha de vencimiento es requerida'),
   estado: z.enum(['pendiente', 'en_progreso', 'completado', 'cancelado']).optional(),
 })
@@ -48,6 +49,7 @@ export function TaskForm({ caseId, processId, onSuccess, onCancel, initialData, 
       descripcion: initialData.descripcion,
       prioridad: initialData.prioridad,
       asignadoAId: initialData.asignadoAId,
+      fechaPresentacion: initialData.fechaPresentacion?.split('T')[0],
       fechaVencimiento: initialData.fechaVencimiento?.split('T')[0],
       estado: initialData.estado,
     } : {},
@@ -141,12 +143,22 @@ export function TaskForm({ caseId, processId, onSuccess, onCancel, initialData, 
         error={errors.asignadoAId?.message}
       />
 
-      <Input
-        label="Fecha de Vencimiento"
-        type="date"
-        {...register('fechaVencimiento')}
-        error={errors.fechaVencimiento?.message}
-      />
+      <div className="grid grid-cols-2 gap-4">
+        <Input
+          label="Fecha de Presentación *"
+          type="date"
+          {...register('fechaPresentacion')}
+          error={errors.fechaPresentacion?.message}
+          helpText="Cuándo se planifica presentar este documento"
+        />
+        <Input
+          label="Fecha de Vencimiento *"
+          type="date"
+          {...register('fechaVencimiento')}
+          error={errors.fechaVencimiento?.message}
+          helpText="Plazo legal máximo"
+        />
+      </div>
 
       {initialData && (
         <Select
@@ -174,7 +186,7 @@ export function TaskForm({ caseId, processId, onSuccess, onCancel, initialData, 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{initialData ? 'Editar Tarea' : 'Crear Nueva Tarea'}</CardTitle>
+        <CardTitle>{initialData ? 'Editar Tarea' : 'Crear Nuevo Acto'}</CardTitle>
       </CardHeader>
       <CardContent>
         {formContent}

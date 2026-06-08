@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
 import { User } from '@/types'
@@ -27,27 +26,24 @@ export function CaseTeamList({
   const [showAddModal, setShowAddModal] = useState(false)
   const [firmUsers, setFirmUsers] = useState<any[]>([])
   const [selectedUserId, setSelectedUserId] = useState('')
-  const [selectedRole, setSelectedRole] = useState('abogado_junior')
   const [isAdding, setIsAdding] = useState(false)
   const [addError, setAddError] = useState('')
 
+  // Merge both arrays — no cargo/role label shown
   const allMembers = [
-    ...abogados.map((a) => ({ ...a, rol: 'abogado' })),
-    ...asistentes.map((a) => ({ ...a, rol: 'asistente' })),
+    ...abogados.map((a) => ({ ...a })),
+    ...asistentes.map((a) => ({ ...a })),
   ]
 
-  // IDs already on the team
   const teamIds = new Set(allMembers.map((m: any) => m.id))
 
   const openAddModal = async () => {
     setSelectedUserId('')
-    setSelectedRole('abogado_junior')
     setAddError('')
     setShowAddModal(true)
     try {
       const res = await api.get('/users?limit=100')
       const all = res.data.data || []
-      // Filter out users already on the team
       setFirmUsers(all.filter((u: any) => !teamIds.has(u.id)))
     } catch {
       setAddError('No se pudo cargar la lista de usuarios.')
@@ -64,7 +60,7 @@ export function CaseTeamList({
     try {
       await api.post(`/cases/${caseId}/team`, {
         user_id: selectedUserId,
-        role: selectedRole,
+        role: 'miembro',
       })
       setShowAddModal(false)
       onUpdate?.()
@@ -115,9 +111,6 @@ export function CaseTeamList({
                       <p className="font-medium text-slate-900">{member.nombre}</p>
                       <p className="text-sm text-slate-600">{member.email}</p>
                     </div>
-                    <Badge variant={member.rol === 'abogado' ? 'default' : 'secondary'}>
-                      {member.rol === 'abogado' ? 'Abogado' : 'Asistente'}
-                    </Badge>
                   </div>
                   <button
                     onClick={() => handleRemoveMember(member.id)}
@@ -164,7 +157,6 @@ export function CaseTeamList({
                 value={selectedUserId}
                 onChange={(e) => setSelectedUserId(e.target.value)}
               />
-
             </div>
 
             <div className="flex justify-end gap-3 px-6 pb-6">

@@ -71,11 +71,9 @@ class CaseEventResponse(BaseModel):
 class CaseUpdateCreate(BaseModel):
     """Create case update request."""
 
-    title: str = Field(..., min_length=1, max_length=255, description="Update title")
     content: str = Field(..., min_length=1, description="Update content")
-
-    update_type: str = Field(..., description="Update type")
-
+    title: Optional[str] = Field(None, max_length=255, description="Update title (auto-generated if omitted)")
+    update_type: str = Field(default="general", description="Update type")
     is_internal: bool = Field(default=True, description="Is internal")
     is_client_visible: bool = Field(default=False, description="Is client visible")
 

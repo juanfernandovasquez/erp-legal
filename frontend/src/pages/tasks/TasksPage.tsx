@@ -25,7 +25,7 @@ import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 const PRIORITY_WEIGHT: Record<string, number> = { urgente: 4, alta: 3, media: 2, baja: 1 }
 const STATUS_WEIGHT: Record<string, number>   = { pendiente: 1, todo: 1, en_progreso: 2, in_progress: 2, completado: 3, done: 3, cancelado: 4, cancelled: 4 }
 
-type SortKey = 'titulo' | 'caso' | 'asignado' | 'prioridad' | 'estado' | 'vencimiento'
+type SortKey = 'cliente' | 'titulo' | 'caso' | 'asignado' | 'prioridad' | 'estado' | 'vencimiento'
 type SortDir = 'asc' | 'desc'
 
 // ── component ─────────────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ type SortDir = 'asc' | 'desc'
 export function TasksPage() {
   const [tasks, setTasks] = useState<Tarea[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [view, setView] = useState<'kanban' | 'list'>('kanban')
+  const [view, setView] = useState<'kanban' | 'list'>('list')
 
   // Sort state
   const [sortKey, setSortKey] = useState<SortKey | null>(null)
@@ -107,7 +107,10 @@ export function TasksPage() {
     return [...tasks].sort((a, b) => {
       let diff = 0
 
-      if (sortKey === 'titulo') {
+      if (sortKey === 'cliente') {
+        diff = (a.clienteNombre || '').localeCompare(b.clienteNombre || '', 'es')
+
+      } else if (sortKey === 'titulo') {
         diff = (a.titulo || '').localeCompare(b.titulo || '', 'es')
 
       } else if (sortKey === 'caso') {
@@ -166,14 +169,14 @@ export function TasksPage() {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
-            <th className={`${thClass('titulo')} text-left w-[28%]`} onClick={() => handleSort('titulo')}>
+            <th className={`${thClass('cliente')} text-left w-[16%]`} onClick={() => handleSort('cliente')}>
+              Cliente <SortIcon col="cliente" />
+            </th>
+            <th className={`${thClass('titulo')} text-left w-[30%]`} onClick={() => handleSort('titulo')}>
               Tarea <SortIcon col="titulo" />
             </th>
-            <th className={`${thClass('caso')} text-left`} onClick={() => handleSort('caso')}>
-              Caso <SortIcon col="caso" />
-            </th>
-            <th className={`${thClass('asignado')} text-left`} onClick={() => handleSort('asignado')}>
-              Asignado a <SortIcon col="asignado" />
+            <th className={`${thClass('caso')} text-left w-[18%]`} onClick={() => handleSort('caso')}>
+              Proceso <SortIcon col="caso" />
             </th>
             <th className={`${thClass('prioridad')} text-center`} onClick={() => handleSort('prioridad')}>
               Prioridad <SortIcon col="prioridad" />
@@ -200,55 +203,45 @@ export function TasksPage() {
                   idx % 2 === 0 ? '' : 'bg-slate-50/40'
                 }`}
               >
-                {/* Tarea */}
-                <td className="px-4 py-3">
-                  <p className="font-medium text-slate-900 truncate max-w-[240px]">{task.titulo}</p>
-                  {task.descripcion && (
-                    <p className="text-xs text-slate-400 truncate max-w-[240px] mt-0.5">{task.descripcion}</p>
-                  )}
+                {/* Cliente */}
+                <td className="px-4 py-3 text-sm text-slate-700 align-top">
+                  {task.clienteNombre || <span className="text-slate-400 italic text-xs">—</span>}
                 </td>
 
-                {/* Caso */}
-                <td className="px-4 py-3 text-slate-700 truncate max-w-[150px]">
+                {/* Tarea */}
+                <td className="px-4 py-3 align-top">
+                  <p className="font-medium text-slate-900 leading-snug">{task.titulo}</p>
+                </td>
+
+                {/* Proceso */}
+                <td className="px-4 py-3 text-sm text-slate-600 align-top leading-snug">
                   {task.casoTitulo || <span className="text-slate-400 italic">—</span>}
                 </td>
 
-                {/* Asignado a */}
-                <td className="px-4 py-3">
-                  {task.asignadoA ? (
-                    <div className="flex items-center gap-1.5">
-                      <User size={13} className="text-slate-400 flex-shrink-0" />
-                      <span className="text-slate-700 truncate max-w-[130px]">{task.asignadoA.nombre}</span>
-                    </div>
-                  ) : (
-                    <span className="text-slate-400 italic text-xs">Sin asignar</span>
-                  )}
-                </td>
-
                 {/* Prioridad */}
-                <td className="px-4 py-3 text-center">
+                <td className="px-4 py-3 text-center align-top">
                   <Badge variant={getPriorityColor(task.prioridad) as any}>
                     {getPriorityLabel(task.prioridad)}
                   </Badge>
                 </td>
 
                 {/* Estado */}
-                <td className="px-4 py-3 text-center">
+                <td className="px-4 py-3 text-center align-top">
                   <Badge variant={getTaskStatusColor(task.estado) as any}>
                     {getTaskStatusLabel(task.estado)}
                   </Badge>
                 </td>
 
                 {/* Vencimiento */}
-                <td className="px-4 py-3">
+                <td className="px-4 py-3 align-top">
                   {task.fechaVencimiento ? (
                     <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-600 font-medium' : 'text-slate-600'}`}>
                       {isOverdue && <AlertCircle size={13} />}
                       <Calendar size={13} className="flex-shrink-0" />
-                      <span>{formatDate(new Date(task.fechaVencimiento))}</span>
+                      <span>{formatDate(task.fechaVencimiento)}</span>
                     </div>
                   ) : (
-                    <span className="text-slate-400 italic text-xs">Sin fecha</span>
+                    <span className="text-slate-400 italic text-xs">—</span>
                   )}
                 </td>
               </tr>
@@ -298,7 +291,7 @@ export function TasksPage() {
           <div>
             <h1 className="text-3xl font-bold text-slate-900 mb-1">Tareas</h1>
             <p className="text-slate-600">
-              {tasks.length} tarea{tasks.length !== 1 ? 's' : ''} encontrada{tasks.length !== 1 ? 's' : ''}
+              {tasks.length} tarea{tasks.length !== 1 ? 's' : ''} encontrado{tasks.length !== 1 ? 's' : ''}
             </p>
           </div>
           <div className="flex items-center gap-3">
@@ -335,29 +328,34 @@ export function TasksPage() {
             <Filter size={16} className="text-slate-500" />
             <span className="text-sm font-medium text-slate-700">Filtros</span>
             {hasActiveFilters && (
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
+                {[statusFilter, priorityFilter, assigneeFilter, caseFilter, clientFilter, dueFilter].filter(Boolean).length}
+              </span>
+            )}
+            {hasActiveFilters && (
               <button
                 onClick={clearFilters}
-                className="ml-auto flex items-center gap-1 text-xs text-slate-500 hover:text-red-500 transition-colors"
+                className="ml-auto flex items-center gap-1 text-xs text-slate-400 hover:text-red-500 transition-colors"
               >
                 <RotateCcw size={12} />
-                Limpiar filtros
+                Limpiar
               </button>
             )}
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <Select
-              placeholder="Estado"
+              label="Estado"
               options={[
-                { value: '', label: 'Todos los estados' },
+                { value: '', label: 'Todos' },
                 ...TASK_STATUS_OPTIONS,
               ]}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
             />
             <Select
-              placeholder="Prioridad"
+              label="Prioridad"
               options={[
-                { value: '',        label: 'Todas las prioridades' },
+                { value: '',        label: 'Todas' },
                 { value: 'urgente', label: '🔴 Urgente' },
                 { value: 'alta',    label: '🟠 Alta' },
                 { value: 'media',   label: '🟡 Media' },
@@ -367,7 +365,7 @@ export function TasksPage() {
               onChange={(e) => setPriorityFilter(e.target.value)}
             />
             <Select
-              placeholder="Asignado a"
+              label="Asignado a"
               options={[
                 { value: '',           label: 'Todos' },
                 { value: 'me',         label: '👤 Mis tareas' },
@@ -378,25 +376,25 @@ export function TasksPage() {
               onChange={(e) => setAssigneeFilter(e.target.value)}
             />
             <Select
-              placeholder="Caso"
+              label="Proceso"
               options={[
-                { value: '', label: 'Todos los casos' },
+                { value: '', label: 'Todos' },
                 ...cases.map((c) => ({ value: c.id, label: c.titulo || c.numeroCaso || c.id })),
               ]}
               value={caseFilter}
               onChange={(e) => setCaseFilter(e.target.value)}
             />
             <Select
-              placeholder="Cliente"
+              label="Cliente"
               options={[
-                { value: '', label: 'Todos los clientes' },
+                { value: '', label: 'Todos' },
                 ...clients.map((c) => ({ value: c.id, label: c.nombre || c.id })),
               ]}
               value={clientFilter}
               onChange={(e) => setClientFilter(e.target.value)}
             />
             <Select
-              placeholder="Vencimiento"
+              label="Vencimiento"
               options={[
                 { value: '',           label: 'Cualquier fecha' },
                 { value: 'overdue',    label: '⚠️ Vencidas' },
@@ -417,7 +415,7 @@ export function TasksPage() {
           <EmptyState
             icon={CheckSquare}
             title="No hay tareas"
-            description={hasActiveFilters ? 'No hay tareas que coincidan con los filtros seleccionados' : 'Crea una nueva tarea para empezar'}
+            description={hasActiveFilters ? 'No hay tareas que coincidan con los filtros seleccionados' : 'Crea el primera tarea para empezar'}
             action={!hasActiveFilters ? { label: 'Crear Primera Tarea', onClick: openModal } : undefined}
           />
         ) : view === 'list' ? (
@@ -440,10 +438,10 @@ export function TasksPage() {
             <div className="p-6 space-y-4">
               {!selectedCaseId ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-slate-600">Selecciona el caso al que pertenece la tarea:</p>
+                  <p className="text-sm text-slate-600">Selecciona el proceso al que pertenece la tarea:</p>
                   <Select
-                    label="Caso"
-                    placeholder="Selecciona un caso..."
+                    label="Proceso"
+                    placeholder="Selecciona un proceso..."
                     options={cases.map((c) => ({ value: c.id, label: c.titulo || c.numeroCaso || c.id }))}
                     onChange={(e) => setSelectedCaseId(e.target.value)}
                   />

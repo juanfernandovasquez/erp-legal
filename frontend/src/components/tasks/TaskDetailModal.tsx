@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
-import { X, Save, Trash2, ExternalLink, Calendar, User, Flag, AlignLeft, Briefcase } from 'lucide-react'
+import { X, Save, Trash2, ExternalLink, Calendar, User, AlignLeft, Briefcase } from 'lucide-react'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { Tarea } from '@/types'
 import { formatDate, getPriorityColor, getPriorityLabel, getTaskStatusColor, getTaskStatusLabel, TASK_STATUS_OPTIONS } from '@/lib/utils'
 import api from '@/lib/axios'
@@ -22,22 +24,23 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const [users, setUsers] = useState<any[]>([])
-  const [procesos, setProcesos] = useState<any[]>([])
 
   const [titulo, setTitulo] = useState(task.titulo)
   const [descripcion, setDescripcion] = useState(task.descripcion || '')
   const [estado, setEstado] = useState(task.estado)
   const [prioridad, setPrioridad] = useState(task.prioridad)
   const [asignadoAId, setAsignadoAId] = useState(task.asignadoAId || '')
+  const [fechaPresentacion, setFechaPresentacion] = useState(
+    task.fechaPresentacion ? task.fechaPresentacion.split('T')[0] : ''
+  )
   const [fechaVencimiento, setFechaVencimiento] = useState(
     task.fechaVencimiento ? task.fechaVencimiento.split('T')[0] : ''
   )
-  const [procesoId, setProcesoId] = useState(task.procesoId || '')
-
   useEffect(() => {
     fetchUsers()
-    fetchProcesos()
   }, [])
 
   const fetchUsers = async () => {
@@ -47,13 +50,6 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
     } catch {}
   }
 
-  const fetchProcesos = async () => {
-    if (!task.casoId) return
-    try {
-      const res = await api.get(`/cases/${task.casoId}/processes`)
-      setProcesos(res.data.data || [])
-    } catch {}
-  }
 
   const handleSave = async () => {
     setIsSaving(true)
@@ -64,11 +60,11 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
         estado,
         prioridad,
         asignadoAId: asignadoAId || null,
+        fechaPresentacion: fechaPresentacion || null,
         fechaVencimiento: fechaVencimiento || null,
-        procesoId: procesoId || null,
       })
       onSave(res.data.data)
-      setIsEditing(false)
+      onClose()
     } catch (error) {
       console.error('Error saving task:', error)
     } finally {
@@ -77,15 +73,15 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
   }
 
   const handleDelete = async () => {
-    if (!confirm('¿Estás seguro de que quieres eliminar esta tarea?')) return
+    setDeleteError('')
     setIsDeleting(true)
     try {
       await api.delete(`/tasks/${task.id}`)
+      setShowDeleteConfirm(false)
       onDelete?.(task.id)
       onClose()
-    } catch (error) {
-      console.error('Error deleting task:', error)
-    } finally {
+    } catch (error: any) {
+      setDeleteError(error?.response?.data?.detail || 'Error al eliminar la tarea')
       setIsDeleting(false)
     }
   }
@@ -96,8 +92,8 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
     setEstado(task.estado)
     setPrioridad(task.prioridad)
     setAsignadoAId(task.asignadoAId || '')
+    setFechaPresentacion(task.fechaPresentacion ? task.fechaPresentacion.split('T')[0] : '')
     setFechaVencimiento(task.fechaVencimiento ? task.fechaVencimiento.split('T')[0] : '')
-    setProcesoId(task.procesoId || '')
     setIsEditing(false)
   }
 
@@ -214,22 +210,44 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
             <div>
               <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
                 <Calendar size={15} />
-                <span>Vencimiento</span>
+                <span>Fecha de Presentación</span>
               </div>
               {isEditing ? (
                 <Input
                   type="date"
-                  value={fechaVencimiento}
-                  onChange={(e) => setFechaVencimiento(e.target.value)}
+                  value={fechaPresentacion}
+                  onChange={(e) => setFechaPresentacion(e.target.value)}
                 />
               ) : (
-                <p className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-slate-700'}`}>
-                  {task.fechaVencimiento
-                    ? formatDate(new Date(task.fechaVencimiento))
+                <p className="text-sm text-slate-700">
+                  {task.fechaPresentacion
+                    ? formatDate(task.fechaPresentacion)
                     : <span className="italic text-slate-400">Sin fecha</span>}
                 </p>
               )}
             </div>
+          </div>
+
+          {/* Fecha de vencimiento */}
+          <div>
+            <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
+              <Calendar size={15} />
+              <span className={isOverdue ? 'text-red-600' : ''}>Fecha de Vencimiento</span>
+            </div>
+            {isEditing ? (
+              <Input
+                type="date"
+                value={fechaVencimiento}
+                onChange={(e) => setFechaVencimiento(e.target.value)}
+              />
+            ) : (
+              <p className={`text-sm ${isOverdue ? 'text-red-600 font-medium' : 'text-slate-700'}`}>
+                {task.fechaVencimiento
+                  ? formatDate(task.fechaVencimiento)
+                  : <span className="italic text-slate-400">Sin fecha</span>}
+                {isOverdue && <span className="ml-2 text-xs">⚠️ Vencida</span>}
+              </p>
+            )}
           </div>
 
           {/* Case link */}
@@ -252,44 +270,17 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
             </div>
           </div>
 
-          {/* Proceso */}
-          <div>
-            <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
-              <Flag size={15} />
-              <span>Proceso</span>
-              {!task.procesoId && (
-                <span className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5">
-                  Sin proceso asignado
-                </span>
-              )}
-            </div>
-            {isEditing ? (
-              <Select
-                options={[
-                  { value: '', label: '— Sin proceso —' },
-                  ...procesos.map((p) => ({ value: p.id, label: `${p.orden}. ${p.titulo}` })),
-                ]}
-                value={procesoId}
-                onChange={(e) => setProcesoId(e.target.value)}
-              />
-            ) : (
-              <p className="text-sm text-slate-700">
-                {task.procesoTitulo || <span className="italic text-slate-400">Sin proceso asignado</span>}
-              </p>
-            )}
-          </div>
-
           {/* Metadata */}
           <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs text-slate-400">
-            <span>Creado: {task.createdAt ? formatDate(new Date(task.createdAt)) : '—'}</span>
-            <span>Actualizado: {task.updatedAt ? formatDate(new Date(task.updatedAt)) : '—'}</span>
+            <span>Creado: {task.createdAt ? formatDate(task.createdAt) : '—'}</span>
+            <span>Actualizado: {task.updatedAt ? formatDate(task.updatedAt) : '—'}</span>
           </div>
         </div>
 
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-slate-200 bg-slate-50 rounded-b-xl">
           <button
-            onClick={handleDelete}
+            onClick={() => { setDeleteError(''); setShowDeleteConfirm(true) }}
             disabled={isDeleting}
             className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
           >
@@ -315,7 +306,20 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
             )}
           </div>
         </div>
+
       </div>
+
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        onOpenChange={(open) => { if (!open) { setShowDeleteConfirm(false); setDeleteError('') } }}
+        title="¿Eliminar tarea?"
+        description={`¿Estás seguro de que deseas eliminar la tarea "${task.titulo}"? Esta acción no se puede deshacer.`}
+        confirmLabel={isDeleting ? 'Eliminando...' : 'Sí, eliminar'}
+        cancelLabel="Cancelar"
+        onConfirm={handleDelete}
+        variant="danger"
+      />
+
     </div>
   )
 }

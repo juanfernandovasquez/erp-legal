@@ -1,13 +1,15 @@
-export type UserRole = 'admin' | 'abogado' | 'asistente' | 'cliente'
+// Two roles: admin_firma (Administrador) | abogado_junior (Usuario)
+export type UserRole = 'admin_firma' | 'abogado_junior'
 
 export interface User {
   id: string
   nombre: string
   email: string
   telefono: string
+  phone?: string
   rol: UserRole
+  role: UserRole
   bufeteId: string
-  estado: 'activo' | 'inactivo'
   createdAt: string
   updatedAt: string
 }
@@ -54,7 +56,10 @@ export interface Caso {
   abogadoPrincipalId?: string
   fechaApertura: string
   fechaCierre?: string
-  montoAsegurado?: number
+  tipoFacturacion?: 'flat' | 'por_horas' | null
+  monedaFacturacion?: 'PEN' | 'USD'
+  precioFacturacion?: number | null
+  totalFacturado?: number
   abogados: User[]
   asistentes: User[]
   createdAt: string
@@ -97,6 +102,11 @@ export interface Proceso {
   fechaFin?: string
   totalTareas: number
   tareasCompletadas: number
+  totalHoras: number
+  totalMonto: number
+  tipoTarifa?: 'plana' | 'por_horas' | null
+  tarifa?: number | null
+  moneda?: 'PEN' | 'USD'
   createdAt: string
   updatedAt: string
 }
@@ -107,13 +117,15 @@ export interface Tarea {
   casoTitulo?: string
   procesoId?: string
   procesoTitulo?: string
+  clienteNombre?: string
   titulo: string
   descripcion: string
   estado: 'pendiente' | 'en_progreso' | 'completado' | 'rechazado'
   prioridad: 'baja' | 'media' | 'alta' | 'urgente'
   asignadoA: User
   asignadoAId: string
-  fechaVencimiento: string
+  fechaPresentacion: string       // fecha planificada de presentación (construye la línea de tiempo)
+  fechaVencimiento: string        // plazo legal interno (para alertas)
   completadoEn?: string
   createdAt: string
   updatedAt: string

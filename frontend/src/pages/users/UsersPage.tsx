@@ -8,9 +8,11 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/common/EmptyState'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import { Users, Plus, X, Search, Edit2, Save, Mail, Phone, ShieldCheck, ToggleLeft, ToggleRight } from 'lucide-react'
-import { formatDate } from '@/lib/utils'
+import { Users, Plus, X, Search, Edit2, Save, Mail, Phone, KeyRound, ShieldCheck, Shield, Trash2 } from 'lucide-react'
 import api from '@/lib/axios'
+import { useAuthStore } from '@/stores/authStore'
+
+// ── Tipos ─────────────────────────────────────────────────────────────────────
 
 interface UserData {
   id: string
@@ -21,81 +23,73 @@ interface UserData {
   phone: string
   rol: string
   role: string
-  jobTitle: string
-  department: string
-  estado: string
-  isActive: boolean
-  lastLogin: string | null
   createdAt: string
   updatedAt: string
 }
 
-const ROLE_LABELS: Record<string, string> = {
-  admin_firma: 'Administrador',
-  abogado: 'Abogado',
-  abogado_senior: 'Abogado Senior',
-  paralegal: 'Paralegal',
-  asistente: 'Asistente',
-  practicante: 'Practicante',
-  contador: 'Contador',
-  super_admin: 'Super Admin',
+// ── Helpers de rol ─────────────────────────────────────────────────────────────
+
+const ADMIN_ROLES = ['admin_firma', 'super_admin']
+
+const isAdminRole = (role: string) => ADMIN_ROLES.includes(role)
+
+// Al crear, Administrador → admin_firma, Usuario → abogado_junior
+const ROLE_TO_BACKEND: Record<string, string> = {
+  administrador: 'admin_firma',
+  usuario:       'abogado_junior',
 }
 
-const ROLE_BADGE: Record<string, string> = {
-  admin_firma: 'default',
-  abogado: 'primary',
-  abogado_senior: 'primary',
-  paralegal: 'secondary',
-  asistente: 'secondary',
-  practicante: 'secondary',
-}
-
-const EMPTY_FORM = {
+const EMPTY_CREATE = {
   first_name: '',
   last_name: '',
   email: '',
   phone: '',
-  role: 'abogado',
-  job_title: '',
-  department: '',
+  role: 'usuario',   // valor del selector simplificado
   password: '',
 }
 
+// ── Componente ────────────────────────────────────────────────────────────────
+
 export function UsersPage() {
-  const [users, setUsers] = useState<UserData[]>([])
+  const { user: currentUser } = useAuthStore()
+  const currentIsAdmin = isAdminRole(currentUser?.rol ?? '')
+
+  const [users, setUsers]       = useState<UserData[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
+  const [search, setSearch]     = useState('')
+  const [roleFilter, setRoleFilter] = useState('')   // '' | 'admin' | 'usuario'
 
   // Create modal
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [createForm, setCreateForm] = useState({ ...EMPTY_FORM })
+  const [createForm, setCreateForm] = useState({ ...EMPTY_CREATE })
   const [createError, setCreateError] = useState('')
   const [isCreating, setIsCreating] = useState(false)
 
   // Edit modal
-  const [editUser, setEditUser] = useState<UserData | null>(null)
-  const [editForm, setEditForm] = useState({
-    first_name: '',
-    last_name: '',
-    phone: '',
-    role: '',
-    job_title: '',
-    department: '',
-  })
+  const [editUser, setEditUser]   = useState<UserData | null>(null)
+  const [editForm, setEditForm]   = useState({ first_name: '', last_name: '', phone: '', role: 'usuario' })
   const [editError, setEditError] = useState('')
-  const [isSaving, setIsSaving] = useState(false)
+  const [isSaving, setIsSaving]   = useState(false)
 
-  useEffect(() => {
-    fetchUsers()
-  }, [roleFilter])
+  // Change password modal
+  const [pwUser, setPwUser]         = useState<UserData | null>(null)
+  const [newPassword, setNewPassword] = useState('')
+  const [pwError, setPwError]       = useState('')
+  const [isSavingPw, setIsSavingPw] = useState(false)
+
+  // Delete user
+  const [deleteTarget, setDeleteTarget] = useState<UserData | null>(null)
+  const [isDeleting, setIsDeleting]     = useState(false)
+  const [deleteError, setDeleteError]   = useState('')
+
+  // ── Data fetch ────────────────────────────────────────────────────────────
+
+  useEffect(() => { fetchUsers() }, [])
 
   const fetchUsers = async () => {
     setIsLoading(true)
     try {
-      const params: any = { limit: 100 }
-      if (roleFilter) params.role = roleFilter
-      const res = await api.get('/users', { params })
+      const res = await api.get('/users', { params: { limit: 100 } })
       setUsers(res.data.data || [])
     } catch {
       // silently fail
@@ -104,19 +98,46 @@ export function UsersPage() {
     }
   }
 
+  // ── Filtrado cliente ──────────────────────────────────────────────────────
+
+  const filtered = users.filter((u) => {
+    const matchSearch = !search ||
+      u.nombre?.toLowerCase().includes(search.toLowerCase()) ||
+      u.email?.toLowerCase().includes(search.toLowerCase())
+    const matchRole =
+      !roleFilter ||
+      (roleFilter === 'admin'   &&  isAdminRole(u.role)) ||
+      (roleFilter === 'usuario' && !isAdminRole(u.role))
+    return matchSearch && matchRole
+  })
+
+  // ── Crear usuario ─────────────────────────────────────────────────────────
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!createForm.first_name || !createForm.last_name || !createForm.email || !createForm.password) {
       setCreateError('Nombre, apellido, email y contraseña son obligatorios.')
       return
     }
+    if (createForm.password.length < 8) {
+      setCreateError('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
     setIsCreating(true)
     setCreateError('')
     try {
-      const res = await api.post('/users', createForm)
+      const payload = {
+        first_name: createForm.first_name,
+        last_name:  createForm.last_name,
+        email:      createForm.email,
+        phone:      createForm.phone,
+        password:   createForm.password,
+        role:       ROLE_TO_BACKEND[createForm.role] ?? 'abogado_junior',
+      }
+      const res = await api.post('/users', payload)
       setUsers((prev) => [res.data.data, ...prev])
       setShowCreateModal(false)
-      setCreateForm({ ...EMPTY_FORM })
+      setCreateForm({ ...EMPTY_CREATE })
     } catch (err: any) {
       setCreateError(err?.response?.data?.detail || 'Error al crear el usuario.')
     } finally {
@@ -124,15 +145,15 @@ export function UsersPage() {
     }
   }
 
+  // ── Editar usuario ────────────────────────────────────────────────────────
+
   const openEdit = (user: UserData) => {
     setEditUser(user)
     setEditForm({
       first_name: user.firstName || '',
-      last_name: user.lastName || '',
-      phone: user.phone || '',
-      role: user.role || '',
-      job_title: user.jobTitle || '',
-      department: user.department || '',
+      last_name:  user.lastName  || '',
+      phone:      user.phone     || '',
+      role:       isAdminRole(user.role) ? 'administrador' : 'usuario',
     })
     setEditError('')
   }
@@ -146,7 +167,16 @@ export function UsersPage() {
     setIsSaving(true)
     setEditError('')
     try {
-      const res = await api.patch(`/users/${editUser.id}`, editForm)
+      const payload: any = {
+        first_name: editForm.first_name,
+        last_name:  editForm.last_name,
+        phone:      editForm.phone,
+      }
+      // Solo admins pueden cambiar el rol de otro usuario
+      if (currentIsAdmin) {
+        payload.role = ROLE_TO_BACKEND[editForm.role] ?? 'abogado_junior'
+      }
+      const res = await api.patch(`/users/${editUser.id}`, payload)
       setUsers((prev) => prev.map((u) => (u.id === editUser.id ? res.data.data : u)))
       setEditUser(null)
     } catch (err: any) {
@@ -156,36 +186,65 @@ export function UsersPage() {
     }
   }
 
-  const handleToggleActive = async (user: UserData) => {
+  // ── Cambiar contraseña ────────────────────────────────────────────────────
+
+  const handleChangePassword = async () => {
+    if (!pwUser) return
+    if (!newPassword || newPassword.length < 8) {
+      setPwError('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    setIsSavingPw(true)
+    setPwError('')
     try {
-      const res = await api.patch(`/users/${user.id}`, { is_active: !user.isActive })
-      setUsers((prev) => prev.map((u) => (u.id === user.id ? res.data.data : u)))
-    } catch {}
+      await api.patch(`/users/${pwUser.id}`, { password: newPassword })
+      setPwUser(null)
+      setNewPassword('')
+    } catch (err: any) {
+      setPwError(err?.response?.data?.detail || 'Error al cambiar la contraseña.')
+    } finally {
+      setIsSavingPw(false)
+    }
   }
 
-  const filtered = users.filter(
-    (u) =>
-      !search ||
-      u.nombre?.toLowerCase().includes(search.toLowerCase()) ||
-      u.email?.toLowerCase().includes(search.toLowerCase())
-  )
+  // ── Eliminar usuario ──────────────────────────────────────────────────────
+
+  const handleDeleteUser = async () => {
+    if (!deleteTarget) return
+    setIsDeleting(true)
+    setDeleteError('')
+    try {
+      await api.delete(`/users/${deleteTarget.id}`)
+      setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id))
+      setDeleteTarget(null)
+    } catch (err: any) {
+      setDeleteError(err?.response?.data?.detail || 'Error al eliminar el usuario.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <AppLayout>
       <div className="p-6 max-w-7xl mx-auto">
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 mb-1">Usuarios</h1>
             <p className="text-slate-600">{users.length} usuario{users.length !== 1 ? 's' : ''} en el bufete</p>
           </div>
-          <Button className="gap-2" onClick={() => { setShowCreateModal(true); setCreateError('') }}>
-            <Plus size={18} />
-            Nuevo Usuario
-          </Button>
+          {currentIsAdmin && (
+            <Button className="gap-2" onClick={() => { setShowCreateModal(true); setCreateError('') }}>
+              <Plus size={18} />
+              Nuevo Usuario
+            </Button>
+          )}
         </div>
 
-        {/* Filters */}
+        {/* Filtros */}
         <div className="flex items-center gap-3 mb-5 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -201,13 +260,9 @@ export function UsersPage() {
             <Select
               placeholder="Todos los roles"
               options={[
-                { value: '', label: 'Todos los roles' },
-                { value: 'admin_firma', label: 'Administrador' },
-                { value: 'abogado', label: 'Abogado' },
-                { value: 'abogado_senior', label: 'Abogado Senior' },
-                { value: 'paralegal', label: 'Paralegal' },
-                { value: 'asistente', label: 'Asistente' },
-                { value: 'practicante', label: 'Practicante' },
+                { value: '',        label: 'Todos los roles' },
+                { value: 'admin',   label: 'Administrador' },
+                { value: 'usuario', label: 'Usuario' },
               ]}
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
@@ -215,7 +270,7 @@ export function UsersPage() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* Tabla */}
         {isLoading ? (
           <div className="flex justify-center py-16"><LoadingSpinner /></div>
         ) : filtered.length === 0 ? (
@@ -223,7 +278,9 @@ export function UsersPage() {
             icon={Users}
             title={search || roleFilter ? 'Sin resultados' : 'No hay usuarios registrados'}
             description={search || roleFilter ? 'Prueba con otro criterio de búsqueda' : 'Agrega el primer usuario al sistema'}
-            action={!search && !roleFilter ? { label: 'Agregar Usuario', onClick: () => setShowCreateModal(true) } : undefined}
+            action={currentIsAdmin && !search && !roleFilter
+              ? { label: 'Agregar Usuario', onClick: () => setShowCreateModal(true) }
+              : undefined}
           />
         ) : (
           <Card>
@@ -238,71 +295,80 @@ export function UsersPage() {
                       <TableHead>Nombre</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Rol</TableHead>
-                      <TableHead>Cargo</TableHead>
                       <TableHead>Teléfono</TableHead>
-                      <TableHead>Último acceso</TableHead>
-                      <TableHead>Estado</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-sm font-semibold flex-shrink-0">
-                              {user.nombre?.charAt(0).toUpperCase() || '?'}
+                    {filtered.map((user) => {
+                      const isAdmin = isAdminRole(user.role)
+                      const isSelf  = user.id === currentUser?.id
+                      return (
+                        <TableRow key={user.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="h-8 w-8 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-sm font-semibold flex-shrink-0">
+                                {user.nombre?.charAt(0).toUpperCase() || '?'}
+                              </div>
+                              <span className="font-medium text-slate-900">{user.nombre}</span>
                             </div>
-                            <span className="font-medium text-slate-900">{user.nombre}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5 text-slate-600">
-                            <Mail size={13} className="text-slate-400" />
-                            {user.email}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-xs bg-primary-50 text-primary-700 font-medium px-2 py-0.5 rounded-full">
-                            {ROLE_LABELS[user.role] || user.role || '—'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-slate-500">{user.jobTitle || '—'}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm text-slate-500">{user.phone || '—'}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-xs text-slate-400">
-                            {user.lastLogin ? formatDate(new Date(user.lastLogin)) : 'Nunca'}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={user.isActive ? 'success' : 'secondary'}>
-                            {user.isActive ? 'Activo' : 'Inactivo'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => openEdit(user)}
-                              className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
-                              title="Editar"
-                            >
-                              <Edit2 size={14} />
-                            </button>
-                            <button
-                              onClick={() => handleToggleActive(user)}
-                              className={`p-1.5 rounded transition-colors ${user.isActive ? 'text-slate-400 hover:text-amber-500 hover:bg-amber-50' : 'text-slate-400 hover:text-green-600 hover:bg-green-50'}`}
-                              title={user.isActive ? 'Desactivar' : 'Activar'}
-                            >
-                              {user.isActive ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
-                            </button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 text-slate-600">
+                              <Mail size={13} className="text-slate-400" />
+                              {user.email}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                              isAdmin
+                                ? 'bg-violet-50 text-violet-700'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}>
+                              {isAdmin ? <ShieldCheck size={11} /> : <Shield size={11} />}
+                              {isAdmin ? 'Administrador' : 'Usuario'}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-sm text-slate-500">{user.phone || '—'}</span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              {/* Editar — admin edita a todos; usuario solo a sí mismo */}
+                              {(currentIsAdmin || isSelf) && (
+                                <button
+                                  onClick={() => openEdit(user)}
+                                  className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                                  title="Editar"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                              )}
+                              {/* Cambiar contraseña — admin a todos; usuario solo a sí mismo */}
+                              {(currentIsAdmin || isSelf) && (
+                                <button
+                                  onClick={() => { setPwUser(user); setNewPassword(''); setPwError('') }}
+                                  className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded transition-colors"
+                                  title="Cambiar contraseña"
+                                >
+                                  <KeyRound size={14} />
+                                </button>
+                              )}
+                              {/* Eliminar — solo admin, no puede eliminarse a sí mismo */}
+                              {currentIsAdmin && !isSelf && (
+                                <button
+                                  onClick={() => { setDeleteTarget(user); setDeleteError('') }}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  title="Eliminar usuario"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -311,7 +377,7 @@ export function UsersPage() {
         )}
       </div>
 
-      {/* Create User Modal */}
+      {/* ── Modal: Crear usuario ─────────────────────────────────────────── */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -368,17 +434,12 @@ export function UsersPage() {
                 </div>
 
                 <Select
-                  label="Rol *"
+                  label="Tipo de cuenta *"
                   value={createForm.role}
                   onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
                   options={[
-                    { value: 'abogado', label: 'Abogado' },
-                    { value: 'abogado_senior', label: 'Abogado Senior' },
-                    { value: 'paralegal', label: 'Paralegal' },
-                    { value: 'asistente', label: 'Asistente' },
-                    { value: 'practicante', label: 'Practicante' },
-                    { value: 'contador', label: 'Contador' },
-                    { value: 'admin_firma', label: 'Administrador' },
+                    { value: 'usuario',       label: 'Usuario' },
+                    { value: 'administrador', label: 'Administrador' },
                   ]}
                 />
 
@@ -387,20 +448,6 @@ export function UsersPage() {
                   value={createForm.phone}
                   onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
                   placeholder="+51 999 999 999"
-                />
-
-                <Input
-                  label="Cargo"
-                  value={createForm.job_title}
-                  onChange={(e) => setCreateForm({ ...createForm, job_title: e.target.value })}
-                  placeholder="Ej: Abogado Asociado"
-                />
-
-                <Input
-                  label="Área / Departamento"
-                  value={createForm.department}
-                  onChange={(e) => setCreateForm({ ...createForm, department: e.target.value })}
-                  placeholder="Ej: Litigios Civiles"
                 />
               </div>
 
@@ -417,7 +464,7 @@ export function UsersPage() {
         </div>
       )}
 
-      {/* Edit User Modal */}
+      {/* ── Modal: Editar usuario ─────────────────────────────────────────── */}
       {editUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -449,21 +496,6 @@ export function UsersPage() {
                   required
                 />
 
-                <Select
-                  label="Rol"
-                  value={editForm.role}
-                  onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                  options={[
-                    { value: 'abogado', label: 'Abogado' },
-                    { value: 'abogado_senior', label: 'Abogado Senior' },
-                    { value: 'paralegal', label: 'Paralegal' },
-                    { value: 'asistente', label: 'Asistente' },
-                    { value: 'practicante', label: 'Practicante' },
-                    { value: 'contador', label: 'Contador' },
-                    { value: 'admin_firma', label: 'Administrador' },
-                  ]}
-                />
-
                 <Input
                   label="Teléfono"
                   value={editForm.phone}
@@ -471,17 +503,18 @@ export function UsersPage() {
                   placeholder="+51 999 999 999"
                 />
 
-                <Input
-                  label="Cargo"
-                  value={editForm.job_title}
-                  onChange={(e) => setEditForm({ ...editForm, job_title: e.target.value })}
-                />
-
-                <Input
-                  label="Área / Departamento"
-                  value={editForm.department}
-                  onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
-                />
+                {/* Solo el admin puede cambiar el tipo de cuenta */}
+                {currentIsAdmin && (
+                  <Select
+                    label="Tipo de cuenta"
+                    value={editForm.role}
+                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                    options={[
+                      { value: 'usuario',       label: 'Usuario' },
+                      { value: 'administrador', label: 'Administrador' },
+                    ]}
+                  />
+                )}
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
@@ -497,6 +530,98 @@ export function UsersPage() {
           </div>
         </div>
       )}
+
+      {/* ── Modal: Cambiar contraseña ─────────────────────────────────────── */}
+      
+      {/* ── Modal: Cambiar contraseña ─────────────────────────────────────── */}
+      {pwUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">Cambiar contraseña</h2>
+                <p className="text-sm text-slate-500 mt-0.5">{pwUser.nombre}</p>
+              </div>
+              <button onClick={() => setPwUser(null)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {pwError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                  {pwError}
+                </div>
+              )}
+
+              <Input
+                label="Nueva contraseña"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Mínimo 8 caracteres"
+                autoFocus
+              />
+
+              <div className="flex justify-end gap-3">
+                <Button variant="ghost" onClick={() => setPwUser(null)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleChangePassword} isLoading={isSavingPw} className="gap-2">
+                  <KeyRound size={15} />
+                  Guardar contraseña
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal: Confirmar eliminación de usuario ───────────────────────── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <h2 className="text-lg font-semibold text-slate-900">Eliminar usuario</h2>
+              <button onClick={() => setDeleteTarget(null)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-slate-600">
+                ¿Estás seguro de que deseas eliminar a{' '}
+                <span className="font-semibold text-slate-900">{deleteTarget.nombre}</span>?
+                Esta acción no se puede deshacer.
+              </p>
+              <p className="text-xs text-slate-400">
+                Sus tareas, horas y demás registros permanecerán en el sistema.
+              </p>
+
+              {deleteError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3">
+                <Button variant="ghost" onClick={() => setDeleteTarget(null)} disabled={isDeleting}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleDeleteUser}
+                  isLoading={isDeleting}
+                  className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Trash2 size={15} />
+                  Eliminar
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </AppLayout>
   )
 }

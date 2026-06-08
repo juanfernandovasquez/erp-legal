@@ -63,7 +63,6 @@ class UserRegistrationRequest(BaseModel):
         ..., min_length=8, description="Password (min 8 characters)"
     )
     law_firm_id: uuid.UUID = Field(..., description="Law firm ID")
-    job_title: Optional[str] = Field(None, max_length=100, description="Job title")
     phone: Optional[str] = Field(None, max_length=20, description="Phone number")
 
     model_config = {"from_attributes": True}

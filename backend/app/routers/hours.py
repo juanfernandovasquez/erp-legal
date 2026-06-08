@@ -3,6 +3,7 @@ Time tracking endpoints.
 Handles hour registration and summaries.
 """
 
+import uuid as uuid_module
 from datetime import datetime
 from typing import Optional
 
@@ -14,11 +15,112 @@ from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.utils.responses import success_response, paginated_response
 from app.utils.auth import get_current_user
-from app.models import User, Case, CaseHours
+from app.models import User, Case, CaseHours, Task, CaseProcess
+from sqlalchemy.orm import joinedload
 from app.services.audit_service import audit_log
 from app.services.case_service import check_case_team_access
 
 router = APIRouter(tags=["hours"])
+
+
+async def _recalculate_flat_billing_for_case(
+    db: AsyncSession, case_id: uuid_module.UUID
+) -> None:
+    """
+    If the case has tipo_facturacion='flat', redistribute precio_facturacion
+    proportionally across ALL non-deleted hour records of the case.
+
+    Formula per record:
+        total_amount = precio_facturacion * (record_hours / total_case_hours)
+
+    Called after any create / update / delete of a CaseHours record.
+    Does nothing for hourly-rate cases or cases without a flat fee set.
+    """
+    case = await db.get(Case, case_id)
+    if not case or case.tipo_facturacion != "flat" or not case.precio_facturacion:
+        return
+
+    flat_fee = float(case.precio_facturacion)
+
+    all_hours = (
+        await db.execute(
+            select(CaseHours).where(
+                and_(
+                    CaseHours.case_id == case_id,
+                    CaseHours.is_deleted == False,
+                )
+            )
+        )
+    ).scalars().all()
+
+    if not all_hours:
+        return
+
+    total_hours = sum(float(h.hours) for h in all_hours)
+    if total_hours == 0:
+        return
+
+    for h in all_hours:
+        h.total_amount = round(flat_fee * (float(h.hours) / total_hours), 2)
+        h.updated_at = datetime.utcnow()
+
+    await db.flush()
+
+
+async def _recalculate_flat_billing_for_task(
+    db: AsyncSession, task_id: uuid_module.UUID
+) -> None:
+    """
+    If the task belongs to a flat-rate process (CaseProcess.tipo_tarifa='plana'),
+    redistribute the process tarifa proportionally across all non-deleted hour
+    records linked to tasks in that process.
+
+    Does nothing for hourly-rate processes or tasks without a process.
+    """
+    task = await db.get(Task, task_id)
+    if not task or not task.process_id:
+        return
+
+    process = await db.get(CaseProcess, task.process_id)
+    if not process or process.tipo_tarifa != "plana" or not process.tarifa:
+        return
+
+    flat_fee = float(process.tarifa)
+
+    task_ids = (
+        await db.execute(
+            select(Task.id).where(
+                and_(Task.process_id == task.process_id, Task.is_deleted == False)
+            )
+        )
+    ).scalars().all()
+
+    if not task_ids:
+        return
+
+    all_hours = (
+        await db.execute(
+            select(CaseHours).where(
+                and_(
+                    CaseHours.task_id.in_(task_ids),
+                    CaseHours.is_deleted == False,
+                )
+            )
+        )
+    ).scalars().all()
+
+    if not all_hours:
+        return
+
+    total_hours = sum(float(h.hours) for h in all_hours)
+    if total_hours == 0:
+        return
+
+    for h in all_hours:
+        h.total_amount = round(flat_fee * (float(h.hours) / total_hours), 2)
+        h.updated_at = datetime.utcnow()
+
+    await db.flush()
 
 
 def _format_entry(entry: CaseHours, include_case: bool = False) -> dict:
@@ -30,13 +132,14 @@ def _format_entry(entry: CaseHours, include_case: bool = False) -> dict:
     d = {
         "id": str(entry.id),
         "casoId": str(entry.case_id),
+        "tareaId": str(entry.task_id) if entry.task_id else None,
         "usuarioId": str(entry.user_id),
         "usuario": {"id": str(entry.user_id), "nombre": user_name} if user_name else None,
-        "horas": float(entry.hours),
+        "horas": float(entry.hours) if entry.hours is not None else 0.0,
         "descripcion": entry.description,
-        "fechaRegistro": entry.work_date.isoformat() if entry.work_date else None,
-        "tarifaHora": float(entry.hourly_rate) if entry.hourly_rate else 0,
-        "montoTotal": float(entry.total_amount) if entry.total_amount else 0,
+        "fechaRegistro": entry.work_date.date().isoformat() if entry.work_date else None,
+        "tarifaHora": float(entry.hourly_rate) if entry.hourly_rate is not None else 0.0,
+        "montoTotal": float(entry.total_amount) if entry.total_amount is not None else 0.0,
         "esBonificable": entry.is_billable,
         "aprobado": entry.is_approved,
         "createdAt": entry.created_at.isoformat() if entry.created_at else None,
@@ -45,6 +148,35 @@ def _format_entry(entry: CaseHours, include_case: bool = False) -> dict:
     if include_case and entry.case:
         d["numeroCaso"] = entry.case.case_number
     return d
+
+
+@router.post(
+    "/cases/{case_id}/hours/recalculate",
+    response_model=dict,
+    summary="Recalculate flat billing amounts for all hour records in a case",
+)
+async def recalculate_case_hours(
+    case_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Trigger a one-off flat billing recalculation for all existing hour records
+    in the case. Useful to correct records created before the automatic
+    recalculation was in place. No-op for hourly-rate cases.
+    """
+    try:
+        case_uuid = uuid_module.UUID(case_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+
+    case = await db.get(Case, case_uuid)
+    if not case or case.is_deleted or case.law_firm_id != current_user.law_firm_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+
+    await _recalculate_flat_billing_for_case(db, case_uuid)
+    await db.commit()
+    return success_response(data={"recalculated": True}, meta={})
 
 
 @router.get(
@@ -63,38 +195,45 @@ async def list_case_hours(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    case = await db.get(Case, case_id)
+    try:
+        case_uuid = uuid_module.UUID(case_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+
+    case = await db.get(Case, case_uuid)
 
     if not case or case.is_deleted or case.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
 
-    await check_case_team_access(db, case_id, current_user)
-
-    base_filter = and_(
-        CaseHours.case_id == case_id,
+    # Build filters incrementally so count matches the actual filtered results
+    filters = [
+        CaseHours.case_id == case_uuid,
         CaseHours.is_deleted == False,
-    )
-    query = select(CaseHours).where(base_filter)
+    ]
 
     if user_id:
-        query = query.where(CaseHours.user_id == user_id)
+        try:
+            filters.append(CaseHours.user_id == uuid_module.UUID(user_id))
+        except (ValueError, AttributeError):
+            pass
 
     if start_date:
         try:
-            start = datetime.fromisoformat(start_date)
-            query = query.where(CaseHours.work_date >= start)
+            filters.append(CaseHours.work_date >= datetime.fromisoformat(start_date))
         except ValueError:
             pass
 
     if end_date:
         try:
-            end = datetime.fromisoformat(end_date)
-            query = query.where(CaseHours.work_date <= end)
+            filters.append(CaseHours.work_date <= datetime.fromisoformat(end_date))
         except ValueError:
             pass
 
+    combined = and_(*filters)
+    query = select(CaseHours).where(combined)
+
     count_result = await db.execute(
-        select(func.count(CaseHours.id)).where(base_filter)
+        select(func.count(CaseHours.id)).where(combined)
     )
     total = count_result.scalar() or 0
 
@@ -129,26 +268,48 @@ async def register_hours(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    case = await db.get(Case, case_id)
+    try:
+        case_uuid = uuid_module.UUID(case_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+
+    case = await db.get(Case, case_uuid)
 
     if not case or case.is_deleted or case.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
 
-    # Accept Spanish or English field names
-    user_id_str = request.get("usuarioId") or request.get("user_id") or str(current_user.id)
-    hours_val = request.get("horas") or request.get("hours")
-    description = request.get("descripcion") or request.get("description")
-    work_date_str = request.get("fechaRegistro") or request.get("work_date")
-    hourly_rate = float(request.get("tarifaHora") or request.get("hourly_rate") or 0)
-    is_billable = request.get("esBonificable") or request.get("is_billable") or True
-    task_id = request.get("tareaId") or request.get("task_id")
+    # Accept Spanish or English field names — use explicit None checks to avoid or-operator falsy bugs
+    def _get(key_es: str, key_en: str, default=None):
+        val = request.get(key_es)
+        if val is None:
+            val = request.get(key_en)
+        return val if val is not None else default
 
-    if not hours_val:
+    print(f"DEBUG register_hours — request body: {dict(request)}", flush=True)
+
+    user_id_str = _get("usuarioId", "user_id") or str(current_user.id)
+    hours_raw = _get("horas", "hours")
+    description = _get("descripcion", "description")
+    work_date_str = _get("fechaRegistro", "work_date")
+    task_id_raw = _get("tareaId", "task_id")
+    is_billable = _get("esBonificable", "is_billable", True)
+
+    # Validate and convert hours
+    if hours_raw is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Hours required")
-
-    hours_val = float(hours_val)
+    try:
+        hours_val = float(hours_raw)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid hours value")
     if hours_val <= 0 or hours_val > 24:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Hours must be between 0 and 24")
+
+    # Validate and convert hourly rate
+    hourly_rate_raw = _get("tarifaHora", "hourly_rate", 0)
+    try:
+        hourly_rate = float(hourly_rate_raw) if hourly_rate_raw is not None else 0.0
+    except (TypeError, ValueError):
+        hourly_rate = 0.0
 
     # Check permission to log for others
     if user_id_str != str(current_user.id):
@@ -159,24 +320,33 @@ async def register_hours(
                 detail="You can only register hours for yourself",
             )
 
-    user = await db.get(User, user_id_str)
+    try:
+        user_uuid = uuid_module.UUID(user_id_str)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user")
+
+    user = await db.get(User, user_uuid)
     if not user or user.is_deleted or user.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid user")
 
     work_date = datetime.utcnow()
     if work_date_str:
         try:
-            work_date = datetime.fromisoformat(work_date_str)
+            # If the frontend sends a date-only string (no time component), store as
+            # noon UTC so that UTC±12h timezone differences never shift the date.
+            normalized = work_date_str if "T" in work_date_str else work_date_str + "T12:00:00"
+            work_date = datetime.fromisoformat(normalized)
         except Exception:
             pass
 
-    total_amount = hours_val * hourly_rate
+    total_amount = round(hours_val * hourly_rate, 2)
 
+    import uuid as _uuid
     entry = CaseHours(
-        case_id=case_id,
+        case_id=case_uuid,
         law_firm_id=current_user.law_firm_id,
-        user_id=user_id_str,
-        task_id=task_id,
+        user_id=user_uuid,  # use the resolved user, not always current_user
+        task_id=_uuid.UUID(task_id_raw) if isinstance(task_id_raw, str) else task_id_raw,
         hours=hours_val,
         description=description,
         work_date=work_date,
@@ -187,9 +357,25 @@ async def register_hours(
     )
 
     db.add(entry)
+    await db.flush()  # get entry.id without committing yet
+
+    # Flat billing recalculation (case-level takes priority; process-level as fallback)
+    task_uuid_for_flat = None
+    if isinstance(task_id_raw, str):
+        try:
+            task_uuid_for_flat = uuid_module.UUID(task_id_raw)
+        except (ValueError, AttributeError):
+            pass
+    elif isinstance(task_id_raw, uuid_module.UUID):
+        task_uuid_for_flat = task_id_raw
+
+    await _recalculate_flat_billing_for_case(db, case_uuid)
+    if task_uuid_for_flat:
+        await _recalculate_flat_billing_for_task(db, task_uuid_for_flat)
+
     await db.commit()
 
-    # Reload with user
+    # Reload with user (get updated total_amount after flat recalculation)
     result = await db.execute(
         select(CaseHours).where(CaseHours.id == entry.id).options(selectinload(CaseHours.user))
     )
@@ -237,11 +423,15 @@ async def update_hours(
             detail="You can only update your own hour entries",
         )
 
-    # Accept Spanish or English field names
-    hours_val = request.get("horas") or request.get("hours")
-    description = request.get("descripcion") or request.get("description")
-    work_date_str = request.get("fechaRegistro") or request.get("work_date")
-    hourly_rate = request.get("tarifaHora") or request.get("hourly_rate")
+    # Accept Spanish or English field names — explicit None checks avoid falsy-value bugs (e.g. hours=0, description="")
+    def _get(key_es: str, key_en: str):
+        val = request.get(key_es)
+        return val if val is not None else request.get(key_en)
+
+    hours_val = _get("horas", "hours")
+    description = _get("descripcion", "description")
+    work_date_str = _get("fechaRegistro", "work_date")
+    hourly_rate = _get("tarifaHora", "hourly_rate")
 
     if hours_val is not None:
         hours_val = float(hours_val)
@@ -254,20 +444,38 @@ async def update_hours(
 
     if work_date_str is not None:
         try:
-            entry.work_date = datetime.fromisoformat(work_date_str)
+            normalized = work_date_str if "T" in work_date_str else work_date_str + "T12:00:00"
+            entry.work_date = datetime.fromisoformat(normalized)
         except Exception:
             pass
 
     if hourly_rate is not None:
         entry.hourly_rate = float(hourly_rate)
-        entry.total_amount = float(entry.hours) * float(hourly_rate)
+        entry.total_amount = round(float(entry.hours) * float(hourly_rate), 2)
 
     entry.updated_at = datetime.utcnow()
+
+    if hours_val is not None:
+        await db.flush()
+        case = await db.get(Case, entry.case_id)
+        if case and case.tipo_facturacion == "flat":
+            # Flat billing: redistribute fee among all case hours
+            await _recalculate_flat_billing_for_case(db, entry.case_id)
+            if entry.task_id:
+                await _recalculate_flat_billing_for_task(db, entry.task_id)
+        else:
+            # Hourly billing: recalculate this entry's total when hours changed
+            entry.total_amount = round(float(entry.hours) * float(entry.hourly_rate), 2)
+
     await db.commit()
 
-    # Reload
+    # Reload with user
+    try:
+        entry_uuid_reload = uuid_module.UUID(entry_id)
+    except (ValueError, AttributeError):
+        entry_uuid_reload = entry_id
     result = await db.execute(
-        select(CaseHours).where(CaseHours.id == entry_id).options(selectinload(CaseHours.user))
+        select(CaseHours).where(CaseHours.id == entry_uuid_reload).options(selectinload(CaseHours.user))
     )
     entry = result.scalars().first()
 
@@ -284,7 +492,12 @@ async def delete_hours(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    entry = await db.get(CaseHours, entry_id)
+    try:
+        entry_uuid = uuid_module.UUID(entry_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hour entry not found")
+
+    entry = await db.get(CaseHours, entry_uuid)
 
     if not entry or entry.is_deleted or entry.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hour entry not found")
@@ -296,11 +509,102 @@ async def delete_hours(
     if not is_self and not is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
 
+    # Capture ids before deleting so we can recalculate flat billing
+    case_id_for_flat = entry.case_id
+    task_id_for_flat = entry.task_id
+
     entry.is_deleted = True
     entry.deleted_at = datetime.utcnow()
+    await db.flush()  # mark deleted within transaction — excluded from next queries
+
+    # Flat billing: redistribute fee among remaining hours
+    await _recalculate_flat_billing_for_case(db, case_id_for_flat)
+    if task_id_for_flat:
+        await _recalculate_flat_billing_for_task(db, task_id_for_flat)
+
     await db.commit()
 
     return success_response(data={"message": "Hour entry deleted"}, meta={})
+
+
+@router.get(
+    "/hours/firm-hours",
+    response_model=dict,
+    summary="Get all hours for the law firm (all users, all cases)",
+)
+async def get_firm_hours(
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=1000),
+    sort: str = Query("-work_date"),
+    case_id: Optional[str] = Query(None),
+    user_id: Optional[str] = Query(None),
+    start_date: Optional[str] = Query(None),
+    end_date: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    filters = [
+        CaseHours.law_firm_id == current_user.law_firm_id,
+        CaseHours.is_deleted == False,
+        # Excluir horas de casos soft-deleted (is_deleted=True en la tabla cases)
+        Case.is_deleted == False,
+    ]
+
+    if case_id:
+        try:
+            filters.append(CaseHours.case_id == uuid_module.UUID(case_id))
+        except (ValueError, AttributeError):
+            pass
+
+    if user_id:
+        try:
+            filters.append(CaseHours.user_id == uuid_module.UUID(user_id))
+        except (ValueError, AttributeError):
+            pass
+
+    if start_date:
+        try:
+            filters.append(CaseHours.work_date >= datetime.fromisoformat(start_date))
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            filters.append(CaseHours.work_date <= datetime.fromisoformat(end_date))
+        except ValueError:
+            pass
+
+    combined = and_(*filters)
+
+    count_result = await db.execute(
+        select(func.count(CaseHours.id))
+        .join(Case, CaseHours.case_id == Case.id)
+        .where(combined)
+    )
+    total = count_result.scalar() or 0
+
+    safe_sort_fields = {"work_date", "created_at", "hours"}
+    sort_field = sort.lstrip("-")
+    if sort_field not in safe_sort_fields:
+        sort_field = "work_date"
+
+    col = getattr(CaseHours, sort_field)
+    query = (
+        select(CaseHours)
+        .join(Case, CaseHours.case_id == Case.id)
+        .where(combined)
+        .order_by(col.desc() if sort.startswith("-") else col)
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .options(selectinload(CaseHours.user), selectinload(CaseHours.case))
+    )
+
+    result = await db.execute(query)
+    entries = result.scalars().all()
+
+    data = [_format_entry(e, include_case=True) for e in entries]
+    pages = (total + limit - 1) // limit if total > 0 else 1
+    return paginated_response(data=data, total=total, page=page, pages=pages, limit=limit, meta={})
 
 
 @router.get(
@@ -310,7 +614,7 @@ async def delete_hours(
 )
 async def get_my_hours(
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=1000),
     sort: str = Query("-work_date"),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
@@ -373,15 +677,18 @@ async def get_hours_summary(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    case = await db.get(Case, case_id)
+    try:
+        case_uuid = uuid_module.UUID(case_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
+
+    case = await db.get(Case, case_uuid)
 
     if not case or case.is_deleted or case.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
 
-    await check_case_team_access(db, case_id, current_user)
-
     base_filter = and_(
-        CaseHours.case_id == case_id,
+        CaseHours.case_id == case_uuid,
         CaseHours.is_deleted == False,
     )
     query = select(CaseHours).where(base_filter)

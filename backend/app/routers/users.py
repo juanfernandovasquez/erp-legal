@@ -21,7 +21,7 @@ router = APIRouter(tags=["users"])
 
 
 def _format_user(user: User) -> dict:
-    """Convert User model to response dict with Spanish field names."""
+    """Convert User model to response dict."""
     nombre = f"{user.first_name} {user.last_name}".strip()
     return {
         "id": str(user.id),
@@ -33,12 +33,7 @@ def _format_user(user: User) -> dict:
         "rol": user.role,
         "role": user.role,
         "bufeteId": str(user.law_firm_id),
-        "estado": "activo" if user.is_active else "inactivo",
-        "isActive": user.is_active,
-        "jobTitle": user.job_title,
-        "department": user.department,
         "avatarUrl": user.avatar_url,
-        "lastLogin": user.last_login.isoformat() if user.last_login else None,
         "createdAt": user.created_at.isoformat() if user.created_at else None,
         "updatedAt": user.updated_at.isoformat() if user.updated_at else None,
     }
@@ -133,11 +128,8 @@ async def create_user(
         email=request.email,
         password_hash=get_password_hash(request.password),
         phone=request.phone,
-        job_title=request.job_title,
-        department=request.department,
         law_firm_id=current_user.law_firm_id,
         role=request.role,
-        is_active=True,
         is_deleted=False,
     )
 
@@ -220,14 +212,15 @@ async def update_user(
         user.last_name = request.last_name
     if request.phone is not None:
         user.phone = request.phone
-    if request.job_title is not None:
-        user.job_title = request.job_title
-    if request.department is not None:
-        user.department = request.department
     if request.role is not None and is_admin:
         user.role = request.role
-    if request.is_active is not None and is_admin:
-        user.is_active = request.is_active
+    if request.password is not None:
+        if not is_admin and not is_self_update:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo los administradores pueden cambiar la contraseña de otros usuarios",
+            )
+        user.password_hash = get_password_hash(request.password)
 
     user.updated_at = datetime.utcnow()
     await db.commit()

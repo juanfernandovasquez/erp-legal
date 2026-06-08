@@ -88,6 +88,7 @@ class Case(BaseModel):
 
     # Tracking
     budget_amount: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
+    budget_currency: Mapped[Optional[str]] = mapped_column(String(3), default="PEN", nullable=True)
     spent_amount: Mapped[float] = mapped_column(Numeric(12, 2), default=0, nullable=False)
     estimated_completion_date: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -100,6 +101,14 @@ class Case(BaseModel):
         ForeignKey("process_types.id", ondelete="SET NULL"),
         nullable=True,
     )
+
+    # Billing
+    # tipo_facturacion: 'flat' | 'por_horas'
+    tipo_facturacion: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    # moneda_facturacion: 'PEN' | 'USD'
+    moneda_facturacion: Mapped[Optional[str]] = mapped_column(String(3), nullable=True, default="PEN")
+    # precio: flat fee or hourly rate
+    precio_facturacion: Mapped[Optional[float]] = mapped_column(Numeric(12, 2), nullable=True)
 
     # Metadata
     tags: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True)

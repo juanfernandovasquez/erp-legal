@@ -7,6 +7,7 @@ import {
   FileText,
   CheckSquare,
   Clock,
+  Receipt,
   AlertCircle,
   Users,
   UserCog,
@@ -36,9 +37,9 @@ export function Sidebar() {
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Panel de Control', href: '/dashboard' },
-    { icon: FileText, label: 'Casos', href: '/cases' },
+    { icon: FileText, label: 'Procesos', href: '/cases' },
     { icon: CheckSquare, label: 'Tareas', href: '/tasks' },
-    { icon: Clock, label: 'Registro de Horas', href: '/hours' },
+    { icon: Receipt, label: 'Facturación', href: '/hours' },
     { icon: AlertCircle, label: 'Alertas', href: '/alerts' },
     { icon: Users, label: 'Clientes', href: '/clients' },
     { icon: UserCog, label: 'Usuarios', href: '/users' },

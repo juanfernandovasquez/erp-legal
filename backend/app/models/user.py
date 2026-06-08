@@ -11,14 +11,10 @@ from app.models.base import BaseModel
 
 
 class UserRole(str, Enum):
-    """User role types in the system."""
+    """User role types in the system. Two tiers: admin and regular user."""
 
-    SUPER_ADMIN = "super_admin"
-    ADMIN_FIRMA = "admin_firma"
-    ABOGADO_SENIOR = "abogado_senior"
-    ABOGADO_JUNIOR = "abogado_junior"
-    ADMINISTRATIVO = "administrativo"
-    REVISOR_EXTERNO = "revisor_externo"
+    ADMIN = "admin_firma"       # Full access: manage users, all cases, settings
+    USER = "abogado_junior"     # Regular user: work on assigned cases/tasks
 
 
 class User(BaseModel):
@@ -39,7 +35,6 @@ class User(BaseModel):
 
     # Role and Permissions
     role: Mapped[UserRole] = mapped_column(String(50), nullable=False)
-    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Multi-tenancy
@@ -52,13 +47,8 @@ class User(BaseModel):
     # Profile Information
     avatar_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    job_title: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    department: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
     # Activity Tracking
-    last_login: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
     last_password_change: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

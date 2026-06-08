@@ -1,7 +1,10 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 import uuid
+
+# Valid roles: admin_firma (Administrador) | abogado_junior (Usuario)
+UserRoleType = Literal["admin_firma", "abogado_junior"]
 
 
 class UserCreate(BaseModel):
@@ -12,11 +15,7 @@ class UserCreate(BaseModel):
     email: EmailStr = Field(..., description="Email address")
     password: str = Field(..., min_length=8, description="Password")
     phone: Optional[str] = Field(None, max_length=20, description="Phone number")
-
-    job_title: Optional[str] = Field(None, max_length=100, description="Job title")
-    department: Optional[str] = Field(None, max_length=100, description="Department")
-
-    role: str = Field(..., description="User role")
+    role: str = Field(..., description="User role: admin_firma or abogado_junior")
 
     model_config = {"from_attributes": True}
 
@@ -27,12 +26,11 @@ class UserUpdate(BaseModel):
     first_name: Optional[str] = Field(None, max_length=100, description="First name")
     last_name: Optional[str] = Field(None, max_length=100, description="Last name")
     phone: Optional[str] = Field(None, max_length=20, description="Phone number")
-
-    job_title: Optional[str] = Field(None, max_length=100, description="Job title")
-    department: Optional[str] = Field(None, max_length=100, description="Department")
-
-    role: Optional[str] = Field(None, description="User role")
-    is_active: Optional[bool] = Field(None, description="Is user active")
+    role: Optional[str] = Field(None, description="User role (admin only)")
+    password: Optional[str] = Field(
+        None, min_length=8,
+        description="New password — admins can set for any user; regular users only for themselves"
+    )
 
     model_config = {"from_attributes": True}
 
@@ -45,20 +43,11 @@ class UserResponse(BaseModel):
     last_name: str = Field(..., description="Last name")
     email: str = Field(..., description="Email address")
     phone: Optional[str] = Field(None, description="Phone number")
-
-    job_title: Optional[str] = Field(None, description="Job title")
-    department: Optional[str] = Field(None, description="Department")
     avatar_url: Optional[str] = Field(None, description="Avatar URL")
-
     role: str = Field(..., description="User role")
     law_firm_id: uuid.UUID = Field(..., description="Law firm ID")
-
-    is_active: bool = Field(..., description="Is user active")
     is_verified: bool = Field(..., description="Is user email verified")
     mfa_enabled: bool = Field(..., description="Is MFA enabled")
-
-    last_login: Optional[datetime] = Field(None, description="Last login time")
-
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Update timestamp")
 
@@ -72,10 +61,7 @@ class UserListResponse(BaseModel):
     first_name: str = Field(..., description="First name")
     last_name: str = Field(..., description="Last name")
     email: str = Field(..., description="Email address")
-    job_title: Optional[str] = Field(None, description="Job title")
     role: str = Field(..., description="User role")
-    is_active: bool = Field(..., description="Is user active")
-    last_login: Optional[datetime] = Field(None, description="Last login time")
 
     model_config = {"from_attributes": True}
 
@@ -88,25 +74,17 @@ class UserProfileResponse(BaseModel):
     last_name: str = Field(..., description="Last name")
     email: str = Field(..., description="Email address")
     phone: Optional[str] = Field(None, description="Phone number")
-
-    job_title: Optional[str] = Field(None, description="Job title")
-    department: Optional[str] = Field(None, description="Department")
     avatar_url: Optional[str] = Field(None, description="Avatar URL")
     bio: Optional[str] = Field(None, description="Bio")
-
     role: str = Field(..., description="User role")
     law_firm_id: uuid.UUID = Field(..., description="Law firm ID")
-
-    is_active: bool = Field(..., description="Is user active")
     mfa_enabled: bool = Field(..., description="Is MFA enabled")
-
-    last_login: Optional[datetime] = Field(None, description="Last login time")
 
     model_config = {"from_attributes": True}
 
 
 class SetPasswordRequest(BaseModel):
-    """Set password request (for new users)."""
+    """Set password request."""
 
     password: str = Field(..., min_length=8, description="New password")
     confirm_password: str = Field(..., description="Password confirmation")
@@ -115,13 +93,11 @@ class SetPasswordRequest(BaseModel):
 
 
 class UpdateProfileRequest(BaseModel):
-    """Update user profile request."""
+    """Update own profile request."""
 
     first_name: Optional[str] = Field(None, max_length=100, description="First name")
     last_name: Optional[str] = Field(None, max_length=100, description="Last name")
     phone: Optional[str] = Field(None, max_length=20, description="Phone number")
-    job_title: Optional[str] = Field(None, max_length=100, description="Job title")
-    department: Optional[str] = Field(None, max_length=100, description="Department")
     bio: Optional[str] = Field(None, description="Bio")
     avatar_url: Optional[str] = Field(None, description="Avatar URL")
 

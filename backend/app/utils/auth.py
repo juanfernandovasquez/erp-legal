@@ -153,21 +153,20 @@ async def get_current_user(
             detail="User not found",
         )
 
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive",
-        )
-
     return user
 
 
 def check_role(user_role: str, allowed_roles: List[str]) -> bool:
     """
     Check if user's role is in allowed roles.
-    Used for role-based access control.
+    admin_firma covers the admin tier; abogado_junior covers the regular user tier.
     """
     return user_role in allowed_roles
+
+
+def is_admin(user_role: str) -> bool:
+    """Return True if the role has admin-level access."""
+    return user_role in ("admin_firma", "super_admin")
 
 
 def require_role(*allowed_roles: str):

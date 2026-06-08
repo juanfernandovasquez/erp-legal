@@ -28,6 +28,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             error && 'border-red-500 focus:ring-red-500',
             className
           )}
+          onWheel={props.type === 'number' ? (e) => (e.target as HTMLInputElement).blur() : undefined}
           {...props}
         />
         {error && <p className="mt-1 text-sm text-red-600">{error}</p>}

@@ -81,7 +81,7 @@ export function DashboardPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard
             icon={FileText}
-            title="Casos Activos"
+            title="Procesos Activos"
             value={stats.activeCases}
             subtitle={`${stats.totalCases} en total`}
             bgColor="blue"
@@ -117,7 +117,7 @@ export function DashboardPage() {
             {/* Cases */}
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base font-semibold text-slate-900">Casos Recientes</h2>
+                <h2 className="text-base font-semibold text-slate-900">Procesos Recientes</h2>
                 <button
                   onClick={() => navigate('/cases')}
                   className="text-sm text-primary-600 hover:text-primary-800 font-medium"
@@ -130,7 +130,7 @@ export function DashboardPage() {
                   cases.map((caso) => <CaseCard key={caso.id} caso={caso} />)
                 ) : (
                   <div className="text-center py-10 text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-200">
-                    No hay casos registrados aún.{' '}
+                    No hay procesos registrados aún.{' '}
                     <button
                       onClick={() => navigate('/cases/new')}
                       className="text-primary-600 hover:underline"

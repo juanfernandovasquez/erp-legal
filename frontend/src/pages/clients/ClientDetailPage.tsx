@@ -69,8 +69,10 @@ export function ClientDetailPage() {
     state: '',
     country: '',
     client_type: 'individual',
-    organization_name: '',
     tax_id: '',
+    giro_negocio: '',
+    tarifa_hora: '',
+    tipo_cobro: 'por_hora',
   })
 
   useEffect(() => {
@@ -95,8 +97,10 @@ export function ClientDetailPage() {
         state: c.state || '',
         country: c.country || '',
         client_type: c.clientType || 'individual',
-        organization_name: c.organizationName || '',
         tax_id: c.taxId || '',
+        giro_negocio: c.giroNegocio || c.notes || '',
+        tarifa_hora: c.tarifaHora ? String(c.tarifaHora) : '',
+        tipo_cobro: c.tipoCobro || 'por_hora',
       })
     } catch {
       setError('No se pudo cargar el cliente.')
@@ -146,8 +150,10 @@ export function ClientDetailPage() {
         state: client.state || '',
         country: client.country || '',
         client_type: client.clientType || 'individual',
-        organization_name: client.organizationName || '',
         tax_id: client.taxId || '',
+        giro_negocio: (client as any).giroNegocio || '',
+        tarifa_hora: (client as any).tarifaHora ? String((client as any).tarifaHora) : '',
+        tipo_cobro: (client as any).tipoCobro || 'por_hora',
       })
     }
     setIsEditing(false)
@@ -336,16 +342,35 @@ export function ClientDetailPage() {
                       />
                     </div>
 
-                    {(form.client_type === 'business' || form.client_type === 'government' || form.client_type === 'non_profit') && (
-                      <div className="col-span-2">
-                        <Input
-                          label="Nombre de la organización"
-                          value={form.organization_name}
-                          onChange={(e) => setForm({ ...form, organization_name: e.target.value })}
-                          placeholder="Nombre legal de la empresa"
-                        />
-                      </div>
-                    )}
+                    <div className="col-span-2">
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Giro del negocio</label>
+                      <textarea
+                        value={form.giro_negocio}
+                        onChange={(e) => setForm({ ...form, giro_negocio: e.target.value })}
+                        placeholder="Descripción de las actividades principales del negocio..."
+                        rows={2}
+                        className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                      />
+                    </div>
+
+                    <Input
+                      label="Tarifa por hora (S/)"
+                      type="number"
+                      value={form.tarifa_hora}
+                      onChange={(e) => setForm({ ...form, tarifa_hora: e.target.value })}
+                      placeholder="0.00"
+                    />
+
+                    <Select
+                      label="Tipo de cobro"
+                      value={form.tipo_cobro}
+                      onChange={(e) => setForm({ ...form, tipo_cobro: e.target.value })}
+                      options={[
+                        { value: 'por_hora',    label: 'Por hora' },
+                        { value: 'por_proceso', label: 'Por proceso' },
+                        { value: 'mixto',       label: 'Mixto' },
+                      ]}
+                    />
                   </div>
                 ) : (
                   <dl className="grid grid-cols-2 gap-4">
@@ -381,12 +406,24 @@ export function ClientDetailPage() {
                         <dd className="text-sm text-slate-900">{client.streetAddress}</dd>
                       </div>
                     )}
-                    {client.organizationName && (
+                    {(client as any).giroNegocio && (
                       <div className="col-span-2">
-                        <dt className="text-xs text-slate-500 uppercase font-semibold mb-1 flex items-center gap-1">
-                          <Building2 size={13} /> Organización
-                        </dt>
-                        <dd className="text-sm text-slate-900">{client.organizationName}</dd>
+                        <dt className="text-xs text-slate-500 uppercase font-semibold mb-1">Giro del negocio</dt>
+                        <dd className="text-sm text-slate-900">{(client as any).giroNegocio}</dd>
+                      </div>
+                    )}
+                    {(client as any).tarifaHora && (
+                      <div>
+                        <dt className="text-xs text-slate-500 uppercase font-semibold mb-1">Tarifa por hora</dt>
+                        <dd className="text-sm text-slate-900">S/ {(client as any).tarifaHora}</dd>
+                      </div>
+                    )}
+                    {(client as any).tipoCobro && (
+                      <div>
+                        <dt className="text-xs text-slate-500 uppercase font-semibold mb-1">Tipo de cobro</dt>
+                        <dd className="text-sm text-slate-900">
+                          {{ por_hora: 'Por hora', por_proceso: 'Por proceso', mixto: 'Mixto' }[(client as any).tipoCobro] ?? (client as any).tipoCobro}
+                        </dd>
                       </div>
                     )}
                   </dl>
@@ -400,14 +437,14 @@ export function ClientDetailPage() {
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <FileText size={18} />
-                    Casos ({cases.length})
+                    Procesos ({cases.length})
                   </CardTitle>
                   <Button
                     variant="ghost"
                     className="text-sm gap-1"
                     onClick={() => navigate(`/cases/new?client_id=${id}`)}
                   >
-                    + Nuevo caso
+                    + Nuevo proceso
                   </Button>
                 </div>
               </CardHeader>
@@ -415,7 +452,7 @@ export function ClientDetailPage() {
                 {casesLoading ? (
                   <div className="flex justify-center py-8"><LoadingSpinner /></div>
                 ) : cases.length === 0 ? (
-                  <p className="text-sm text-slate-500 text-center py-6">No hay casos para este cliente.</p>
+                  <p className="text-sm text-slate-500 text-center py-6">No hay procesos para este cliente.</p>
                 ) : (
                   <div className="space-y-2">
                     {cases.map((caso) => (
@@ -427,8 +464,7 @@ export function ClientDetailPage() {
                         <div>
                           <p className="text-sm font-medium text-slate-900">{caso.titulo}</p>
                           <p className="text-xs text-slate-500 mt-0.5">
-                            {caso.caseNumber && <span className="mr-2">{caso.caseNumber}</span>}
-                            {caso.tipoSolicitud}
+                            {caso.caseNumber && <span>{caso.caseNumber}</span>}
                           </p>
                         </div>
                         <CaseStatusBadge status={caso.estado as any} />

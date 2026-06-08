@@ -7,9 +7,18 @@ import { ProcessForm } from '@/components/cases/ProcessForm'
 import { Proceso, Tarea } from '@/types'
 import {
   ChevronDown, ChevronRight, Plus, Pencil, Trash2,
-  CheckCircle2, Circle, Clock, XCircle,
+  CheckCircle2, Circle, Clock, XCircle, DollarSign,
 } from 'lucide-react'
 import api from '@/lib/axios'
+
+function formatDuration(horas: number): string {
+  if (horas === 0) return '0 min'
+  const totalMin = Math.round(horas * 60)
+  if (totalMin < 60) return `${totalMin} min`
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  return m > 0 ? `${h}h ${m}min` : `${h}h`
+}
 
 // ── status helpers ────────────────────────────────────────────────────────────
 
@@ -100,6 +109,31 @@ export function CaseProcessSection({
           {proceso.tareasCompletadas}/{proceso.totalTareas} tareas
         </span>
 
+        {/* Tarifa del proceso */}
+        {proceso.tipoTarifa && proceso.tarifa != null && (
+          <span className="text-xs text-slate-500 flex-shrink-0 bg-slate-100 rounded px-2 py-0.5">
+            {proceso.moneda === 'USD' ? '$' : 'S/'}{' '}
+            {proceso.tarifa.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+            {proceso.tipoTarifa === 'por_horas' ? '/h' : ' plana'}
+          </span>
+        )}
+
+        {/* Hours & billing summary — only shown if there are hours */}
+        {proceso.totalHoras > 0 && (
+          <span className="flex items-center gap-2 text-xs text-slate-500 flex-shrink-0">
+            <span className="flex items-center gap-1">
+              <Clock size={11} />
+              {formatDuration(proceso.totalHoras)}
+            </span>
+            {proceso.totalMonto > 0 && (
+              <span className="flex items-center gap-1 text-green-700 font-medium">
+                <DollarSign size={11} />
+                S/ {proceso.totalMonto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+              </span>
+            )}
+          </span>
+        )}
+
         {/* Status badge */}
         <Badge variant={cfg.variant} className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           {cfg.icon}
@@ -157,6 +191,29 @@ export function CaseProcessSection({
             <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
               {deleteError}
             </p>
+          )}
+
+          {/* Hours & billing summary panel */}
+          {proceso.totalHoras > 0 && (
+            <div className="flex items-center gap-6 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm">
+              <div className="flex items-center gap-2 text-slate-600">
+                <Clock size={14} className="text-blue-500" />
+                <span className="font-medium">{formatDuration(proceso.totalHoras)}</span>
+                <span className="text-slate-400 text-xs">({Math.round(proceso.totalHoras * 60)} min)</span>
+              </div>
+              {proceso.totalMonto > 0 && (
+                <>
+                  <div className="h-4 w-px bg-slate-200" />
+                  <div className="flex items-center gap-2 text-slate-600">
+                    <DollarSign size={14} className="text-green-500" />
+                    <span className="font-semibold text-green-700">
+                      S/ {proceso.totalMonto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-slate-400 text-xs">facturado</span>
+                  </div>
+                </>
+              )}
+            </div>
           )}
 
           {/* Description */}

@@ -17,6 +17,7 @@ from app.database import get_db
 from app.utils.responses import success_response, paginated_response
 from app.utils.auth import get_current_user
 from app.models import User, Case, CaseProcess, Task
+from app.models.task import CaseHours
 from app.models.timeline import CaseEvent
 from app.services.audit_service import audit_log
 
@@ -26,6 +27,7 @@ router = APIRouter(tags=["processes"])
 def _format_process(proc: CaseProcess, task_counts: Optional[dict] = None) -> dict:
     """Convert CaseProcess model to Spanish-named dict for the frontend."""
     counts = task_counts or {}
+    proc_data = counts.get(str(proc.id), {})
     return {
         "id": str(proc.id),
         "casoId": str(proc.case_id),
@@ -35,8 +37,13 @@ def _format_process(proc: CaseProcess, task_counts: Optional[dict] = None) -> di
         "orden": proc.orden,
         "fechaInicio": proc.fecha_inicio.isoformat() if proc.fecha_inicio else None,
         "fechaFin": proc.fecha_fin.isoformat() if proc.fecha_fin else None,
-        "totalTareas": counts.get(str(proc.id), {}).get("total", 0),
-        "tareasCompletadas": counts.get(str(proc.id), {}).get("done", 0),
+        "totalTareas": proc_data.get("total", 0),
+        "tareasCompletadas": proc_data.get("done", 0),
+        "totalHoras": round(float(proc_data.get("horas", 0) or 0), 2),
+        "totalMonto": round(float(proc_data.get("monto", 0) or 0), 2),
+        "tipoTarifa": proc.tipo_tarifa,
+        "tarifa": float(proc.tarifa) if proc.tarifa is not None else None,
+        "moneda": proc.moneda or "PEN",
         "createdAt": proc.created_at.isoformat() if proc.created_at else None,
         "updatedAt": proc.updated_at.isoformat() if proc.updated_at else None,
     }
@@ -132,14 +139,36 @@ async def list_case_processes(
             )
             .group_by(Task.process_id)
         )
+        # Hours & billing aggregated from case_hours via tasks
+        hours_q = (
+            select(
+                Task.process_id,
+                func.coalesce(func.sum(CaseHours.hours), 0).label("horas"),
+                func.coalesce(func.sum(CaseHours.total_amount), 0).label("monto"),
+            )
+            .join(CaseHours, CaseHours.task_id == Task.id)
+            .where(
+                and_(
+                    Task.process_id.in_(proc_ids),
+                    Task.is_deleted == False,
+                    CaseHours.is_deleted == False,
+                )
+            )
+            .group_by(Task.process_id)
+        )
+
         tc_rows = (await db.execute(tc_q)).all()
         done_rows = (await db.execute(done_q)).all()
+        hours_rows = (await db.execute(hours_q)).all()
 
         counts: dict = {}
         for row in tc_rows:
             counts.setdefault(str(row.process_id), {})["total"] = row.total
         for row in done_rows:
             counts.setdefault(str(row.process_id), {})["done"] = row.done
+        for row in hours_rows:
+            counts.setdefault(str(row.process_id), {})["horas"] = row.horas
+            counts.setdefault(str(row.process_id), {})["monto"] = row.monto
     else:
         counts = {}
 
@@ -178,6 +207,14 @@ async def create_case_process(
     descripcion = request.get("descripcion")
     estado = request.get("estado", "pendiente")
 
+    # Billing fields
+    tipo_tarifa_raw = request.get("tipoTarifa")
+    tipo_tarifa = tipo_tarifa_raw if tipo_tarifa_raw in ("plana", "por_horas") else None
+    tarifa_raw = request.get("tarifa")
+    tarifa = float(tarifa_raw) if tarifa_raw is not None else None
+    moneda_raw = request.get("moneda", "PEN")
+    moneda = moneda_raw if moneda_raw in ("PEN", "USD") else "PEN"
+
     # Auto-calculate next order number
     max_orden_result = await db.execute(
         select(func.coalesce(func.max(CaseProcess.orden), 0)).where(
@@ -193,6 +230,9 @@ async def create_case_process(
         descripcion=descripcion,
         estado=estado,
         orden=next_orden,
+        tipo_tarifa=tipo_tarifa,
+        tarifa=tarifa,
+        moneda=moneda,
         created_by=current_user.id,
         is_deleted=False,
     )
@@ -271,38 +311,54 @@ async def update_case_process(
         except Exception:
             pass
 
+    if "tipoTarifa" in request:
+        raw = request["tipoTarifa"]
+        proc.tipo_tarifa = raw if raw in ("plana", "por_horas") else None
+    if "tarifa" in request:
+        raw = request["tarifa"]
+        proc.tarifa = float(raw) if raw is not None else None
+    if "moneda" in request:
+        raw = request["moneda"]
+        proc.moneda = raw if raw in ("PEN", "USD") else "PEN"
+
     proc.updated_at = datetime.utcnow()
     proc.updated_by = current_user.id
     await db.flush()
 
-    # Auto timeline event when a process is completed
+    # Auto timeline event when process transitions to completed
     if old_estado != "completado" and proc.estado == "completado":
         await _create_timeline_event(
             db=db,
             case_id=proc.case_id,
-            law_firm_id=current_user.law_firm_id,
+            law_firm_id=proc.law_firm_id,
             user_id=current_user.id,
             event_type="proceso_completado",
             title=f"Proceso completado: {proc.titulo}",
-            description=f"El proceso '{proc.titulo}' fue marcado como completado.",
+            description=f"El proceso \'{proc.titulo}\' fue marcado como completado.",
         )
 
     await db.commit()
     return success_response(data=_format_process(proc), meta={})
 
 
-# ── Delete process ────────────────────────────────────────────────────────────
-
 @router.delete(
     "/processes/{process_id}",
     response_model=dict,
-    summary="Soft-delete a process",
+    summary="Soft-delete a process, its tasks and their hours",
 )
 async def delete_case_process(
     process_id: str,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """
+    Soft-deletes a process AND all tasks that belonged to it AND all hours
+    recorded against those tasks. The user who created/was assigned to those
+    records is NOT affected.
+    """
+    from sqlalchemy import update as sa_update
+    from app.models.task import CaseHours
+
     try:
         proc_uuid = uuid_module.UUID(process_id)
     except (ValueError, AttributeError):
@@ -312,24 +368,42 @@ async def delete_case_process(
     if not proc or proc.is_deleted or proc.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=404, detail="Process not found")
 
-    # Check for active tasks
-    active_tasks_count = (
+    now = datetime.utcnow()
+
+    # Get all active task IDs in this process
+    task_ids_result = await db.execute(
+        select(Task.id).where(Task.process_id == proc_uuid, Task.is_deleted == False)
+    )
+    task_ids = task_ids_result.scalars().all()
+
+    if task_ids:
+        # Soft-delete hours of those tasks
         await db.execute(
-            select(func.count(Task.id)).where(
-                and_(Task.process_id == proc_uuid, Task.is_deleted == False)
-            )
+            sa_update(CaseHours)
+            .where(CaseHours.task_id.in_(task_ids), CaseHours.is_deleted == False)
+            .values(is_deleted=True, deleted_at=now)
         )
-    ).scalar() or 0
-
-    if active_tasks_count > 0:
-        raise HTTPException(
-            status_code=409,
-            detail=f"No se puede eliminar el proceso porque tiene {active_tasks_count} tarea(s) activa(s). Elimina o reasigna las tareas primero.",
+        # Soft-delete the tasks
+        await db.execute(
+            sa_update(Task)
+            .where(Task.id.in_(task_ids), Task.is_deleted == False)
+            .values(is_deleted=True, deleted_at=now)
         )
 
+    # Soft-delete the process
     proc.is_deleted = True
-    proc.deleted_at = datetime.utcnow()
-    proc.deleted_by = current_user.id
-    await db.commit()
+    proc.deleted_at = now
+    await db.flush()
 
-    return success_response(data={"message": "Proceso eliminado"}, meta={})
+    await _create_timeline_event(
+        db=db,
+        case_id=proc.case_id,
+        law_firm_id=proc.law_firm_id,
+        user_id=current_user.id,
+        event_type="proceso_eliminado",
+        title=f"Proceso eliminado: {proc.titulo}",
+        description=f"El proceso '{proc.titulo}' y sus tareas fueron eliminados.",
+    )
+
+    await db.commit()
+    return success_response(data={"message": "Process, tasks and hours deleted"}, meta={})

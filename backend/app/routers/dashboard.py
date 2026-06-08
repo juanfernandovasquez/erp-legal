@@ -166,7 +166,6 @@ async def get_dashboard(
             and_(
                 User.law_firm_id == law_firm_id,
                 User.is_deleted == False,
-                User.is_active == True,
             )
         )
     )

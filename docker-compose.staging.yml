@@ -1,0 +1,24 @@
+services:
+  postgres:
+    env_file: .env.staging
+
+  backend:
+    env_file: .env.staging
+    volumes: []
+    # Single worker — suficiente para testing, ahorra RAM
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.staging
+    ports:
+      - "80:80"
+    volumes: []
+    depends_on:
+      - backend
+
+  # Redis no está en uso activo — solo inicia si se pasa --profile cache
+  redis:
+    profiles:
+      - cache

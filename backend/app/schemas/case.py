@@ -15,6 +15,7 @@ class CaseResponse(BaseModel):
     bufeteId: Optional[str] = Field(None, description="Law firm ID")
     abogadoPrincipalId: Optional[str] = Field(None, description="Lead lawyer ID")
     montoAsegurado: Optional[float] = Field(None, description="Budget amount")
+    moneda: Optional[str] = Field(None, description="Currency: PEN or USD")
     fechaApertura: Optional[str] = Field(None, description="Open date")
     fechaCierre: Optional[str] = Field(None, description="Close date")
     createdAt: Optional[str] = Field(None, description="Creation timestamp")
@@ -41,8 +42,11 @@ class CaseCreate(BaseModel):
     tipoSolicitud: str = "other"
     clienteId: Optional[str] = None
     abogadoPrincipalId: Optional[str] = None
-    montoAsegurado: Optional[float] = None
     estado: Optional[str] = None
+    # Billing
+    tipoFacturacion: Optional[str] = None   # 'flat' | 'por_horas'
+    monedaFacturacion: Optional[str] = "PEN"  # 'PEN' | 'USD'
+    precioFacturacion: Optional[float] = None
 
     model_config = {"from_attributes": True}
 
@@ -54,8 +58,11 @@ class CaseUpdate(BaseModel):
     tipoSolicitud: Optional[str] = None
     clienteId: Optional[str] = None
     abogadoPrincipalId: Optional[str] = None
-    montoAsegurado: Optional[float] = None
     estado: Optional[str] = None
+    # Billing
+    tipoFacturacion: Optional[str] = None
+    monedaFacturacion: Optional[str] = None
+    precioFacturacion: Optional[float] = None
 
     model_config = {"from_attributes": True}
 

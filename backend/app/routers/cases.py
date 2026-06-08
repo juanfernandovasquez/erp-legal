@@ -18,6 +18,7 @@ from app.utils.auth import get_current_user, check_role
 from app.schemas.case import CaseCreate, CaseUpdate, AddTeamMemberRequest
 from app.models import User, Case, CaseTeam, Client
 from app.models.case import CaseClient
+from app.models.task import CaseHours
 from app.services.audit_service import audit_log
 from app.services.case_service import (
     check_parent_can_close,
@@ -28,7 +29,7 @@ from app.services.case_service import (
 router = APIRouter(tags=["cases"])
 
 
-def _format_case(case: Case) -> dict:
+def _format_case(case: Case, total_facturado: float = 0.0) -> dict:
     """Convert a Case model (with loaded relationships) to the Spanish JSON the frontend expects."""
     abogados = []
     asistentes = []
@@ -82,7 +83,11 @@ def _format_case(case: Case) -> dict:
         "abogadoPrincipalId": principal_id,
         "fechaApertura": case.opened_date.isoformat() if case.opened_date else None,
         "fechaCierre": case.closed_date.isoformat() if case.closed_date else None,
-        "montoAsegurado": float(case.budget_amount) if case.budget_amount else None,
+        "parentCaseId": str(case.parent_case_id) if case.parent_case_id else None,
+        "tipoFacturacion": case.tipo_facturacion,
+        "monedaFacturacion": case.moneda_facturacion or "PEN",
+        "precioFacturacion": float(case.precio_facturacion) if case.precio_facturacion is not None else None,
+        "totalFacturado": round(total_facturado, 2),
         "abogados": abogados,
         "asistentes": asistentes,
         "createdAt": case.created_at.isoformat() if case.created_at else None,
@@ -106,21 +111,23 @@ async def _load_case_full(db: AsyncSession, case_id: str) -> Case:
 @router.get("", response_model=dict, summary="List cases")
 async def list_cases(
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=500),
     status: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
+    include_subcases: bool = Query(False),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    base_filters = [
+        Case.law_firm_id == current_user.law_firm_id,
+        Case.is_deleted == False,
+    ]
+    if not include_subcases:
+        base_filters.append(Case.parent_case_id == None)
+
     base_query = (
         select(Case)
-        .where(
-            and_(
-                Case.law_firm_id == current_user.law_firm_id,
-                Case.is_deleted == False,
-                Case.parent_case_id == None,
-            )
-        )
+        .where(and_(*base_filters))
         .options(
             selectinload(Case.case_teams).selectinload(CaseTeam.user),
             selectinload(Case.case_clients).selectinload(CaseClient.client),
@@ -139,13 +146,7 @@ async def list_cases(
         )
 
     # Total count
-    count_query = select(func.count(Case.id)).where(
-        and_(
-            Case.law_firm_id == current_user.law_firm_id,
-            Case.is_deleted == False,
-            Case.parent_case_id == None,
-        )
-    )
+    count_query = select(func.count(Case.id)).where(and_(*base_filters))
     if status:
         count_query = count_query.where(Case.status == status)
     count_result = await db.execute(count_query)
@@ -156,7 +157,19 @@ async def list_cases(
     result = await db.execute(base_query)
     cases = result.unique().scalars().all()
 
-    data = [_format_case(c) for c in cases]
+    # Batch-sum total_amount from case_hours per case (one query for all cases)
+    totals_by_case: dict = {}
+    if cases:
+        case_ids = [c.id for c in cases]
+        sums_q = (
+            select(CaseHours.case_id, func.coalesce(func.sum(CaseHours.total_amount), 0).label("total"))
+            .where(and_(CaseHours.case_id.in_(case_ids), CaseHours.is_deleted == False))
+            .group_by(CaseHours.case_id)
+        )
+        for row in (await db.execute(sums_q)).all():
+            totals_by_case[str(row.case_id)] = float(row.total or 0)
+
+    data = [_format_case(c, totals_by_case.get(str(c.id), 0.0)) for c in cases]
     pages = (total + limit - 1) // limit if total > 0 else 1
     return paginated_response(
         data=data,
@@ -189,7 +202,9 @@ async def create_case(
         description=request.descripcion,
         case_type=request.tipoSolicitud or "other",
         status=request.estado or "activo",
-        budget_amount=request.montoAsegurado,
+        tipo_facturacion=request.tipoFacturacion,
+        moneda_facturacion=request.monedaFacturacion or "PEN",
+        precio_facturacion=request.precioFacturacion,
         opened_date=datetime.utcnow(),
         is_deleted=False,
     )
@@ -246,9 +261,13 @@ async def create_case(
         description=f"New case created: {new_case.case_number}",
     )
 
-    full_case = await _load_case_full(db, str(new_case.id))
+    try:
+        full_case = await _load_case_full(db, str(new_case.id))
+        data = _format_case(full_case) if full_case else {"id": str(new_case.id), "titulo": new_case.title}
+    except Exception:
+        data = {"id": str(new_case.id), "titulo": new_case.title}
     return success_response(
-        data=_format_case(full_case),
+        data=data,
         meta={"timestamp": datetime.utcnow().isoformat()},
     )
 
@@ -291,8 +310,12 @@ async def update_case(
         case.description = request.descripcion
     if request.tipoSolicitud is not None:
         case.case_type = request.tipoSolicitud
-    if request.montoAsegurado is not None:
-        case.budget_amount = request.montoAsegurado
+    if request.tipoFacturacion is not None:
+        case.tipo_facturacion = request.tipoFacturacion
+    if request.monedaFacturacion is not None:
+        case.moneda_facturacion = request.monedaFacturacion
+    if request.precioFacturacion is not None:
+        case.precio_facturacion = request.precioFacturacion
     if request.estado is not None:
         case.status = request.estado
 
@@ -320,8 +343,33 @@ async def delete_case(
     if not check_role(current_user.role, ["admin_firma", "super_admin"]):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
 
+    from app.models.task import Task as TaskModel, CaseHours
+    from app.models.process import CaseProcess
+    from sqlalchemy import update as sa_update
+
     case.is_deleted = True
     case.deleted_at = datetime.utcnow()
+    now = datetime.utcnow()
+
+    # Soft-delete tasks
+    await db.execute(
+        sa_update(TaskModel)
+        .where(TaskModel.case_id == case.id, TaskModel.is_deleted == False)
+        .values(is_deleted=True, deleted_at=now)
+    )
+    # Soft-delete hour records
+    await db.execute(
+        sa_update(CaseHours)
+        .where(CaseHours.case_id == case.id, CaseHours.is_deleted == False)
+        .values(is_deleted=True, deleted_at=now)
+    )
+    # Soft-delete processes
+    await db.execute(
+        sa_update(CaseProcess)
+        .where(CaseProcess.case_id == case.id, CaseProcess.is_deleted == False)
+        .values(is_deleted=True, deleted_at=now)
+    )
+
     await db.commit()
 
     return success_response(data={"message": "Case deleted"}, meta={})
@@ -509,10 +557,11 @@ async def list_case_hours(
     if not case or case.is_deleted or case.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
 
+    from sqlalchemy.orm import selectinload as _sli2
     result = await db.execute(
         select(CaseHours)
         .where(and_(CaseHours.case_id == case_id, CaseHours.is_deleted == False))
-        .options(selectinload(CaseHours.user))
+        .options(_sli2(CaseHours.user))
         .order_by(CaseHours.work_date.desc())
     )
     hours_list = result.scalars().all()
@@ -521,111 +570,21 @@ async def list_case_hours(
         {
             "id": str(h.id),
             "casoId": str(h.case_id),
+            "tareaId": str(h.task_id) if h.task_id else None,
             "usuarioId": str(h.user_id),
             "usuario": {
                 "id": str(h.user_id),
                 "nombre": f"{h.user.first_name} {h.user.last_name}".strip() if h.user else "",
             } if h.user else None,
             "fechaRegistro": h.work_date.isoformat() if h.work_date else None,
-            "horasTrabajas": float(h.hours),
+            "horas": float(h.hours) if h.hours is not None else 0.0,
             "descripcion": h.description or "",
-            "tipo": "consulta",
+            "tarifaHora": float(h.hourly_rate) if h.hourly_rate is not None else 0.0,
+            "montoTotal": float(h.total_amount) if h.total_amount is not None else 0.0,
+            "esBonificable": h.is_billable,
             "createdAt": h.created_at.isoformat() if h.created_at else None,
             "updatedAt": h.updated_at.isoformat() if h.updated_at else None,
         }
         for h in hours_list
-    ]
-    return success_response(data=data, meta={"total": len(data)})
-
-
-@router.post("/{case_id}/hours", response_model=dict, summary="Log hours for a case", status_code=201)
-async def create_case_hours(
-    case_id: str,
-    request: dict,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    from app.models.task import CaseHours
-    from fastapi import Body
-
-    case = await db.get(Case, case_id)
-    if not case or case.is_deleted or case.law_firm_id != current_user.law_firm_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
-
-    hours_val = float(request.get("horas") or request.get("hours") or 1)
-    rate = float(request.get("tarifaHora") or request.get("hourly_rate") or 0)
-    work_date_str = request.get("fechaTrabajo") or request.get("work_date")
-    work_date = datetime.fromisoformat(work_date_str) if work_date_str else datetime.utcnow()
-
-    new_hours = CaseHours(
-        case_id=case_id,
-        user_id=current_user.id,
-        law_firm_id=current_user.law_firm_id,
-        hours=hours_val,
-        description=request.get("descripcion") or request.get("description") or "",
-        work_date=work_date,
-        hourly_rate=rate,
-        total_amount=hours_val * rate,
-        is_billable=request.get("esFacturable", True),
-    )
-    db.add(new_hours)
-    await db.commit()
-
-    return success_response(data={"id": str(new_hours.id), "message": "Hours logged"}, meta={})
-
-
-@router.get("/{case_id}/tasks", response_model=dict, summary="List tasks for a case")
-async def list_case_tasks(
-    case_id: str,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    import uuid as uuid_module
-    from app.models.task import Task
-    from sqlalchemy.orm import selectinload as _selectinload
-
-    try:
-        case_uuid = uuid_module.UUID(case_id)
-    except (ValueError, AttributeError):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
-
-    case = await db.get(Case, case_uuid)
-    if not case or case.is_deleted or case.law_firm_id != current_user.law_firm_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
-
-    result = await db.execute(
-        select(Task)
-        .where(and_(Task.case_id == case_uuid, Task.is_deleted == False))
-        .options(
-            _selectinload(Task.assignee),
-            _selectinload(Task.case),
-            _selectinload(Task.process),
-        )
-        .order_by(Task.created_at.desc())
-    )
-    tasks = result.scalars().all()
-
-    data = [
-        {
-            "id": str(t.id),
-            "casoId": str(t.case_id),
-            "casoTitulo": t.case.title if t.case else None,
-            "procesoId": str(t.process_id) if t.process_id else None,
-            "procesoTitulo": t.process.titulo if t.process else None,
-            "titulo": t.title,
-            "descripcion": t.description,
-            "estado": t.status,
-            "prioridad": t.priority,
-            "asignadoA": {
-                "id": str(t.assignee_id),
-                "nombre": f"{t.assignee.first_name} {t.assignee.last_name}".strip() if t.assignee else "",
-            } if t.assignee_id else None,
-            "asignadoAId": str(t.assignee_id) if t.assignee_id else None,
-            "fechaVencimiento": t.due_date.isoformat() if t.due_date else None,
-            "completadoEn": t.completed_date.isoformat() if t.completed_date else None,
-            "createdAt": t.created_at.isoformat() if t.created_at else None,
-            "updatedAt": t.updated_at.isoformat() if t.updated_at else None,
-        }
-        for t in tasks
     ]
     return success_response(data=data, meta={"total": len(data)})

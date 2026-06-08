@@ -3,7 +3,8 @@ Case timeline endpoints.
 Handles events (immutable) and updates (mutable) chronologically.
 """
 
-from datetime import datetime
+import uuid as uuid_module
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -38,8 +39,19 @@ def _format_event(event: CaseEvent) -> dict:
     }
 
 
-def _format_update(update: CaseUpdate) -> dict:
+def _utc_iso(dt: datetime | None) -> str | None:
+    """Return ISO string with explicit UTC offset, even for naive datetimes."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
+
+
+def _format_update(update: CaseUpdate, user_names: dict | None = None) -> dict:
     """Format CaseUpdate to response dict."""
+    names = user_names or {}
+    creator_id = str(update.created_by) if update.created_by else None
     return {
         "id": str(update.id),
         "casoId": str(update.case_id),
@@ -48,8 +60,10 @@ def _format_update(update: CaseUpdate) -> dict:
         "tipoActualizacion": update.update_type,
         "esInterno": update.is_internal,
         "visibleAlCliente": update.is_client_visible,
-        "createdAt": update.created_at.isoformat() if update.created_at else None,
-        "updatedAt": update.updated_at.isoformat() if update.updated_at else None,
+        "creadoPorId": creator_id,
+        "creadoPor": names.get(creator_id) if creator_id else None,
+        "createdAt": _utc_iso(update.created_at),
+        "updatedAt": _utc_iso(update.updated_at),
     }
 
 
@@ -65,7 +79,7 @@ async def get_case_timeline(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Get combined timeline of events and updates for a case, sorted chronologically."""
+    """Get timeline of events for a case, sorted chronologically. Updates have their own endpoint."""
     case = await db.get(Case, case_id)
 
     if not case or case.is_deleted or case.law_firm_id != current_user.law_firm_id:
@@ -73,7 +87,7 @@ async def get_case_timeline(
 
     await check_case_team_access(db, case_id, current_user)
 
-    # Get events
+    # Get events only — updates are shown in the dedicated Actualizaciones tab
     events_result = await db.execute(
         select(CaseEvent)
         .where(and_(CaseEvent.case_id == case_id, CaseEvent.is_deleted == False))
@@ -81,36 +95,7 @@ async def get_case_timeline(
     )
     events = events_result.scalars().all()
 
-    # Get updates
-    updates_result = await db.execute(
-        select(CaseUpdate)
-        .where(and_(CaseUpdate.case_id == case_id, CaseUpdate.is_deleted == False))
-        .order_by(CaseUpdate.created_at.asc())
-    )
-    updates = updates_result.scalars().all()
-
-    # Combine and sort by date
-    timeline_items = []
-
-    for event in events:
-        item = _format_event(event)
-        item["_type"] = "evento"
-        item["_timestamp"] = event.event_date.isoformat() if event.event_date else ""
-        timeline_items.append(item)
-
-    for update in updates:
-        item = _format_update(update)
-        item["_type"] = "actualizacion"
-        item["_timestamp"] = update.created_at.isoformat() if update.created_at else ""
-        timeline_items.append(item)
-
-    # Sort chronologically
-    timeline_items.sort(key=lambda x: x.get("_timestamp", ""))
-
-    # Remove internal sort keys
-    for item in timeline_items:
-        item.pop("_type", None)
-        item.pop("_timestamp", None)
+    timeline_items = [_format_event(e) for e in events]
 
     total = len(timeline_items)
     start = (page - 1) * limit
@@ -300,30 +285,32 @@ async def delete_event(
 async def list_updates(
     case_id: str,
     page: int = Query(1, ge=1),
-    limit: int = Query(20, ge=1, le=100),
+    limit: int = Query(50, ge=1, le=100),
     sort: str = Query("-created_at"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    case = await db.get(Case, case_id)
+    try:
+        case_uuid = uuid_module.UUID(case_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
 
+    case = await db.get(Case, case_uuid)
     if not case or case.is_deleted or case.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
 
-    await check_case_team_access(db, case_id, current_user)
-
     count_result = await db.execute(
         select(func.count(CaseUpdate.id)).where(
-            and_(CaseUpdate.case_id == case_id, CaseUpdate.is_deleted == False)
+            and_(CaseUpdate.case_id == case_uuid, CaseUpdate.is_deleted == False)
         )
     )
     total = count_result.scalar() or 0
 
     query = select(CaseUpdate).where(
-        and_(CaseUpdate.case_id == case_id, CaseUpdate.is_deleted == False)
+        and_(CaseUpdate.case_id == case_uuid, CaseUpdate.is_deleted == False)
     )
 
-    safe_sort_fields = {"created_at", "updated_at", "title"}
+    safe_sort_fields = {"created_at", "updated_at"}
     sort_field = sort.lstrip("-")
     if sort_field not in safe_sort_fields:
         sort_field = "created_at"
@@ -335,7 +322,16 @@ async def list_updates(
     result = await db.execute(query)
     updates = result.scalars().all()
 
-    data = [_format_update(u) for u in updates]
+    # Batch-load creator names in one query
+    creator_ids = {u.created_by for u in updates if u.created_by}
+    user_names: dict = {}
+    if creator_ids:
+        user_rows = (await db.execute(
+            select(User).where(User.id.in_(creator_ids))
+        )).scalars().all()
+        user_names = {str(u.id): f"{u.first_name} {u.last_name}".strip() or u.email for u in user_rows}
+
+    data = [_format_update(u, user_names) for u in updates]
     pages = (total + limit - 1) // limit if total > 0 else 1
     return paginated_response(data=data, total=total, page=page, pages=pages, limit=limit, meta={})
 
@@ -352,19 +348,26 @@ async def create_update(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    case = await db.get(Case, case_id)
+    try:
+        case_uuid = uuid_module.UUID(case_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
 
+    case = await db.get(Case, case_uuid)
     if not case or case.is_deleted or case.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case not found")
 
-    await check_case_team_access(db, case_id, current_user)
+    # Auto-generate title from content if not provided
+    auto_title = request.title or (
+        request.content[:77] + "..." if len(request.content) > 80 else request.content
+    )
 
     update = CaseUpdate(
-        case_id=case_id,
+        case_id=case_uuid,
         law_firm_id=current_user.law_firm_id,
-        title=request.title,
+        title=auto_title,
         content=request.content,
-        update_type=request.update_type,
+        update_type=request.update_type or "general",
         is_internal=request.is_internal,
         is_client_visible=request.is_client_visible,
         is_deleted=False,
@@ -384,7 +387,8 @@ async def create_update(
         description=f"Update created: {update.title}",
     )
 
-    return success_response(data=_format_update(update), meta={})
+    creator_name = f"{current_user.first_name} {current_user.last_name}".strip() or current_user.email
+    return success_response(data=_format_update(update, {str(current_user.id): creator_name}), meta={})
 
 
 @router.patch(
