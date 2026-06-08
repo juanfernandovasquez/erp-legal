@@ -7,7 +7,6 @@
 
 CREATE INDEX idx_users_law_firm_id ON users(law_firm_id) WHERE is_deleted = false;
 CREATE INDEX idx_users_email ON users(email) WHERE is_deleted = false;
-CREATE INDEX idx_users_is_active ON users(is_active) WHERE is_deleted = false;
 CREATE INDEX idx_users_created_at ON users(created_at) WHERE is_deleted = false;
 
 CREATE INDEX idx_case_teams_case_id ON case_teams(case_id) WHERE is_deleted = false;
