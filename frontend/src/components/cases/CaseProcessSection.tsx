@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { TaskForm } from '@/components/tasks/TaskForm'
 import { ProcessForm } from '@/components/cases/ProcessForm'
+import { BillingAdjustments } from '@/components/billing/BillingAdjustments'
 import { Proceso, Tarea } from '@/types'
 import {
   ChevronDown, ChevronRight, Plus, Pencil, Trash2,
@@ -58,6 +59,7 @@ export function CaseProcessSection({
   defaultOpen = true,
 }: Props) {
   const [open, setOpen]               = useState(defaultOpen)
+  const [activeTab, setActiveTab]     = useState<'tareas' | 'facturacion'>('tareas')
   const [editingProcess, setEditingProcess] = useState(false)
   const [addingTask, setAddingTask]   = useState(false)
   const [deletingProcess, setDeletingProcess] = useState(false)
@@ -172,95 +174,136 @@ export function CaseProcessSection({
 
       {/* Expandable body */}
       {open && (
-        <div className="px-4 py-4 border-t border-slate-100 space-y-4">
+        <div className="border-t border-slate-100">
 
-          {/* Edit process form */}
-          {editingProcess && (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-              <p className="text-sm font-medium text-slate-700 mb-3">Editar proceso</p>
-              <ProcessForm
-                caseId={caseId}
-                proceso={proceso}
-                onSuccess={(updated) => { onProcesoUpdated(updated); setEditingProcess(false) }}
-                onCancel={() => setEditingProcess(false)}
-              />
-            </div>
-          )}
-
-          {deleteError && (
-            <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-              {deleteError}
-            </p>
-          )}
-
-          {/* Hours & billing summary panel */}
-          {proceso.totalHoras > 0 && (
-            <div className="flex items-center gap-6 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm">
-              <div className="flex items-center gap-2 text-slate-600">
-                <Clock size={14} className="text-blue-500" />
-                <span className="font-medium">{formatDuration(proceso.totalHoras)}</span>
-                <span className="text-slate-400 text-xs">({Math.round(proceso.totalHoras * 60)} min)</span>
-              </div>
-              {proceso.totalMonto > 0 && (
-                <>
-                  <div className="h-4 w-px bg-slate-200" />
-                  <div className="flex items-center gap-2 text-slate-600">
-                    <DollarSign size={14} className="text-green-500" />
-                    <span className="font-semibold text-green-700">
-                      S/ {proceso.totalMonto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                    </span>
-                    <span className="text-slate-400 text-xs">facturado</span>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Description */}
-          {proceso.descripcion && (
-            <p className="text-sm text-slate-500 italic">{proceso.descripcion}</p>
-          )}
-
-          {/* Task cards */}
-          {tareas.length === 0 && !addingTask ? (
-            <div className="text-center py-6 text-slate-400 text-sm">
-              Sin tareas en este proceso.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {tareas.map((t) => (
-                <TaskCard key={t.id} task={t} onClick={() => onTareaClick(t)} />
-              ))}
-            </div>
-          )}
-
-          {/* Add task form */}
-          {addingTask && (
-            <div className="border border-blue-100 rounded-lg p-4 bg-blue-50/40">
-              <p className="text-sm font-semibold text-slate-700 mb-3">Nueva tarea</p>
-              <TaskForm
-                caseId={caseId}
-                processId={proceso.id}
-                inline
-                onSuccess={(nueva) => {
-                  onTareaCreated(nueva)
-                  setAddingTask(false)
-                }}
-                onCancel={() => setAddingTask(false)}
-              />
-            </div>
-          )}
-
-          {/* Nueva tarea button */}
-          {proceso.estado !== 'completado' && proceso.estado !== 'cancelado' && (
+          {/* Tab bar */}
+          <div className="flex items-center gap-0 border-b border-slate-200 px-4 bg-slate-50">
             <button
-              onClick={() => setAddingTask((v) => !v)}
-              className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 transition-colors mt-1"
+              onClick={() => setActiveTab('tareas')}
+              className={`px-4 py-2.5 text-xs font-medium transition-colors border-b-2 -mb-px ${
+                activeTab === 'tareas'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
             >
-              <Plus size={14} />
-              {addingTask ? 'Cancelar' : 'Nueva tarea en este proceso'}
+              Tareas
             </button>
-          )}
+            <button
+              onClick={() => setActiveTab('facturacion')}
+              className={`px-4 py-2.5 text-xs font-medium transition-colors border-b-2 -mb-px ${
+                activeTab === 'facturacion'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              Facturación
+            </button>
+          </div>
+
+          <div className="px-4 py-4 space-y-4">
+
+            {/* Edit process form (visible in both tabs) */}
+            {editingProcess && (
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                <p className="text-sm font-medium text-slate-700 mb-3">Editar proceso</p>
+                <ProcessForm
+                  caseId={caseId}
+                  proceso={proceso}
+                  onSuccess={(updated) => { onProcesoUpdated(updated); setEditingProcess(false) }}
+                  onCancel={() => setEditingProcess(false)}
+                />
+              </div>
+            )}
+
+            {deleteError && (
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+                {deleteError}
+              </p>
+            )}
+
+            {/* ── Tareas tab ─────────────────────────────────────────────── */}
+            {activeTab === 'tareas' && (
+              <>
+                {/* Hours & billing summary panel */}
+                {proceso.totalHoras > 0 && (
+                  <div className="flex items-center gap-6 bg-slate-50 border border-slate-200 rounded-lg px-4 py-2.5 text-sm">
+                    <div className="flex items-center gap-2 text-slate-600">
+                      <Clock size={14} className="text-blue-500" />
+                      <span className="font-medium">{formatDuration(proceso.totalHoras)}</span>
+                      <span className="text-slate-400 text-xs">({Math.round(proceso.totalHoras * 60)} min)</span>
+                    </div>
+                    {proceso.totalMonto > 0 && (
+                      <>
+                        <div className="h-4 w-px bg-slate-200" />
+                        <div className="flex items-center gap-2 text-slate-600">
+                          <DollarSign size={14} className="text-green-500" />
+                          <span className="font-semibold text-green-700">
+                            S/ {proceso.totalMonto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                          </span>
+                          <span className="text-slate-400 text-xs">facturado</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Description */}
+                {proceso.descripcion && (
+                  <p className="text-sm text-slate-500 italic">{proceso.descripcion}</p>
+                )}
+
+                {/* Task cards */}
+                {tareas.length === 0 && !addingTask ? (
+                  <div className="text-center py-6 text-slate-400 text-sm">
+                    Sin tareas en este proceso.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {tareas.map((t) => (
+                      <TaskCard key={t.id} task={t} onClick={() => onTareaClick(t)} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Add task form */}
+                {addingTask && (
+                  <div className="border border-blue-100 rounded-lg p-4 bg-blue-50/40">
+                    <p className="text-sm font-semibold text-slate-700 mb-3">Nueva tarea</p>
+                    <TaskForm
+                      caseId={caseId}
+                      processId={proceso.id}
+                      inline
+                      onSuccess={(nueva) => {
+                        onTareaCreated(nueva)
+                        setAddingTask(false)
+                      }}
+                      onCancel={() => setAddingTask(false)}
+                    />
+                  </div>
+                )}
+
+                {/* Nueva tarea button */}
+                {proceso.estado !== 'completado' && proceso.estado !== 'cancelado' && (
+                  <button
+                    onClick={() => setAddingTask((v) => !v)}
+                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 transition-colors mt-1"
+                  >
+                    <Plus size={14} />
+                    {addingTask ? 'Cancelar' : 'Nueva tarea en este proceso'}
+                  </button>
+                )}
+              </>
+            )}
+
+            {/* ── Facturación tab ────────────────────────────────────────── */}
+            {activeTab === 'facturacion' && (
+              <BillingAdjustments
+                processId={proceso.id}
+                moneda={proceso.moneda || 'PEN'}
+              />
+            )}
+
+          </div>
         </div>
       )}
     </div>

@@ -470,6 +470,19 @@ CREATE TABLE case_hours (
     deleted_by UUID REFERENCES users(id)
 );
 
+CREATE TABLE billing_adjustments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    process_id UUID NOT NULL REFERENCES case_processes(id) ON DELETE CASCADE,
+    law_firm_id UUID NOT NULL REFERENCES law_firms(id) ON DELETE CASCADE,
+    nombre VARCHAR(100),
+    descripcion TEXT NOT NULL,
+    monto NUMERIC(12, 2) NOT NULL,
+    created_by UUID REFERENCES users(id) ON DELETE SET NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    is_deleted BOOLEAN DEFAULT FALSE
+);
+
 CREATE TABLE invoice_metrics (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     case_id UUID NOT NULL REFERENCES cases(id) ON DELETE CASCADE,

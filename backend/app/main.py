@@ -134,6 +134,7 @@ from app.routers import (
     client_portal_router,
 )
 from app.routers.processes import router as processes_router
+from app.routers.billing import router as billing_router
 
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Autenticación"])
 app.include_router(law_firms_router, prefix="/api/v1/law-firms", tags=["Estudios Legales"])
@@ -149,6 +150,7 @@ app.include_router(clients_router, prefix="/api/v1/clients", tags=["Clientes"])
 app.include_router(process_types_router, prefix="/api/v1/process-types", tags=["Tipos de Proceso"])
 app.include_router(dashboard_router, prefix="/api/v1/admin", tags=["Dashboard Admin"])
 app.include_router(client_portal_router, prefix="/api/v1/client", tags=["Portal Cliente"])
+app.include_router(billing_router, prefix="/api/v1", tags=["Facturación"])
 
 
 if __name__ == "__main__":

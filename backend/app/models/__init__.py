@@ -34,6 +34,7 @@ from app.models.audit import (
     IAFeedback,
     AnonimizacionRule,
 )
+from app.models.billing import BillingAdjustment
 
 __all__ = [
     # Base
@@ -91,4 +92,6 @@ __all__ = [
     "IAAuditLog",
     "IAFeedback",
     "AnonimizacionRule",
+    # Billing Adjustments
+    "BillingAdjustment",
 ]
