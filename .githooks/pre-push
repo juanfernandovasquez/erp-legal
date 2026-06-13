@@ -19,9 +19,21 @@ while read local_ref local_sha remote_ref remote_sha; do
     fi
 
     # ─────────────────────────────────────────────
-    # CHECK 1: comandos peligrosos en el diff
+    # CHECK 1: comandos peligrosos en archivos no-documentación
+    # Excluye .md, .txt, .rst para evitar falsos positivos en docs
     # ─────────────────────────────────────────────
-    DANGER=$(echo "$DIFF_CONTENT" | grep "^+" | grep -E "down\s+-v|down\s+--volumes|volume\s+rm\s+.*postgres" || true)
+    DANGER=$(echo "$DIFF_CONTENT" | awk '
+        /^\+\+\+ b\// {
+            f = $0
+            skip = (f ~ /\.(md|txt|rst|log)$/)
+            next
+        }
+        /^\+\+\+/ { skip=1; next }
+        skip { next }
+        /^\+/ && !/^\+\+/ && /down[[:space:]]+-v|down[[:space:]]+--volumes|volume[[:space:]]+rm[[:space:]].*postgres/ {
+            print
+        }
+    ' || true)
     if [ -n "$DANGER" ]; then
         echo ""
         echo "❌ BLOQUEADO [proteger-bd]: Se detectó un comando que borraría la BD de staging:"
