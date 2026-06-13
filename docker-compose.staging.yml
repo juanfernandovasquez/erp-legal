@@ -22,7 +22,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.staging
     ports:
-      - "80:80"
+      - "127.0.0.1:8080:80"
     volumes: []
     command: nginx -g 'daemon off;'
     depends_on:
