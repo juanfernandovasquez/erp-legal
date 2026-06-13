@@ -1,10 +1,6 @@
-import React, { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Button } from '@/components/ui/button'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Trash2, Plus, FileText, Loader2 } from 'lucide-react'
 import api from '@/lib/axios'
-
-// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Ajuste {
   id: string
@@ -22,7 +18,7 @@ interface BillingResumen {
   ajustes: Ajuste[]
   totalAjustes: number
   totalFinal: number
-  moneda: 'PEN' | 'USD'
+  moneda: string
   tipoTarifa: 'plana' | 'por_horas' | null
 }
 
@@ -31,99 +27,87 @@ interface Props {
   moneda?: string
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
 function formatMoney(amount: number, moneda: string): string {
   const simbolo = moneda === 'USD' ? 'USD' : 'S/'
   return `${simbolo} ${amount.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
-  const qc = useQueryClient()
+  const [data, setData] = useState<BillingResumen | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  // Form state
   const [showForm, setShowForm] = useState(false)
   const [formNombre, setFormNombre] = useState('')
   const [formDescripcion, setFormDescripcion] = useState('')
   const [formMonto, setFormMonto] = useState('')
   const [formError, setFormError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
-  // Load billing summary
-  const { data, isLoading, isError } = useQuery<BillingResumen>({
-    queryKey: ['billing', processId],
-    queryFn: async () => {
+  const loadBilling = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
       const res = await api.get(`/processes/${processId}/billing`)
-      return res.data.data
-    },
-  })
+      setData(res.data.data)
+    } catch {
+      setError('Error al cargar el resumen de facturación.')
+    } finally {
+      setLoading(false)
+    }
+  }, [processId])
 
-  // Create adjustment
-  const createMutation = useMutation({
-    mutationFn: async (body: { nombre?: string; descripcion: string; monto: number }) => {
-      await api.post(`/processes/${processId}/billing/adjustments`, body)
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['billing', processId] })
-      setShowForm(false)
-      setFormNombre('')
-      setFormDescripcion('')
-      setFormMonto('')
-      setFormError('')
-    },
-    onError: (err: any) => {
-      setFormError(err?.response?.data?.detail || 'Error al guardar el ajuste')
-    },
-  })
+  useEffect(() => {
+    loadBilling()
+  }, [loadBilling])
 
-  // Delete adjustment
-  const deleteMutation = useMutation({
-    mutationFn: async (adjId: string) => {
-      await api.delete(`/processes/${processId}/billing/adjustments/${adjId}`)
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['billing', processId] })
-    },
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFormError('')
 
     const descripcion = formDescripcion.trim()
-    if (!descripcion) {
-      setFormError('La descripción es requerida')
-      return
-    }
+    if (!descripcion) { setFormError('La descripción es requerida'); return }
 
     const montoNum = parseFloat(formMonto)
-    if (isNaN(montoNum)) {
-      setFormError('El monto debe ser un número válido')
-      return
-    }
+    if (isNaN(montoNum)) { setFormError('El monto debe ser un número válido'); return }
 
-    createMutation.mutate({
-      nombre: formNombre.trim() || undefined,
-      descripcion,
-      monto: montoNum,
-    })
+    setSaving(true)
+    try {
+      await api.post(`/processes/${processId}/billing/adjustments`, {
+        nombre: formNombre.trim() || undefined,
+        descripcion,
+        monto: montoNum,
+      })
+      setShowForm(false)
+      setFormNombre('')
+      setFormDescripcion('')
+      setFormMonto('')
+      await loadBilling()
+    } catch (err: any) {
+      setFormError(err?.response?.data?.detail || 'Error al guardar el ajuste')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const handleDeleteAjuste = (adjId: string) => {
+  const handleDelete = async (adjId: string) => {
     if (!window.confirm('¿Eliminar este ajuste?')) return
-    deleteMutation.mutate(adjId)
+    setDeleting(adjId)
+    try {
+      await api.delete(`/processes/${processId}/billing/adjustments/${adjId}`)
+      await loadBilling()
+    } finally {
+      setDeleting(null)
+    }
   }
 
   const handleGenerarPDF = () => {
-    // Open the PDF in a new tab — the browser will handle download/view
     const base = api.defaults.baseURL || ''
     window.open(`${base}/processes/${processId}/billing/pdf`, '_blank')
   }
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center py-8 text-slate-400">
         <Loader2 size={20} className="animate-spin mr-2" />
@@ -132,10 +116,10 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
     )
   }
 
-  if (isError || !data) {
+  if (error || !data) {
     return (
       <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
-        Error al cargar el resumen de facturación.
+        {error || 'Error al cargar el resumen de facturación.'}
       </div>
     )
   }
@@ -145,7 +129,7 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
   return (
     <div className="space-y-4">
 
-      {/* Header row */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-slate-700">Ajustes de facturación</h4>
         <div className="flex items-center gap-2">
@@ -157,7 +141,7 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
             Generar PDF
           </button>
           <button
-            onClick={() => { setShowForm((v) => !v); setFormError('') }}
+            onClick={() => { setShowForm(v => !v); setFormError('') }}
             className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 transition-colors"
           >
             <Plus size={14} />
@@ -172,15 +156,9 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                  Nombre
-                </th>
-                <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">
-                  Descripción
-                </th>
-                <th className="px-3 py-2 text-right text-xs font-medium text-slate-500 uppercase tracking-wide">
-                  Monto
-                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Nombre</th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wide">Descripción</th>
+                <th className="px-3 py-2 text-right text-xs font-medium text-slate-500 uppercase tracking-wide">Monto</th>
                 <th className="px-3 py-2 w-12" />
               </tr>
             </thead>
@@ -198,12 +176,11 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
                   </td>
                   <td className="px-3 py-2 text-center">
                     <button
-                      onClick={() => handleDeleteAjuste(adj.id)}
-                      disabled={deleteMutation.isPending}
+                      onClick={() => handleDelete(adj.id)}
+                      disabled={deleting === adj.id}
                       className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-50"
-                      title="Eliminar ajuste"
                     >
-                      <Trash2 size={13} />
+                      {deleting === adj.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                     </button>
                   </td>
                 </tr>
@@ -213,24 +190,17 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
         </div>
       ) : (
         !showForm && (
-          <p className="text-sm text-slate-400 italic py-2">
-            Sin ajustes registrados para este proceso.
-          </p>
+          <p className="text-sm text-slate-400 italic py-2">Sin ajustes registrados para este proceso.</p>
         )
       )}
 
-      {/* Add adjustment form */}
+      {/* Add form */}
       {showForm && (
-        <form
-          onSubmit={handleSubmit}
-          className="border border-blue-100 rounded-lg p-4 bg-blue-50/40 space-y-3"
-        >
+        <form onSubmit={handleSubmit} className="border border-blue-100 rounded-lg p-4 bg-blue-50/40 space-y-3">
           <p className="text-sm font-semibold text-slate-700">Nuevo ajuste</p>
 
           {formError && (
-            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">
-              {formError}
-            </p>
+            <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded px-2 py-1">{formError}</p>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -241,7 +211,7 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
               <input
                 type="text"
                 value={formNombre}
-                onChange={(e) => setFormNombre(e.target.value)}
+                onChange={e => setFormNombre(e.target.value)}
                 placeholder="Ej. Descuento, Recargo..."
                 className="w-full border border-slate-200 rounded-md px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
               />
@@ -254,7 +224,7 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
                 type="number"
                 step="0.01"
                 value={formMonto}
-                onChange={(e) => setFormMonto(e.target.value)}
+                onChange={e => setFormMonto(e.target.value)}
                 placeholder="0.00"
                 className="w-full border border-slate-200 rounded-md px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
                 required
@@ -268,7 +238,7 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
             </label>
             <textarea
               value={formDescripcion}
-              onChange={(e) => setFormDescripcion(e.target.value)}
+              onChange={e => setFormDescripcion(e.target.value)}
               placeholder="Describe el ajuste..."
               rows={2}
               className="w-full border border-slate-200 rounded-md px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white resize-none"
@@ -279,14 +249,10 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
           <div className="flex items-center gap-2 pt-1">
             <button
               type="submit"
-              disabled={createMutation.isPending}
+              disabled={saving}
               className="flex items-center gap-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-md transition-colors disabled:opacity-50"
             >
-              {createMutation.isPending ? (
-                <Loader2 size={12} className="animate-spin" />
-              ) : (
-                <Plus size={12} />
-              )}
+              {saving ? <Loader2 size={12} className="animate-spin" /> : <Plus size={12} />}
               Guardar ajuste
             </button>
             <button
@@ -300,16 +266,14 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
         </form>
       )}
 
-      {/* Totals summary */}
+      {/* Totals */}
       <div className="border border-slate-200 rounded-lg overflow-hidden">
         <div className="divide-y divide-slate-100">
           <div className="flex items-center justify-between px-4 py-2.5 text-sm bg-slate-50">
             <span className="text-slate-600">
               {data.tipoTarifa === 'plana' ? 'Honorario fijo' : 'Subtotal horas'}
             </span>
-            <span className="font-medium text-slate-800">
-              {formatMoney(data.subtotalHoras, currMoneda)}
-            </span>
+            <span className="font-medium text-slate-800">{formatMoney(data.subtotalHoras, currMoneda)}</span>
           </div>
           {data.ajustes.length > 0 && (
             <div className="flex items-center justify-between px-4 py-2.5 text-sm bg-slate-50">
@@ -321,9 +285,7 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
           )}
           <div className="flex items-center justify-between px-4 py-3 bg-white">
             <span className="text-base font-bold text-slate-900">Total a cobrar</span>
-            <span className="text-base font-bold text-green-700">
-              {formatMoney(data.totalFinal, currMoneda)}
-            </span>
+            <span className="text-base font-bold text-green-700">{formatMoney(data.totalFinal, currMoneda)}</span>
           </div>
         </div>
       </div>
