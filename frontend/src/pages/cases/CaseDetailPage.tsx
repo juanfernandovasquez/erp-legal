@@ -702,7 +702,9 @@ export function CaseDetailPage() {
           onClose={() => setSelectedTask(null)}
           onSave={(updated) => {
             setSelectedTask(null)
-            fetchCaseById(caso.id)
+            if (updated) {
+              setTareas((prev) => prev.map((t) => t.id === updated.id ? updated : t))
+            }
           }}
           onDelete={(taskId) => {
             setSelectedTask(null)
