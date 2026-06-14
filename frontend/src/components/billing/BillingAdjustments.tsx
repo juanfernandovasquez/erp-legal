@@ -102,9 +102,23 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
     }
   }
 
-  const handleGenerarPDF = () => {
-    const base = api.defaults.baseURL || ''
-    window.open(`${base}/cases/${caseId}/billing/pdf`, '_blank')
+  const [generatingPDF, setGeneratingPDF] = useState(false)
+
+  const handleGenerarPDF = async () => {
+    setGeneratingPDF(true)
+    try {
+      const res = await api.get(`/cases/${caseId}/billing/pdf`, { responseType: 'blob' })
+      const url = URL.createObjectURL(res.data)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'factura.pdf'
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      alert('Error al generar el PDF')
+    } finally {
+      setGeneratingPDF(false)
+    }
   }
 
   if (loading) {
@@ -135,10 +149,11 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
         <div className="flex items-center gap-2">
           <button
             onClick={handleGenerarPDF}
-            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 border border-slate-200 hover:border-blue-300 rounded px-3 py-1.5 transition-colors bg-white"
+            disabled={generatingPDF}
+            className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-blue-600 border border-slate-200 hover:border-blue-300 rounded px-3 py-1.5 transition-colors bg-white disabled:opacity-50"
           >
-            <FileText size={13} />
-            Generar PDF
+            {generatingPDF ? <Loader2 size={13} className="animate-spin" /> : <FileText size={13} />}
+            {generatingPDF ? 'Generando...' : 'Generar PDF'}
           </button>
           <button
             onClick={() => { setShowForm(v => !v); setFormError('') }}
