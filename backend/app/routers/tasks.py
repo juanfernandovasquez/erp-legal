@@ -513,7 +513,18 @@ async def update_task(
             except (ValueError, AttributeError):
                 pass
 
+    task.updated_at = datetime.utcnow()
+    task.updated_by = current_user.id
+    await db.commit()
 
+    result2 = await db.execute(
+        select(Task)
+        .where(Task.id == task_uuid)
+        .options(selectinload(Task.assignee), selectinload(Task.case))
+    )
+    task = result2.scalars().first()
+
+    return success_response(data=_format_task(task), meta={})
 
 
 @router.delete("/tasks/{task_id}", response_model=dict, summary="Soft-delete a task and its hours")
