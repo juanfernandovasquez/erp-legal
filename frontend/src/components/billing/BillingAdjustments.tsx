@@ -4,7 +4,7 @@ import api from '@/lib/axios'
 
 interface Ajuste {
   id: string
-  procesoId: string
+  casoId: string
   nombre: string | null
   descripcion: string
   monto: number
@@ -13,17 +13,17 @@ interface Ajuste {
 }
 
 interface BillingResumen {
-  procesoId: string
+  casoId: string
   subtotalHoras: number
   ajustes: Ajuste[]
   totalAjustes: number
   totalFinal: number
   moneda: string
-  tipoTarifa: 'plana' | 'por_horas' | null
+  tipoFacturacion: 'flat' | 'por_horas' | null
 }
 
 interface Props {
-  processId: string
+  caseId: string
   moneda?: string
 }
 
@@ -32,7 +32,7 @@ function formatMoney(amount: number, moneda: string): string {
   return `${simbolo} ${amount.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 }
 
-export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
+export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
   const [data, setData] = useState<BillingResumen | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -49,14 +49,14 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
     setLoading(true)
     setError('')
     try {
-      const res = await api.get(`/processes/${processId}/billing`)
+      const res = await api.get(`/cases/${caseId}/billing`)
       setData(res.data.data)
     } catch {
       setError('Error al cargar el resumen de facturación.')
     } finally {
       setLoading(false)
     }
-  }, [processId])
+  }, [caseId])
 
   useEffect(() => {
     loadBilling()
@@ -74,7 +74,7 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
 
     setSaving(true)
     try {
-      await api.post(`/processes/${processId}/billing/adjustments`, {
+      await api.post(`/cases/${caseId}/billing/adjustments`, {
         nombre: formNombre.trim() || undefined,
         descripcion,
         monto: montoNum,
@@ -95,7 +95,7 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
     if (!window.confirm('¿Eliminar este ajuste?')) return
     setDeleting(adjId)
     try {
-      await api.delete(`/processes/${processId}/billing/adjustments/${adjId}`)
+      await api.delete(`/cases/${caseId}/billing/adjustments/${adjId}`)
       await loadBilling()
     } finally {
       setDeleting(null)
@@ -104,7 +104,7 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
 
   const handleGenerarPDF = () => {
     const base = api.defaults.baseURL || ''
-    window.open(`${base}/processes/${processId}/billing/pdf`, '_blank')
+    window.open(`${base}/cases/${caseId}/billing/pdf`, '_blank')
   }
 
   if (loading) {
@@ -190,7 +190,7 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
         </div>
       ) : (
         !showForm && (
-          <p className="text-sm text-slate-400 italic py-2">Sin ajustes registrados para este proceso.</p>
+          <p className="text-sm text-slate-400 italic py-2">Sin ajustes registrados para este caso.</p>
         )
       )}
 
@@ -271,7 +271,7 @@ export function BillingAdjustments({ processId, moneda = 'PEN' }: Props) {
         <div className="divide-y divide-slate-100">
           <div className="flex items-center justify-between px-4 py-2.5 text-sm bg-slate-50">
             <span className="text-slate-600">
-              {data.tipoTarifa === 'plana' ? 'Honorario fijo' : 'Subtotal horas'}
+              {data.tipoFacturacion === 'flat' ? 'Honorario fijo' : 'Subtotal horas'}
             </span>
             <span className="font-medium text-slate-800">{formatMoney(data.subtotalHoras, currMoneda)}</span>
           </div>

@@ -1,10 +1,10 @@
-"""BillingAdjustment model — manual adjustments to process billing."""
+"""BillingAdjustment model — manual adjustments to case-level billing."""
 
 import uuid
 from typing import Optional
 from decimal import Decimal
 
-from sqlalchemy import String, Text, Numeric, Boolean, DateTime, ForeignKey
+from sqlalchemy import String, Text, Numeric, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -13,15 +13,15 @@ from app.models.base import BaseModel
 
 class BillingAdjustment(BaseModel):
     """
-    A manual billing adjustment (positive or negative) attached to a process.
+    A manual billing adjustment (positive or negative) attached to a case.
     Allows adding discounts, extra charges or corrections to the computed total.
     """
 
     __tablename__ = "billing_adjustments"
 
-    process_id: Mapped[uuid.UUID] = mapped_column(
+    case_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
-        ForeignKey("case_processes.id", ondelete="CASCADE"),
+        ForeignKey("cases.id", ondelete="CASCADE"),
         nullable=False,
     )
 
@@ -35,15 +35,12 @@ class BillingAdjustment(BaseModel):
     descripcion: Mapped[str] = mapped_column(Text, nullable=False)
     monto: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
 
-    # Override the created_by from AuditMixin — same FK definition, already inherited.
-    # The AuditMixin already declares created_by, so we do NOT redeclare it here.
-
     # Relationships
-    process: Mapped["CaseProcess"] = relationship(
-        "CaseProcess",
-        foreign_keys=[process_id],
+    case: Mapped["Case"] = relationship(
+        "Case",
+        foreign_keys=[case_id],
     )
 
 
 # Avoid circular imports
-from app.models.process import CaseProcess
+from app.models.case import Case

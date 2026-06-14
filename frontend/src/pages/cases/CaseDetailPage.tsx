@@ -24,8 +24,8 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { useCases } from '@/hooks/useCases'
 import { formatDate, formatCurrency, getPriorityColor, getPriorityLabel, getTaskStatusColor, getTaskStatusLabel, CASE_STATUS_OPTIONS } from '@/lib/utils'
-import { Caso, Tarea, Proceso } from '@/types'
-import { CaseProcessSection } from '@/components/cases/CaseProcessSection'
+import { Caso, Tarea } from '@/types'
+import { BillingAdjustments } from '@/components/billing/BillingAdjustments'
 import {
   ArrowLeft, Calendar, DollarSign, User, Plus, Pencil, Check, X,
   LayoutGrid, List, ChevronUp, ChevronDown, ChevronsUpDown, AlertCircle, Trash2, RefreshCw,
@@ -76,7 +76,6 @@ export function CaseDetailPage() {
   const [tareasLoading, setTareasLoading] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Tarea | null>(null)
 
-  const [procesos, setProcesos] = useState<Proceso[]>([])
   const [showNewProcessForm, setShowNewProcessForm] = useState(false)
   const [tareasView, setTareasView] = useState<'grid' | 'list'>('list')
   const [horasKey, setHorasKey] = useState(0)
@@ -115,7 +114,6 @@ export function CaseDetailPage() {
       setCurrentCase(null)
       fetchCaseById(id)
       fetchTareas()
-      fetchProcesos()
       fetchCaseAlerts(id)
     }
   }, [id])
@@ -134,16 +132,6 @@ export function CaseDetailPage() {
       console.error('Error fetching tareas:', error)
     } finally {
       setTareasLoading(false)
-    }
-  }
-
-  const fetchProcesos = async () => {
-    if (!id || isNew) return
-    try {
-      const res = await api.get(`/cases/${id}/processes`)
-      setProcesos(res.data.data || [])
-    } catch (err) {
-      console.error('Error fetching procesos:', err)
     }
   }
 
@@ -509,10 +497,9 @@ export function CaseDetailPage() {
             <TabsTrigger value="tareas">Tareas</TabsTrigger>
             <TabsTrigger value="documentos">Documentos</TabsTrigger>
             <TabsTrigger value="equipo">Equipo</TabsTrigger>
-            <TabsTrigger value="horas">Horas</TabsTrigger>
+            <TabsTrigger value="horas">Facturación</TabsTrigger>
             <TabsTrigger value="actualizaciones">Actualizaciones</TabsTrigger>
             <TabsTrigger value="alertas">Alertas</TabsTrigger>
-            <TabsTrigger value="procesos">Procesos</TabsTrigger>
           </TabsList>
 
           <TabsContent value="info">
@@ -669,60 +656,40 @@ export function CaseDetailPage() {
           </TabsContent>
 
           <TabsContent value="horas">
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  className="gap-2"
-                  onClick={() => setShowHorasForm(true)}
-                >
-                  <Plus size={15} />
-                  Registrar horas
-                </Button>
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex justify-end">
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setShowHorasForm(true)}
+                  >
+                    <Plus size={15} />
+                    Registrar horas
+                  </Button>
+                </div>
+
+                <HoursTable
+                  key={horasKey}
+                  caseId={caso.id}
+                  tareas={tareas.map((t) => ({ id: t.id, titulo: t.titulo, fechaPresentacion: t.fechaPresentacion }))}
+                  moneda={caso.monedaFacturacion ?? 'PEN'}
+                  tipoFacturacion={caso.tipoFacturacion ?? null}
+                  onUpdate={() => setHorasKey((k) => k + 1)}
+                />
               </div>
 
-              <HoursTable
-                key={horasKey}
-                caseId={caso.id}
-                tareas={tareas.map((t) => ({ id: t.id, titulo: t.titulo, fechaPresentacion: t.fechaPresentacion }))}
-                moneda={caso.monedaFacturacion ?? 'PEN'}
-                tipoFacturacion={caso.tipoFacturacion ?? null}
-                onUpdate={() => setHorasKey((k) => k + 1)}
-              />
+              <div className="border-t border-slate-200 pt-6">
+                <BillingAdjustments
+                  caseId={caso.id}
+                  moneda={caso.monedaFacturacion ?? 'PEN'}
+                />
+              </div>
             </div>
           </TabsContent>
 
           <TabsContent value="actualizaciones">
             <CaseUpdates caseId={caso.id} />
-          </TabsContent>
-
-          <TabsContent value="procesos">
-            <div className="space-y-4">
-              {procesos.length === 0 ? (
-                <div className="text-center py-16 text-slate-400">
-                  <div className="text-3xl mb-3">📁</div>
-                  <p className="font-medium text-slate-600 mb-1">Sin procesos aún</p>
-                  <p className="text-sm">Crea el primer proceso desde la sección de Tareas.</p>
-                </div>
-              ) : (
-                procesos.map((p) => (
-                  <CaseProcessSection
-                    key={p.id}
-                    proceso={p}
-                    tareas={tareas.filter((t) => t.procesoId === p.id)}
-                    caseId={caso.id}
-                    onProcesoUpdated={(updated) =>
-                      setProcesos((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
-                    }
-                    onProcesoDeleted={(pid) =>
-                      setProcesos((prev) => prev.filter((x) => x.id !== pid))
-                    }
-                    onTareaCreated={(t) => setTareas((prev) => [...prev, t])}
-                    onTareaClick={(t) => setSelectedTask(t)}
-                  />
-                ))
-              )}
-            </div>
           </TabsContent>
 
         </Tabs>
