@@ -111,8 +111,6 @@ export function HoursTable({ caseId, tareas = [], moneda = 'PEN', tipoFacturacio
   const saveEdit = async () => {
     const min = parseInt(editForm.minutos)
     if (!min || min <= 0) { setEditError('Ingresa minutos válidos'); return }
-    if (!editForm.descripcion.trim()) { setEditError('La descripción es requerida'); return }
-
     setSaving(true)
     setEditError('')
     try {
@@ -301,7 +299,7 @@ export function HoursTable({ caseId, tareas = [], moneda = 'PEN', tipoFacturacio
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-xs font-medium text-slate-600 mb-1">Descripción *</label>
+                                  <label className="block text-xs font-medium text-slate-600 mb-1">Descripción <span className="font-normal text-slate-400">(opcional)</span></label>
                                   <textarea
                                     rows={2}
                                     value={editForm.descripcion}
