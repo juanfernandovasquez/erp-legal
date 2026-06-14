@@ -81,8 +81,6 @@ export function CaseDetailPage() {
   const [tareasView, setTareasView] = useState<'grid' | 'list'>('list')
   const [horasKey, setHorasKey] = useState(0)
   const [showHorasForm, setShowHorasForm] = useState(false)
-  useEscapeKey(() => setShowHorasForm(false), showHorasForm)
-  useEscapeKey(() => setEditingCase(false), editingCase)
 
   // Sort
   const [sortKey, setSortKey] = useState<SortKey | null>(null)
@@ -96,6 +94,9 @@ export function CaseDetailPage() {
   const [deletingCase, setDeletingCase] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [editingCase, setEditingCase] = useState(false)
+
+  useEscapeKey(() => setShowHorasForm(false), showHorasForm)
+  useEscapeKey(() => setEditingCase(false), editingCase)
 
   // Alerts
   const {

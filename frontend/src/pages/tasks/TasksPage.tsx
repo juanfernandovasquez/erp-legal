@@ -55,9 +55,9 @@ export function TasksPage() {
 
   // Modals
   const [showModal, setShowModal] = useState(false)
-  useEscapeKey(() => { setShowModal(false); setSelectedTask(null) }, showModal || !!selectedTask)
   const [selectedCaseId, setSelectedCaseId] = useState('')
   const [selectedTask, setSelectedTask] = useState<Tarea | null>(null)
+  useEscapeKey(() => { setShowModal(false); setSelectedTask(null) }, showModal || !!selectedTask)
 
   useEffect(() => { fetchUsers(); fetchCases(); fetchClients() }, [])
   useEffect(() => { fetchTasks() }, [statusFilter, priorityFilter, assigneeFilter, caseFilter, clientFilter, dueFilter])
