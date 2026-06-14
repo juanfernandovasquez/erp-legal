@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
-revision = "007_billing_adjustments_case_level"
+revision = "007_billing_case"
 down_revision = "006_add_billing_adjustments"
 branch_labels = None
 depends_on = None
