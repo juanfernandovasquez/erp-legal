@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
@@ -20,6 +21,7 @@ export function AlertsPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  useEscapeKey(() => { setShowCreateModal(false); setDeleteTarget(null) }, showCreateModal || !!deleteTarget)
   const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {

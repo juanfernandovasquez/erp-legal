@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useNavigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/button'
@@ -616,6 +617,7 @@ export function HoursPage() {
   // ── Modals ─────────────────────────────────────────────────────────────────
   const [showModal, setShowModal]                     = useState(false)
   const [quickRegisterCaso, setQuickRegisterCaso]     = useState<string | null>(null)
+  useEscapeKey(() => { setShowModal(false); setQuickRegisterCaso(null) }, showModal || !!quickRegisterCaso)
 
   // ── Expandable rows ────────────────────────────────────────────────────────
   const [expandedCasos, setExpandedCasos]             = useState<Set<string>>(new Set())

@@ -20,6 +20,7 @@ import { TaskDetailModal } from '@/components/tasks/TaskDetailModal'
 import { AlertCard } from '@/components/alerts/AlertCard'
 import { AlertForm } from '@/components/alerts/AlertForm'
 import { useAlerts } from '@/hooks/useAlerts'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { useCases } from '@/hooks/useCases'
@@ -80,6 +81,8 @@ export function CaseDetailPage() {
   const [tareasView, setTareasView] = useState<'grid' | 'list'>('list')
   const [horasKey, setHorasKey] = useState(0)
   const [showHorasForm, setShowHorasForm] = useState(false)
+  useEscapeKey(() => setShowHorasForm(false), showHorasForm)
+  useEscapeKey(() => setEditingCase(false), editingCase)
 
   // Sort
   const [sortKey, setSortKey] = useState<SortKey | null>(null)

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { X, Save, Trash2, ExternalLink, Calendar, User, AlignLeft, Briefcase } from 'lucide-react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -21,6 +22,7 @@ interface TaskDetailModalProps {
 
 export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailModalProps) {
   const navigate = useNavigate()
+  useEscapeKey(onClose)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)

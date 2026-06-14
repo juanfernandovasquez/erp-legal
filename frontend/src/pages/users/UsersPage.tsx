@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -81,6 +82,13 @@ export function UsersPage() {
   const [deleteTarget, setDeleteTarget] = useState<UserData | null>(null)
   const [isDeleting, setIsDeleting]     = useState(false)
   const [deleteError, setDeleteError]   = useState('')
+
+  useEscapeKey(() => {
+    if (deleteTarget) setDeleteTarget(null)
+    else if (pwUser) setPwUser(null)
+    else if (editUser) setEditUser(null)
+    else setShowCreateModal(false)
+  }, showCreateModal || !!editUser || !!pwUser || !!deleteTarget)
 
   // ── Data fetch ────────────────────────────────────────────────────────────
 

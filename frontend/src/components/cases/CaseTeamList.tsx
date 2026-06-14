@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -24,6 +25,7 @@ export function CaseTeamList({
 
   // Add member modal state
   const [showAddModal, setShowAddModal] = useState(false)
+  useEscapeKey(() => setShowAddModal(false), showAddModal)
   const [firmUsers, setFirmUsers] = useState<any[]>([])
   const [selectedUserId, setSelectedUserId] = useState('')
   const [isAdding, setIsAdding] = useState(false)

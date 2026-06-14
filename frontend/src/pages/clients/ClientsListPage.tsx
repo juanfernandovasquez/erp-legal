@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { useNavigate } from 'react-router-dom'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/button'
@@ -39,6 +40,7 @@ export function ClientsListPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
+  useEscapeKey(() => setShowModal(false), showModal)
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')

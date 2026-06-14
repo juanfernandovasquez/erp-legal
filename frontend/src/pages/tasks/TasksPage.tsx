@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
+import { useEscapeKey } from '@/hooks/useEscapeKey'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
@@ -54,6 +55,7 @@ export function TasksPage() {
 
   // Modals
   const [showModal, setShowModal] = useState(false)
+  useEscapeKey(() => { setShowModal(false); setSelectedTask(null) }, showModal || !!selectedTask)
   const [selectedCaseId, setSelectedCaseId] = useState('')
   const [selectedTask, setSelectedTask] = useState<Tarea | null>(null)
 
