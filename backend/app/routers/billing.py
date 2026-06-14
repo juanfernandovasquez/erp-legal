@@ -166,6 +166,52 @@ async def create_adjustment(
     return success_response(data=_format_adjustment(adj), meta={})
 
 
+# ── PATCH /cases/{case_id}/billing/adjustments/{adj_id} ──────────────────────
+
+@router.patch(
+    "/cases/{case_id}/billing/adjustments/{adj_id}",
+    response_model=dict,
+    summary="Editar ajuste de facturación",
+)
+async def update_adjustment(
+    case_id: str,
+    adj_id: str,
+    request: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    case = await _get_case_or_404(db, case_id, current_user.law_firm_id)
+
+    try:
+        adj_uuid = uuid_module.UUID(adj_id)
+    except (ValueError, AttributeError):
+        raise HTTPException(status_code=404, detail="Ajuste no encontrado")
+
+    adj = await db.get(BillingAdjustment, adj_uuid)
+    if not adj or adj.is_deleted or adj.case_id != case.id:
+        raise HTTPException(status_code=404, detail="Ajuste no encontrado")
+
+    if "nombre" in request:
+        adj.nombre = (request["nombre"] or "").strip() or None
+    if "descripcion" in request:
+        descripcion = (request["descripcion"] or "").strip()
+        if not descripcion:
+            raise HTTPException(status_code=422, detail="La descripción es requerida")
+        adj.descripcion = descripcion
+    if "monto" in request:
+        try:
+            adj.monto = float(request["monto"])
+        except (TypeError, ValueError):
+            raise HTTPException(status_code=422, detail="El monto debe ser un número")
+
+    adj.updated_at = datetime.utcnow()
+    adj.updated_by = current_user.id
+    await db.commit()
+    await db.refresh(adj)
+
+    return success_response(data=_format_adjustment(adj), meta={})
+
+
 # ── DELETE /cases/{case_id}/billing/adjustments/{adj_id} ─────────────────────
 
 @router.delete(
