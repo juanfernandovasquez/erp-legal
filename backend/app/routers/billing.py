@@ -136,9 +136,7 @@ async def create_adjustment(
 ):
     case = await _get_case_or_404(db, case_id, current_user.law_firm_id)
 
-    descripcion = (request.get("descripcion") or "").strip()
-    if not descripcion:
-        raise HTTPException(status_code=422, detail="La descripción es requerida")
+    descripcion = (request.get("descripcion") or "").strip() or None
 
     monto_raw = request.get("monto")
     if monto_raw is None:
@@ -148,13 +146,11 @@ async def create_adjustment(
     except (TypeError, ValueError):
         raise HTTPException(status_code=422, detail="El monto debe ser un número")
 
-    nombre = (request.get("nombre") or "").strip() or None
-
     adj = BillingAdjustment(
         case_id=case.id,
         law_firm_id=current_user.law_firm_id,
-        nombre=nombre,
-        descripcion=descripcion,
+        nombre=None,
+        descripcion=descripcion or "",
         monto=monto,
         created_by=current_user.id,
         is_deleted=False,
@@ -191,13 +187,8 @@ async def update_adjustment(
     if not adj or adj.is_deleted or adj.case_id != case.id:
         raise HTTPException(status_code=404, detail="Ajuste no encontrado")
 
-    if "nombre" in request:
-        adj.nombre = (request["nombre"] or "").strip() or None
     if "descripcion" in request:
-        descripcion = (request["descripcion"] or "").strip()
-        if not descripcion:
-            raise HTTPException(status_code=422, detail="La descripción es requerida")
-        adj.descripcion = descripcion
+        adj.descripcion = (request["descripcion"] or "").strip() or ""
     if "monto" in request:
         try:
             adj.monto = float(request["monto"])

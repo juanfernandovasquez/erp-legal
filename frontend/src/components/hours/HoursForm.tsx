@@ -101,7 +101,6 @@ export function HoursForm({
     e.preventDefault()
     if (!selectedCaseId) { setError('Selecciona un caso'); return }
     if (!minutos || minutosNum <= 0) { setError('Ingresa los minutos trabajados'); return }
-    if (!descripcion.trim()) { setError('La descripción es requerida'); return }
 
     setIsSubmitting(true)
     setError('')
@@ -258,7 +257,7 @@ export function HoursForm({
 
       <div>
         <label className="block text-sm font-medium text-slate-700 mb-1.5">
-          Descripción del trabajo *
+          Descripción del trabajo <span className="text-slate-400 font-normal">(opcional)</span>
         </label>
         <textarea
           value={descripcion}
@@ -266,7 +265,6 @@ export function HoursForm({
           placeholder="Describe brevemente el trabajo realizado..."
           rows={2}
           className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-          required
         />
       </div>
 

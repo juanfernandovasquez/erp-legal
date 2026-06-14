@@ -41,7 +41,6 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
 
   // New form
   const [showForm, setShowForm]           = useState(false)
-  const [formNombre, setFormNombre]       = useState('')
   const [formDesc, setFormDesc]           = useState('')
   const [formMonto, setFormMonto]         = useState('')
   const [formError, setFormError]         = useState('')
@@ -49,7 +48,6 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
 
   // Inline edit
   const [editingId, setEditingId]         = useState<string | null>(null)
-  const [editNombre, setEditNombre]       = useState('')
   const [editDesc, setEditDesc]           = useState('')
   const [editMonto, setEditMonto]         = useState('')
   const [editError, setEditError]         = useState('')
@@ -70,16 +68,15 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault(); setFormError('')
-    const descripcion = formDesc.trim()
-    if (!descripcion) { setFormError('La descripción es requerida'); return }
     const monto = parseFloat(formMonto)
     if (isNaN(monto)) { setFormError('Monto inválido'); return }
     setSaving(true)
     try {
       await api.post(`/cases/${caseId}/billing/adjustments`, {
-        nombre: formNombre.trim() || undefined, descripcion, monto,
+        descripcion: formDesc.trim() || null,
+        monto,
       })
-      setShowForm(false); setFormNombre(''); setFormDesc(''); setFormMonto('')
+      setShowForm(false); setFormDesc(''); setFormMonto('')
       await load()
     } catch (err: any) {
       setFormError(err?.response?.data?.detail || 'Error al guardar')
@@ -87,20 +84,19 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
   }
 
   const startEdit = (adj: Ajuste) => {
-    setEditingId(adj.id); setEditNombre(adj.nombre || '')
+    setEditingId(adj.id)
     setEditDesc(adj.descripcion); setEditMonto(String(adj.monto)); setEditError('')
   }
 
   const handleEdit = async (adj: Ajuste) => {
     setEditError('')
-    const descripcion = editDesc.trim()
-    if (!descripcion) { setEditError('Descripción requerida'); return }
     const monto = parseFloat(editMonto)
     if (isNaN(monto)) { setEditError('Monto inválido'); return }
     setSavingEdit(true)
     try {
       await api.patch(`/cases/${caseId}/billing/adjustments/${adj.id}`, {
-        nombre: editNombre.trim() || null, descripcion, monto,
+        descripcion: editDesc.trim() || null,
+        monto,
       })
       setEditingId(null); await load()
     } catch (err: any) {
@@ -168,21 +164,16 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
         {showForm && (
           <form onSubmit={handleCreate} className="px-5 py-4 bg-slate-50 border-b border-slate-100 space-y-3">
             {formError && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-3 py-1.5">{formError}</p>}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-500 mb-1">Nombre <span className="font-normal">(opcional)</span></label>
-                <input type="text" value={formNombre} onChange={e => setFormNombre(e.target.value)}
-                  placeholder="Ej. Descuento, Recargo..." className={inputCls} />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Monto <span className="font-normal text-slate-400">(negativo = descuento)</span></label>
                 <input type="number" step="0.01" value={formMonto} onChange={e => setFormMonto(e.target.value)}
                   placeholder="0.00" className={inputCls} required />
               </div>
-              <div className="md:col-span-1">
-                <label className="block text-xs font-medium text-slate-500 mb-1">Descripción <span className="text-red-400">*</span></label>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Descripción <span className="font-normal text-slate-400">(opcional)</span></label>
                 <input type="text" value={formDesc} onChange={e => setFormDesc(e.target.value)}
-                  placeholder="Describe el ajuste..." className={inputCls} required />
+                  placeholder="Ej. Descuento por pronto pago..." className={inputCls} />
               </div>
             </div>
             <div className="flex gap-2">
@@ -208,7 +199,6 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60">
-                <th className="px-5 py-2.5 text-left text-xs font-medium text-slate-500">Nombre</th>
                 <th className="px-5 py-2.5 text-left text-xs font-medium text-slate-500">Descripción</th>
                 <th className="px-5 py-2.5 text-right text-xs font-medium text-slate-500">Monto</th>
                 <th className="px-4 py-2.5 w-20" />
@@ -219,12 +209,8 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
                 editingId === adj.id ? (
                   <tr key={adj.id} className="bg-amber-50/60">
                     <td className="px-3 py-2">
-                      <input type="text" value={editNombre} onChange={e => setEditNombre(e.target.value)}
-                        placeholder="Nombre" className={inputCls} />
-                    </td>
-                    <td className="px-3 py-2">
                       <input type="text" value={editDesc} onChange={e => setEditDesc(e.target.value)}
-                        placeholder="Descripción" className={inputCls} />
+                        placeholder="Descripción (opcional)" className={inputCls} />
                       {editError && <p className="text-xs text-red-500 mt-1">{editError}</p>}
                     </td>
                     <td className="px-3 py-2">
@@ -246,10 +232,9 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
                   </tr>
                 ) : (
                   <tr key={adj.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-5 py-3 font-medium text-slate-700">
-                      {adj.nombre || <span className="text-slate-400 font-normal italic text-xs">—</span>}
+                    <td className="px-5 py-3 text-slate-600">
+                      {adj.descripcion || <span className="text-slate-400 italic text-xs">Sin descripción</span>}
                     </td>
-                    <td className="px-5 py-3 text-slate-500">{adj.descripcion}</td>
                     <td className="px-5 py-3 text-right font-semibold">
                       <span className={adj.monto < 0 ? 'text-red-500' : 'text-emerald-600'}>
                         {adj.monto < 0 ? '−' : '+'} {fmt(adj.monto, m)}
