@@ -136,6 +136,7 @@ from app.routers import (
 from app.routers.processes import router as processes_router
 from app.routers.billing import router as billing_router
 from app.routers.emails import router as emails_router
+from app.routers.notification_rules import router as notification_rules_router
 
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Autenticación"])
 app.include_router(law_firms_router, prefix="/api/v1/law-firms", tags=["Estudios Legales"])
@@ -153,6 +154,7 @@ app.include_router(dashboard_router, prefix="/api/v1/admin", tags=["Dashboard Ad
 app.include_router(client_portal_router, prefix="/api/v1/client", tags=["Portal Cliente"])
 app.include_router(billing_router, prefix="/api/v1", tags=["Facturación"])
 app.include_router(emails_router, prefix="/api/v1", tags=["Emails"])
+app.include_router(notification_rules_router, prefix="/api/v1", tags=["Notificaciones"])
 
 
 if __name__ == "__main__":

@@ -197,6 +197,37 @@ async def notify_hours_logged(
     return await _send(to_email, to_name, f"Horas registradas en: {task_title}", _base_html("Horas registradas", body))
 
 
+async def notify_deadline_approaching(
+    to_email: str,
+    to_name: str,
+    task_title: str,
+    case_title: str,
+    due_date: str,
+    days_before: int,
+) -> bool:
+    urgency_color = "#ef4444" if days_before <= 1 else ("#f59e0b" if days_before <= 3 else "#3b82f6")
+    days_label = "hoy vence" if days_before == 0 else (f"vence mañana" if days_before == 1 else f"vence en {days_before} días")
+
+    body = f"""
+    <p style="margin:0 0 20px;color:#374151;font-size:15px;">
+      Hola <strong>{to_name}</strong>, una tarea asignada a ti se acerca a su fecha límite.
+    </p>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 24px;margin-bottom:24px;">
+      <p style="margin:0 0 12px;font-size:16px;font-weight:700;color:#1e293b;">{task_title}</p>
+      <table cellpadding="0" cellspacing="0" style="width:100%;">
+        {_row("Proceso:", case_title)}
+        {_row("Fecha límite:", due_date)}
+        {_row("Estado:", _badge(days_label.upper(), urgency_color))}
+      </table>
+    </div>
+    <p style="margin:0;color:#64748b;font-size:13px;">
+      Ingresa al ERP para revisar y actualizar el estado de la tarea.
+    </p>
+    """
+    subject = f"⚠ Tarea por vencer: {task_title}" if days_before <= 1 else f"Recordatorio: {task_title} {days_label}"
+    return await _send(to_email, to_name, subject, _base_html("Plazo próximo a vencer", body))
+
+
 async def send_manual_email(
     recipients: list[dict],  # [{"email": ..., "name": ...}]
     subject: str,

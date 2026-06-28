@@ -1,0 +1,136 @@
+"""
+Daily cron script — check task deadlines and send notification emails.
+
+Usage (run from backend container):
+    python -m app.scripts.check_deadlines
+
+Cron entry (8am Lima time = 1pm UTC):
+    0 13 * * * docker exec erp-legal-backend python -m app.scripts.check_deadlines >> /var/log/check_deadlines.log 2>&1
+"""
+
+import asyncio
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import select, and_
+from sqlalchemy.orm import selectinload
+
+from app.database import AsyncSessionLocal
+from app.models import Task, NotificationRule, User, Case
+from app.models.case import CaseTeam
+from app.services.email_service import notify_deadline_approaching
+from app.models.email_log import EmailLog
+
+
+async def run():
+    today = datetime.now(timezone.utc).date()
+    print(f"[check_deadlines] Running for date: {today}", flush=True)
+
+    async with AsyncSessionLocal() as db:
+        # Load all active notification rules
+        rules_result = await db.execute(
+            select(NotificationRule).where(
+                NotificationRule.is_active == True,
+                NotificationRule.is_deleted == False,
+            )
+        )
+        rules = rules_result.scalars().all()
+
+        if not rules:
+            print("[check_deadlines] No active rules found.", flush=True)
+            return
+
+        # Group rules by case_id
+        rules_by_case: dict[str, list[NotificationRule]] = {}
+        for rule in rules:
+            key = str(rule.case_id)
+            rules_by_case.setdefault(key, []).append(rule)
+
+        sent_count = 0
+
+        for case_id_str, case_rules in rules_by_case.items():
+            # Load tasks for this case that are not done/cancelled and have a due date
+            tasks_result = await db.execute(
+                select(Task).where(
+                    Task.case_id == case_rules[0].case_id,
+                    Task.is_deleted == False,
+                    Task.due_date.isnot(None),
+                    Task.status.not_in(["done", "cancelled"]),
+                ).options(
+                    selectinload(Task.assignee),
+                    selectinload(Task.case),
+                )
+            )
+            tasks = tasks_result.scalars().all()
+
+            if not tasks:
+                continue
+
+            for rule in case_rules:
+                target_date = today + timedelta(days=rule.days_before)
+
+                matching_tasks = [
+                    t for t in tasks
+                    if t.due_date and t.due_date.date() == target_date
+                ]
+
+                if not matching_tasks:
+                    continue
+
+                # Load supervisors if needed
+                supervisors = []
+                if rule.notify_supervisors:
+                    team_result = await db.execute(
+                        select(User)
+                        .join(CaseTeam, CaseTeam.user_id == User.id)
+                        .where(
+                            CaseTeam.case_id == rule.case_id,
+                            CaseTeam.is_deleted == False,
+                            User.role.in_(["admin_firma", "super_admin"]),
+                            User.is_deleted == False,
+                        )
+                    )
+                    supervisors = team_result.scalars().all()
+
+                for task in matching_tasks:
+                    recipients = []
+
+                    if rule.notify_assignee and task.assignee and task.assignee.email:
+                        recipients.append(task.assignee)
+
+                    if rule.notify_supervisors:
+                        for sup in supervisors:
+                            if sup not in recipients:
+                                recipients.append(sup)
+
+                    case_title = task.case.title if task.case else ""
+                    due_str = target_date.isoformat()
+
+                    for recipient in recipients:
+                        ok = await notify_deadline_approaching(
+                            to_email=recipient.email,
+                            to_name=f"{recipient.first_name} {recipient.last_name}".strip(),
+                            task_title=task.title,
+                            case_title=case_title,
+                            due_date=due_str,
+                            days_before=rule.days_before,
+                        )
+                        log = EmailLog(
+                            law_firm_id=rule.law_firm_id,
+                            event_type="deadline_reminder",
+                            to_email=recipient.email,
+                            to_name=f"{recipient.first_name} {recipient.last_name}".strip(),
+                            subject=f"Recordatorio: {task.title}",
+                            sent_at=datetime.now(timezone.utc),
+                            success=ok,
+                        )
+                        db.add(log)
+                        if ok:
+                            sent_count += 1
+                            print(f"[check_deadlines] Sent to {recipient.email} — task: {task.title} ({rule.days_before}d before)", flush=True)
+
+        await db.commit()
+        print(f"[check_deadlines] Done. Emails sent: {sent_count}", flush=True)
+
+
+if __name__ == "__main__":
+    asyncio.run(run())
