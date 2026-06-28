@@ -51,6 +51,8 @@ def _format_alert(alert: CaseAlert) -> dict:
         "isResolved": alert.is_resolved,
         "resolvedAt": alert.resolved_at.isoformat() if alert.resolved_at else None,
         "resolutionNotes": alert.resolution_notes,
+        "source": getattr(alert, "source", "manual"),
+        "tareaId": str(alert.task_id) if getattr(alert, "task_id", None) else None,
         "createdAt": alert.created_at.isoformat() if alert.created_at else None,
         "updatedAt": alert.updated_at.isoformat() if alert.updated_at else None,
     }
@@ -179,6 +181,7 @@ async def create_alert(
         message=request.message,
         alert_date=datetime.utcnow(),
         due_date=request.due_date,
+        source="manual",
         is_read=False,
         is_acknowledged=False,
         is_resolved=False,

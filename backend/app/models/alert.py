@@ -72,6 +72,16 @@ class CaseAlert(BaseModel):
     )
     resolution_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
+    # Source
+    source: Mapped[str] = mapped_column(String(10), default="manual", nullable=False)
+
+    # Task link (for auto-generated deadline alerts)
+    task_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("tasks.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+
     # Metadata
     alert_metadata: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
 

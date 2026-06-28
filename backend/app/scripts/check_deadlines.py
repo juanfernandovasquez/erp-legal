@@ -1,5 +1,5 @@
 """
-Daily cron script — check task deadlines and send notification emails.
+Daily cron script — check task deadlines, send notification emails, and create alert records.
 
 Usage (run from backend container):
     python -m app.scripts.check_deadlines
@@ -16,6 +16,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import AsyncSessionLocal
 from app.models import Task, NotificationRule, User, Case
+from app.models.alert import CaseAlert
 from app.models.case import CaseTeam
 from app.services.email_service import notify_deadline_approaching
 from app.models.email_log import EmailLog
@@ -46,6 +47,7 @@ async def run():
             rules_by_case.setdefault(key, []).append(rule)
 
         sent_count = 0
+        alert_count = 0
 
         for case_id_str, case_rules in rules_by_case.items():
             # Load tasks for this case that are not done/cancelled and have a due date
@@ -105,6 +107,43 @@ async def run():
                     case_title = task.case.title if task.case else ""
                     due_str = target_date.isoformat()
 
+                    # --- Create alert record (deduplicated by task + alert_date) ---
+                    existing = await db.execute(
+                        select(CaseAlert).where(
+                            CaseAlert.task_id == task.id,
+                            CaseAlert.is_deleted == False,
+                            CaseAlert.source == "auto",
+                            # Same calendar day
+                            CaseAlert.alert_date >= datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc),
+                        )
+                    )
+                    if not existing.scalars().first():
+                        severity = "critical" if rule.days_before <= 1 else ("warning" if rule.days_before <= 3 else "info")
+                        days_label = f"{rule.days_before} día{'s' if rule.days_before != 1 else ''}"
+                        alert_obj = CaseAlert(
+                            case_id=task.case_id,
+                            law_firm_id=rule.law_firm_id,
+                            task_id=task.id,
+                            source="auto",
+                            alert_type="deadline_approaching",
+                            severity=severity,
+                            title=f"Vencimiento en {days_label}: {task.title}",
+                            message=(
+                                f"La tarea «{task.title}» del caso «{case_title}» "
+                                f"vence el {due_str} ({days_label} restante{'s' if rule.days_before != 1 else ''})."
+                            ),
+                            alert_date=datetime.now(timezone.utc),
+                            due_date=task.due_date,
+                            is_read=False,
+                            is_acknowledged=False,
+                            is_resolved=False,
+                            is_deleted=False,
+                        )
+                        db.add(alert_obj)
+                        alert_count += 1
+                        print(f"[check_deadlines] Alert created — task: {task.title} ({rule.days_before}d before)", flush=True)
+
+                    # --- Send emails ---
                     for recipient in recipients:
                         ok = await notify_deadline_approaching(
                             to_email=recipient.email,
@@ -129,7 +168,7 @@ async def run():
                             print(f"[check_deadlines] Sent to {recipient.email} — task: {task.title} ({rule.days_before}d before)", flush=True)
 
         await db.commit()
-        print(f"[check_deadlines] Done. Emails sent: {sent_count}", flush=True)
+        print(f"[check_deadlines] Done. Emails sent: {sent_count}, Alerts created: {alert_count}", flush=True)
 
 
 if __name__ == "__main__":
