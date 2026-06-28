@@ -15,6 +15,7 @@ import {
   LogOut,
   Menu,
   X,
+  Mail,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -43,6 +44,7 @@ export function Sidebar() {
     { icon: AlertCircle, label: 'Alertas', href: '/alerts' },
     { icon: Users, label: 'Clientes', href: '/clients' },
     { icon: UserCog, label: 'Usuarios', href: '/users' },
+    { icon: Mail, label: 'Comunicaciones', href: '/emails' },
     { icon: Settings, label: 'Configuración', href: '/settings' },
   ]
 

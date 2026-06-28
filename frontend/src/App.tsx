@@ -15,6 +15,7 @@ import { ClientsListPage } from '@/pages/clients/ClientsListPage'
 import { ClientDetailPage } from '@/pages/clients/ClientDetailPage'
 import { UsersPage } from '@/pages/users/UsersPage'
 import { SettingsPage } from '@/pages/settings/SettingsPage'
+import EmailsPage from '@/pages/emails/EmailsPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
@@ -129,6 +130,15 @@ export default function App() {
           element={
             <ProtectedRoute>
               <UsersPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/emails"
+          element={
+            <ProtectedRoute>
+              <EmailsPage />
             </ProtectedRoute>
           }
         />

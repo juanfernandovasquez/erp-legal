@@ -27,6 +27,7 @@ import { useCases } from '@/hooks/useCases'
 import { formatDate, formatCurrency, getPriorityColor, getPriorityLabel, getTaskStatusColor, getTaskStatusLabel, CASE_STATUS_OPTIONS } from '@/lib/utils'
 import { Caso, Tarea } from '@/types'
 import { BillingAdjustments } from '@/components/billing/BillingAdjustments'
+import { NotificationRules } from '@/components/notifications/NotificationRules'
 import {
   ArrowLeft, Calendar, DollarSign, User, Plus, Pencil, Check, X,
   LayoutGrid, List, ChevronUp, ChevronDown, ChevronsUpDown, AlertCircle, Trash2, RefreshCw,
@@ -688,6 +689,10 @@ export function CaseDetailPage() {
                   caseId={caso.id}
                   moneda={caso.monedaFacturacion ?? 'PEN'}
                 />
+              </div>
+
+              <div className="border-t border-slate-200 pt-6">
+                <NotificationRules caseId={caso.id} />
               </div>
             </div>
           </TabsContent>
