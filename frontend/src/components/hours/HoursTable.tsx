@@ -293,6 +293,7 @@ export function HoursTable({ caseId, tareas = [], moneda = 'PEN', tipoFacturacio
                                   <label className="block text-xs font-medium text-slate-600 mb-1">Fecha</label>
                                   <input
                                     type="date"
+                                    lang="es"
                                     value={editForm.fecha}
                                     onChange={(e) => setEditForm((f) => ({ ...f, fecha: e.target.value }))}
                                     className="w-full border border-slate-300 rounded-md px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
