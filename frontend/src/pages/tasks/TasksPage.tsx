@@ -470,7 +470,8 @@ export function TasksPage() {
           onClose={() => setSelectedTask(null)}
           onSave={(updated) => {
             setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
-            setSelectedTask(updated)
+            setSelectedTask(null)
+            fetchTasks()
           }}
           onDelete={(taskId) => {
             setTasks((prev) => prev.filter((t) => t.id !== taskId))

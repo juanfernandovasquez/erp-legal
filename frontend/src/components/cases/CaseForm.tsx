@@ -44,6 +44,7 @@ export function CaseForm({ onSuccess, initialData, defaultClienteId, inline = fa
     watch,
     formState: { errors },
     setValue,
+    getValues,
   } = useForm<CaseFormData>({
     resolver: zodResolver(caseSchema),
     defaultValues: initialData ? {
@@ -141,7 +142,8 @@ export function CaseForm({ onSuccess, initialData, defaultClienteId, inline = fa
           { value: '', label: '— Selecciona un cliente —' },
           ...clientes.map((c) => ({ value: c.id, label: c.nombre })),
         ]}
-        {...register('clienteId')}
+        value={watch('clienteId') ?? ''}
+        onChange={(e) => setValue('clienteId', e.target.value, { shouldValidate: true })}
         error={errors.clienteId?.message}
       />
 
@@ -151,7 +153,8 @@ export function CaseForm({ onSuccess, initialData, defaultClienteId, inline = fa
           { value: '', label: '— Sin encargado —' },
           ...abogados.map((a) => ({ value: a.id, label: a.nombre })),
         ]}
-        {...register('abogadoPrincipalId')}
+        value={watch('abogadoPrincipalId') ?? ''}
+        onChange={(e) => setValue('abogadoPrincipalId', e.target.value)}
       />
 
       {/* ── Facturación ── */}

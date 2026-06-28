@@ -573,7 +573,8 @@ async def update_task(
     except Exception:
         pass
 
-    return success_response(data=_format_task(task), meta={})
+    client_names = await _get_client_names(db, {task.case_id})
+    return success_response(data=_format_task(task, client_names), meta={})
 
 
 @router.delete("/tasks/{task_id}", response_model=dict, summary="Soft-delete a task and its hours")

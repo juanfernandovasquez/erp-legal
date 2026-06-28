@@ -319,6 +319,55 @@ async def update_case(
     if request.estado is not None:
         case.status = request.estado
 
+    # Update primary client (junction table)
+    if request.clienteId is not None:
+        existing_cc = (await db.execute(
+            select(CaseClient).where(
+                CaseClient.case_id == case.id,
+                CaseClient.is_primary == True,
+                CaseClient.is_deleted == False,
+            )
+        )).scalars().first()
+        if existing_cc:
+            existing_cc.client_id = request.clienteId
+        else:
+            db.add(CaseClient(
+                case_id=case.id,
+                client_id=request.clienteId,
+                law_firm_id=case.law_firm_id,
+                role="principal",
+                is_primary=True,
+            ))
+
+    # Update lead lawyer (junction table)
+    if request.abogadoPrincipalId is not None:
+        existing_lead = (await db.execute(
+            select(CaseTeam).where(
+                CaseTeam.case_id == case.id,
+                CaseTeam.is_lead == True,
+                CaseTeam.is_deleted == False,
+            )
+        )).scalars().first()
+        import uuid as _uuid
+        try:
+            new_lead_uuid = _uuid.UUID(request.abogadoPrincipalId) if request.abogadoPrincipalId else None
+        except (ValueError, AttributeError):
+            new_lead_uuid = None
+        if new_lead_uuid:
+            if existing_lead:
+                existing_lead.user_id = new_lead_uuid
+            else:
+                db.add(CaseTeam(
+                    case_id=case.id,
+                    user_id=new_lead_uuid,
+                    law_firm_id=case.law_firm_id,
+                    role="abogado_senior",
+                    is_lead=True,
+                    assigned_date=datetime.utcnow(),
+                ))
+        elif existing_lead and request.abogadoPrincipalId == "":
+            existing_lead.is_lead = False
+
     case.updated_at = datetime.utcnow()
     await db.commit()
 
