@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 
-from app.database import AsyncSessionLocal
+from app.database import init_db, async_session_factory
 from app.models import Task, NotificationRule, User, Case
 from app.models.alert import CaseAlert
 from app.models.case import CaseTeam
@@ -23,10 +23,11 @@ from app.models.email_log import EmailLog
 
 
 async def run():
+    await init_db()
     today = datetime.now(timezone.utc).date()
     print(f"[check_deadlines] Running for date: {today}", flush=True)
 
-    async with AsyncSessionLocal() as db:
+    async with async_session_factory() as db:
         # Load all active notification rules
         rules_result = await db.execute(
             select(NotificationRule).where(
