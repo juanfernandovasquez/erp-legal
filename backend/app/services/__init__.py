@@ -16,6 +16,7 @@ from .document_service import (
 )
 from .alert_service import process_pending_alerts
 from .audit_service import audit_log
+from . import email_service
 
 __all__ = [
     "validate_case_hierarchy",
@@ -28,4 +29,5 @@ __all__ = [
     "calculate_file_hash",
     "process_pending_alerts",
     "audit_log",
+    "email_service",
 ]

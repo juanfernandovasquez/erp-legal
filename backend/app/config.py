@@ -57,6 +57,9 @@ class Settings(BaseSettings):
     smtp_from: str = "noreply@legainerp.com"
     smtp_tls: bool = True
 
+    # Brevo
+    brevo_api_key: Optional[str] = None
+
     # AWS S3
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None

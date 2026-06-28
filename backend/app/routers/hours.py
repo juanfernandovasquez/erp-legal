@@ -19,6 +19,7 @@ from app.models import User, Case, CaseHours, Task, CaseProcess
 from sqlalchemy.orm import joinedload
 from app.services.audit_service import audit_log
 from app.services.case_service import check_case_team_access
+from app.services import email_service
 
 router = APIRouter(tags=["hours"])
 
@@ -390,6 +391,33 @@ async def register_hours(
         entity_id=entry.id,
         description=f"Hours registered: {hours_val} hours",
     )
+
+    # Email notification — hours logged on a task
+    try:
+        if entry.task_id:
+            task_obj = await db.get(Task, entry.task_id)
+            if task_obj and task_obj.assignee_id and task_obj.assignee_id != current_user.id:
+                from sqlalchemy.orm import selectinload as _sli
+                res_u = await db.execute(
+                    select(User).where(User.id == task_obj.assignee_id)
+                )
+                assignee = res_u.scalars().first()
+                if assignee and assignee.email:
+                    case_obj = await db.get(Case, entry.case_id)
+                    work_date_str = entry.work_date.date().isoformat() if entry.work_date else ""
+                    logged_by = f"{current_user.first_name} {current_user.last_name}".strip()
+                    await email_service.notify_hours_logged(
+                        to_email=assignee.email,
+                        to_name=f"{assignee.first_name} {assignee.last_name}".strip(),
+                        task_title=task_obj.title,
+                        case_title=case_obj.title if case_obj else "",
+                        hours=hours_val,
+                        logged_by=logged_by,
+                        work_date=work_date_str,
+                        description=description,
+                    )
+    except Exception:
+        pass
 
     return success_response(data=_format_entry(entry), meta={})
 

@@ -20,6 +20,7 @@ from app.models.case import CaseClient
 from app.models.case import CaseClient
 from app.services.audit_service import audit_log
 from app.services.case_service import check_case_team_access
+from app.services import email_service
 
 router = APIRouter(tags=["tasks"])
 
@@ -394,6 +395,21 @@ async def create_task(
     except Exception:
         pass
 
+    # Email notification — new task assigned
+    if task.assignee and task.assignee.email and task.assignee_id != current_user.id:
+        try:
+            await email_service.notify_task_assigned(
+                to_email=task.assignee.email,
+                to_name=f"{task.assignee.first_name} {task.assignee.last_name}".strip(),
+                task_title=task.title,
+                case_title=task.case.title if task.case else "",
+                priority=task.priority,
+                due_date=task.due_date.date().isoformat() if task.due_date else None,
+                assigned_by=f"{current_user.first_name} {current_user.last_name}".strip(),
+            )
+        except Exception:
+            pass
+
     return success_response(data=_format_task(task), meta={})
 
 
@@ -438,6 +454,9 @@ async def update_task(
 
     if not task or task.is_deleted or task.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+
+    old_assignee_id = task.assignee_id
+    old_status = task.status
 
     # Accept Spanish or English field names
     if "titulo" in request:
@@ -523,6 +542,36 @@ async def update_task(
         .options(selectinload(Task.assignee), selectinload(Task.case))
     )
     task = result2.scalars().first()
+
+    # Email notifications after update
+    try:
+        assignee = task.assignee
+        if assignee and assignee.email:
+            assigned_by = f"{current_user.first_name} {current_user.last_name}".strip()
+            # Newly assigned
+            if task.assignee_id != old_assignee_id and task.assignee_id != current_user.id:
+                await email_service.notify_task_assigned(
+                    to_email=assignee.email,
+                    to_name=f"{assignee.first_name} {assignee.last_name}".strip(),
+                    task_title=task.title,
+                    case_title=task.case.title if task.case else "",
+                    priority=task.priority,
+                    due_date=task.due_date.date().isoformat() if task.due_date else None,
+                    assigned_by=assigned_by,
+                )
+            # Status changed
+            elif task.status != old_status:
+                await email_service.notify_task_status_changed(
+                    to_email=assignee.email,
+                    to_name=f"{assignee.first_name} {assignee.last_name}".strip(),
+                    task_title=task.title,
+                    case_title=task.case.title if task.case else "",
+                    old_status=old_status,
+                    new_status=task.status,
+                    changed_by=assigned_by,
+                )
+    except Exception:
+        pass
 
     return success_response(data=_format_task(task), meta={})
 

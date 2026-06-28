@@ -35,6 +35,7 @@ from app.models.audit import (
     AnonimizacionRule,
 )
 from app.models.billing import BillingAdjustment
+from app.models.email_log import EmailLog
 
 __all__ = [
     # Base
@@ -94,4 +95,6 @@ __all__ = [
     "AnonimizacionRule",
     # Billing Adjustments
     "BillingAdjustment",
+    # Email
+    "EmailLog",
 ]
