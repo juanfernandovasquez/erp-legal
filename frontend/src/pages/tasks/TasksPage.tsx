@@ -171,22 +171,22 @@ export function TasksPage() {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
-            <th className={`${thClass('cliente')} text-left w-[16%]`} onClick={() => handleSort('cliente')}>
+            <th className={`${thClass('cliente')} text-left w-[16%] hidden md:table-cell`} onClick={() => handleSort('cliente')}>
               Cliente <SortIcon col="cliente" />
             </th>
             <th className={`${thClass('titulo')} text-left w-[30%]`} onClick={() => handleSort('titulo')}>
               Tarea <SortIcon col="titulo" />
             </th>
-            <th className={`${thClass('caso')} text-left w-[18%]`} onClick={() => handleSort('caso')}>
+            <th className={`${thClass('caso')} text-left w-[18%] hidden sm:table-cell`} onClick={() => handleSort('caso')}>
               Proceso <SortIcon col="caso" />
             </th>
-            <th className={`${thClass('prioridad')} text-center`} onClick={() => handleSort('prioridad')}>
+            <th className={`${thClass('prioridad')} text-center hidden sm:table-cell`} onClick={() => handleSort('prioridad')}>
               Prioridad <SortIcon col="prioridad" />
             </th>
             <th className={`${thClass('estado')} text-center`} onClick={() => handleSort('estado')}>
               Estado <SortIcon col="estado" />
             </th>
-            <th className={`${thClass('vencimiento')} text-left`} onClick={() => handleSort('vencimiento')}>
+            <th className={`${thClass('vencimiento')} text-left hidden md:table-cell`} onClick={() => handleSort('vencimiento')}>
               Vencimiento <SortIcon col="vencimiento" />
             </th>
           </tr>
@@ -206,7 +206,7 @@ export function TasksPage() {
                 }`}
               >
                 {/* Cliente */}
-                <td className="px-4 py-3 text-sm text-slate-700 align-top">
+                <td className="px-4 py-3 text-sm text-slate-700 align-top hidden md:table-cell">
                   {task.clienteNombre || <span className="text-slate-400 italic text-xs">—</span>}
                 </td>
 
@@ -216,12 +216,12 @@ export function TasksPage() {
                 </td>
 
                 {/* Proceso */}
-                <td className="px-4 py-3 text-sm text-slate-600 align-top leading-snug">
+                <td className="px-4 py-3 text-sm text-slate-600 align-top leading-snug hidden sm:table-cell">
                   {task.casoTitulo || <span className="text-slate-400 italic">—</span>}
                 </td>
 
                 {/* Prioridad */}
-                <td className="px-4 py-3 text-center align-top">
+                <td className="px-4 py-3 text-center align-top hidden sm:table-cell">
                   <Badge variant={getPriorityColor(task.prioridad) as any}>
                     {getPriorityLabel(task.prioridad)}
                   </Badge>
@@ -235,7 +235,7 @@ export function TasksPage() {
                 </td>
 
                 {/* Vencimiento */}
-                <td className="px-4 py-3 align-top">
+                <td className="px-4 py-3 align-top hidden md:table-cell">
                   {task.fechaVencimiento ? (
                     <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-600 font-medium' : 'text-slate-600'}`}>
                       {isOverdue && <AlertCircle size={13} />}
@@ -286,17 +286,17 @@ export function TasksPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="px-4 py-6 sm:px-6 max-w-7xl mx-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-start sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-1">Tareas</h1>
-            <p className="text-slate-600">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Tareas</h1>
+            <p className="text-slate-600 text-sm sm:text-base">
               {tasks.length} tarea{tasks.length !== 1 ? 's' : ''} encontrado{tasks.length !== 1 ? 's' : ''}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <div className="flex items-center bg-slate-100 rounded-lg p-1 gap-1">
               <button
                 onClick={() => setView('kanban')}
@@ -319,7 +319,7 @@ export function TasksPage() {
             </div>
             <Button className="gap-2" onClick={openModal}>
               <Plus size={18} />
-              Nueva Tarea
+              <span className="hidden sm:inline">Nueva </span>Tarea
             </Button>
           </div>
         </div>

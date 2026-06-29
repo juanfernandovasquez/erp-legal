@@ -16,6 +16,7 @@ from app.database import get_db
 from app.utils.responses import success_response, paginated_response
 from app.utils.auth import get_current_user
 from app.models import User, Case, CaseHours, Task, CaseProcess
+from app.models.billing import BillingAdjustment
 from sqlalchemy.orm import joinedload
 from app.services.audit_service import audit_log
 from app.services.case_service import check_case_team_access
@@ -633,6 +634,48 @@ async def get_firm_hours(
     data = [_format_entry(e, include_case=True) for e in entries]
     pages = (total + limit - 1) // limit if total > 0 else 1
     return paginated_response(data=data, total=total, page=page, pages=pages, limit=limit, meta={})
+
+
+@router.get(
+    "/hours/firm-adjustments",
+    response_model=dict,
+    summary="Get all billing adjustments for the law firm (for global billing dashboard)",
+)
+async def get_firm_adjustments(
+    limit: int = Query(1000, ge=1, le=5000),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(BillingAdjustment)
+        .join(Case, BillingAdjustment.case_id == Case.id)
+        .where(
+            and_(
+                BillingAdjustment.law_firm_id == current_user.law_firm_id,
+                BillingAdjustment.is_deleted == False,
+                Case.is_deleted == False,
+            )
+        )
+        .order_by(BillingAdjustment.fecha_aplicacion.asc().nullslast(), BillingAdjustment.created_at.asc())
+        .limit(limit)
+        .options(selectinload(BillingAdjustment.case))
+    )
+    adjustments = result.scalars().all()
+
+    data = [
+        {
+            "id": str(a.id),
+            "casoId": str(a.case_id),
+            "casoTitulo": a.case.title if a.case else None,
+            "moneda": a.case.moneda_facturacion if a.case else "PEN",
+            "descripcion": a.descripcion,
+            "monto": float(a.monto),
+            "fechaAplicacion": a.fecha_aplicacion.isoformat() if a.fecha_aplicacion else None,
+            "createdAt": a.created_at.isoformat() if a.created_at else None,
+        }
+        for a in adjustments
+    ]
+    return paginated_response(data=data, total=len(data), page=1, pages=1, limit=limit, meta={})
 
 
 @router.get(

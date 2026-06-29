@@ -174,6 +174,8 @@ export interface Alerta {
   isResolved: boolean
   resolvedAt?: string
   resolutionNotes?: string
+  source: 'auto' | 'manual'
+  tareaId?: string
   createdAt: string
   updatedAt: string
 }

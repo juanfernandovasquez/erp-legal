@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/DateInput'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Tarea } from '@/types'
@@ -13,11 +14,11 @@ import { TASK_STATUS_OPTIONS } from '@/lib/utils'
 
 const taskSchema = z.object({
   titulo: z.string().min(3, 'El título debe tener al menos 3 caracteres'),
-  descripcion: z.string().min(10, 'La descripción debe tener al menos 10 caracteres'),
-  prioridad: z.enum(['baja', 'media', 'alta', 'urgente']),
-  asignadoAId: z.string().nonempty('El responsable es requerido'),
-  fechaPresentacion: z.string().nonempty('La fecha de presentación es requerida'),
-  fechaVencimiento: z.string().nonempty('La fecha de vencimiento es requerida'),
+  descripcion: z.string().optional(),
+  prioridad: z.enum(['baja', 'media', 'alta', 'urgente']).optional(),
+  asignadoAId: z.string().optional(),
+  fechaPresentacion: z.string().optional(),
+  fechaVencimiento: z.string().optional(),
   estado: z.enum(['pendiente', 'en_progreso', 'completado', 'cancelado']).optional(),
 })
 
@@ -41,6 +42,8 @@ export function TaskForm({ caseId, processId, onSuccess, onCancel, initialData, 
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
@@ -143,18 +146,18 @@ export function TaskForm({ caseId, processId, onSuccess, onCancel, initialData, 
         error={errors.asignadoAId?.message}
       />
 
-      <div className="grid grid-cols-2 gap-4">
-        <Input
-          label="Fecha de Presentación *"
-          type="date"
-          {...register('fechaPresentacion')}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <DateInput
+          label="Fecha de Presentación"
+          value={watch('fechaPresentacion') ?? ''}
+          onChange={(e) => setValue('fechaPresentacion', e.target.value, { shouldValidate: true })}
           error={errors.fechaPresentacion?.message}
           helpText="Cuándo se planifica presentar este documento"
         />
-        <Input
-          label="Fecha de Vencimiento *"
-          type="date"
-          {...register('fechaVencimiento')}
+        <DateInput
+          label="Fecha de Vencimiento"
+          value={watch('fechaVencimiento') ?? ''}
+          onChange={(e) => setValue('fechaVencimiento', e.target.value, { shouldValidate: true })}
           error={errors.fechaVencimiento?.message}
           helpText="Plazo legal máximo"
         />

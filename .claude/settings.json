@@ -1,4 +1,60 @@
 {
+  "permissions": {
+    "allow": [
+      "Read(*)",
+      "Edit(*)",
+      "Write(*)",
+      "Glob(*)",
+      "Grep(*)",
+
+      "Bash(git *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+
+      "Bash(python *)",
+      "Bash(alembic *)",
+
+      "Bash(taskkill *)",
+      "Bash(netstat *)",
+      "Bash(sleep *)",
+      "Bash(curl http://localhost*)",
+      "Bash(curl -s http://localhost*)",
+
+      "Bash(docker exec erp-legal-backend *)",
+      "Bash(docker exec erp-legal-frontend *)",
+      "Bash(docker ps*)",
+      "Bash(docker logs*)",
+      "Bash(docker inspect*)",
+      "Bash(docker compose -f docker-compose.yml -f docker-compose.staging.yml up*)",
+      "Bash(docker compose exec backend *)",
+
+      "PowerShell(*)"
+    ],
+    "deny": [
+      "Bash(docker compose down*)",
+      "Bash(docker-compose down*)",
+      "Bash(docker volume rm*)",
+      "Bash(docker volume prune*)",
+      "Bash(docker system prune*)",
+      "Bash(docker rm *)",
+      "Bash(docker rmi *)",
+      "Bash(docker network rm*)",
+
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(del /f /s /*)",
+      "Bash(format *)",
+      "Bash(DROP *)",
+      "Bash(drop *)",
+
+      "Bash(ssh *)",
+      "Bash(scp *)",
+      "Bash(curl https://*)",
+      "Bash(curl http://137*)",
+      "Bash(wget *)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {

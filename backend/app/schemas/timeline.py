@@ -7,7 +7,7 @@ import uuid
 class CaseEventCreate(BaseModel):
     """Create case event request."""
 
-    event_type: str = Field(..., description="Event type")
+    event_type: str = Field(default="otro", description="Event type")
     title: str = Field(..., min_length=1, max_length=255, description="Event title")
     description: Optional[str] = Field(None, description="Event description")
 

@@ -20,7 +20,7 @@ interface UIStore {
 }
 
 export const useUIStore = create<UIStore>((set) => ({
-  sidebarOpen: true,
+  sidebarOpen: false,
   theme: 'light',
   notifications: [],
 

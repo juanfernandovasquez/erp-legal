@@ -140,21 +140,21 @@ export function CasesListPage() {
             <th className={`${thCls('titulo')} text-left w-[32%]`} onClick={() => handleSort('titulo')}>
               Proceso <SortIcon col="titulo" />
             </th>
-            <th className={`${thCls('cliente')} text-left`} onClick={() => handleSort('cliente')}>
+            <th className={`${thCls('cliente')} text-left hidden sm:table-cell`} onClick={() => handleSort('cliente')}>
               Cliente <SortIcon col="cliente" />
             </th>
             <th className={`${thCls('estado')} text-center`} onClick={() => handleSort('estado')}>
               Estado <SortIcon col="estado" />
             </th>
-            <th className={`${thCls('abogado')} text-left`} onClick={() => handleSort('abogado')}>
+            <th className={`${thCls('abogado')} text-left hidden lg:table-cell`} onClick={() => handleSort('abogado')}>
               Encargado <SortIcon col="abogado" />
             </th>
-            <th className={`${thCls('vencimiento')} text-left`} onClick={() => handleSort('vencimiento')}>
+            <th className={`${thCls('vencimiento')} text-left hidden md:table-cell`} onClick={() => handleSort('vencimiento')}>
               Próx. vencimiento <SortIcon col="vencimiento" />
             </th>
-            <th className="px-4 py-3 font-semibold text-slate-700 text-left whitespace-nowrap">Tarifa</th>
-            <th className="px-4 py-3 font-semibold text-slate-700 text-left whitespace-nowrap">Tipo</th>
-            <th className="px-4 py-3 font-semibold text-slate-700 text-right whitespace-nowrap">Total facturado</th>
+            <th className="px-4 py-3 font-semibold text-slate-700 text-left whitespace-nowrap hidden md:table-cell">Tarifa</th>
+            <th className="px-4 py-3 font-semibold text-slate-700 text-left whitespace-nowrap hidden md:table-cell">Tipo</th>
+            <th className="px-4 py-3 font-semibold text-slate-700 text-right whitespace-nowrap hidden sm:table-cell">Total facturado</th>
           </tr>
         </thead>
         <tbody>
@@ -172,13 +172,13 @@ export function CasesListPage() {
                     <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">{caso.descripcion}</p>
                   )}
                 </td>
-                <td className="px-4 py-3 align-top text-slate-700">
+                <td className="px-4 py-3 align-top text-slate-700 hidden sm:table-cell">
                   {caso.cliente?.nombre || <span className="text-slate-400 italic text-xs">—</span>}
                 </td>
                 <td className="px-4 py-3 align-top text-center">
                   <CaseStatusBadge status={caso.estado} />
                 </td>
-                <td className="px-4 py-3 align-top">
+                <td className="px-4 py-3 align-top hidden lg:table-cell">
                   {caso.abogadoPrincipal ? (
                     <div className="flex items-center gap-1.5">
                       <User size={13} className="text-slate-400 flex-shrink-0" />
@@ -188,7 +188,7 @@ export function CasesListPage() {
                     <span className="text-slate-400 italic text-xs">Sin asignar</span>
                   )}
                 </td>
-                <td className="px-4 py-3 align-top text-slate-600">
+                <td className="px-4 py-3 align-top text-slate-600 hidden md:table-cell">
                   {nearestDue[caso.id] ? (
                     <div className="flex items-center gap-1">
                       <Calendar size={13} className={`flex-shrink-0 ${nearestDue[caso.id]! < today ? 'text-red-400' : 'text-slate-400'}`} />
@@ -200,21 +200,21 @@ export function CasesListPage() {
                     <span className="text-slate-400 italic text-xs">Sin tareas</span>
                   )}
                 </td>
-                <td className="px-4 py-3 align-top text-sm text-slate-700">
+                <td className="px-4 py-3 align-top text-sm text-slate-700 hidden md:table-cell">
                   {caso.precioFacturacion != null
                     ? `${simbolo} ${caso.precioFacturacion.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
                     : <span className="text-slate-400 italic text-xs">—</span>}
                 </td>
-                <td className="px-4 py-3 align-top">
+                <td className="px-4 py-3 align-top hidden md:table-cell">
                   {caso.tipoFacturacion
                     ? <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${caso.tipoFacturacion === 'por_horas' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
                         {caso.tipoFacturacion === 'por_horas' ? 'Por horas' : 'Flat'}
                       </span>
                     : <span className="text-slate-400 italic text-xs">—</span>}
                 </td>
-                <td className="px-4 py-3 align-top text-right">
-                  {(caso.totalFacturado ?? 0) > 0
-                    ? <span className="text-sm font-semibold text-green-700">
+                <td className="px-4 py-3 align-top text-right hidden sm:table-cell">
+                  {caso.tipoFacturacion
+                    ? <span className={`text-sm font-semibold ${(caso.totalFacturado ?? 0) > 0 ? 'text-green-700' : 'text-slate-400'}`}>
                         {simbolo} {(caso.totalFacturado ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
                       </span>
                     : <span className="text-slate-400 text-xs">—</span>}
@@ -229,17 +229,17 @@ export function CasesListPage() {
 
   return (
     <AppLayout onSearch={(query) => fetchCases({ search: query, page: 1 })}>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="px-4 py-6 sm:px-6 max-w-7xl mx-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-start sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-1">Procesos</h1>
-            <p className="text-slate-600">
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Procesos</h1>
+            <p className="text-slate-600 text-sm sm:text-base">
               {pagination.total > 0 ? `${pagination.total} proceso${pagination.total !== 1 ? 's' : ''}` : 'Gestiona todos los procesos legales'}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
             <div className="flex items-center bg-slate-100 rounded-lg p-1 gap-1">
               <button
                 onClick={() => setView('grid')}
@@ -258,7 +258,7 @@ export function CasesListPage() {
             </div>
             <Button onClick={() => navigate('/cases/new')} className="gap-2">
               <Plus size={18} />
-              Nuevo Proceso
+              <span className="hidden sm:inline">Nuevo </span>Proceso
             </Button>
           </div>
         </div>

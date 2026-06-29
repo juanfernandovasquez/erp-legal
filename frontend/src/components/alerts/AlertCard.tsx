@@ -70,6 +70,11 @@ export function AlertCard({ alert, onResolve, onAcknowledge, onDelete }: AlertCa
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="font-semibold text-sm text-slate-900 truncate">{alert.titulo}</span>
+            {alert.source === 'auto' && (
+              <span className="text-xs bg-blue-50 text-blue-600 border border-blue-200 rounded-full px-2 py-0.5 font-medium">
+                Automática
+              </span>
+            )}
             <Badge variant={getAlertSeverityColor(alert.severidad) as any}>
               {getAlertSeverityLabel(alert.severidad)}
             </Badge>

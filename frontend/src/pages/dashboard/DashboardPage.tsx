@@ -36,7 +36,7 @@ export function DashboardPage() {
       const results = await Promise.allSettled([
         api.get('/cases?limit=6'),                          // recent cases
         api.get('/tasks?limit=5&status=pendiente'),        // pending tasks
-        api.get('/alerts?limit=5&status=pending'),         // alerts
+        api.get('/alerts?limit=5&status=pendiente'),        // alerts
         api.get('/admin/dashboard'),                        // stats
       ])
 
@@ -71,10 +71,10 @@ export function DashboardPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Panel de Control</h1>
-          <p className="text-slate-600">Resumen de actividad del bufete</p>
+      <div className="px-4 py-6 sm:px-6 max-w-7xl mx-auto">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Panel de Control</h1>
+          <p className="text-slate-600 text-sm sm:text-base">Resumen de actividad del bufete</p>
         </div>
 
         {/* Stats */}

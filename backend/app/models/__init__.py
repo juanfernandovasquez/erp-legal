@@ -37,6 +37,7 @@ from app.models.audit import (
 from app.models.billing import BillingAdjustment
 from app.models.email_log import EmailLog
 from app.models.notification_rule import NotificationRule
+from app.models.client_alert import ClientAlertRule
 
 __all__ = [
     # Base
@@ -100,4 +101,6 @@ __all__ = [
     "EmailLog",
     # Notification Rules
     "NotificationRule",
+    # Client Alert Rules
+    "ClientAlertRule",
 ]

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { Bell, Plus, Trash2, Loader2, Check, X, ToggleLeft, ToggleRight, Pencil } from 'lucide-react'
 import api from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 
 interface Rule {
   id: string
@@ -26,6 +27,7 @@ export function NotificationRules({ caseId }: Props) {
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving]     = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
   const [toggling, setToggling] = useState<string | null>(null)
   const [error, setError]       = useState('')
 
@@ -115,7 +117,6 @@ export function NotificationRules({ caseId }: Props) {
   }
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('¿Eliminar esta regla?')) return
     setDeleting(id)
     try { await api.delete(`/cases/${caseId}/notification-rules/${id}`); await load() }
     finally { setDeleting(null) }
@@ -132,6 +133,7 @@ export function NotificationRules({ caseId }: Props) {
   }
 
   return (
+    <>
     <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
       <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
         <div className="flex items-center gap-2.5">
@@ -286,7 +288,7 @@ export function NotificationRules({ caseId }: Props) {
                             className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
                             <Pencil size={13} />
                           </button>
-                          <button onClick={() => handleDelete(rule.id)} disabled={deleting === rule.id}
+                          <button onClick={() => setDeleteConfirmId(rule.id)} disabled={deleting === rule.id}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50">
                             {deleting === rule.id ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
                           </button>
@@ -301,5 +303,22 @@ export function NotificationRules({ caseId }: Props) {
         </table>
       )}
     </div>
+
+    <ConfirmDialog
+      open={deleteConfirmId !== null}
+      onOpenChange={(open) => { if (!open) setDeleteConfirmId(null) }}
+      title="¿Eliminar regla?"
+      description="Se eliminará esta regla de notificación. Las alertas ya creadas no se verán afectadas."
+      confirmLabel={deleting ? 'Eliminando…' : 'Sí, eliminar'}
+      cancelLabel="Cancelar"
+      onConfirm={() => {
+        if (deleteConfirmId) {
+          setDeleteConfirmId(null)
+          handleDelete(deleteConfirmId)
+        }
+      }}
+      variant="danger"
+    />
+    </>
   )
 }

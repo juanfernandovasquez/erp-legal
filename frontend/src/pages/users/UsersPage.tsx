@@ -236,25 +236,25 @@ export function UsersPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="px-4 py-6 sm:px-6 max-w-7xl mx-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-start sm:items-center justify-between mb-6 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-1">Usuarios</h1>
-            <p className="text-slate-600">{users.length} usuario{users.length !== 1 ? 's' : ''} en el bufete</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Usuarios</h1>
+            <p className="text-slate-600 text-sm sm:text-base">{users.length} usuario{users.length !== 1 ? 's' : ''} en el bufete</p>
           </div>
           {currentIsAdmin && (
-            <Button className="gap-2" onClick={() => { setShowCreateModal(true); setCreateError('') }}>
+            <Button className="gap-2 flex-shrink-0" onClick={() => { setShowCreateModal(true); setCreateError('') }}>
               <Plus size={18} />
-              Nuevo Usuario
+              <span className="hidden sm:inline">Nuevo </span>Usuario
             </Button>
           )}
         </div>
 
         {/* Filtros */}
-        <div className="flex items-center gap-3 mb-5 flex-wrap">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-5">
+          <div className="relative flex-1">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -264,7 +264,7 @@ export function UsersPage() {
               className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
-          <div className="w-48">
+          <div className="w-full sm:w-48">
             <Select
               placeholder="Todos los roles"
               options={[
@@ -301,9 +301,9 @@ export function UsersPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nombre</TableHead>
-                      <TableHead>Email</TableHead>
+                      <TableHead className="hidden sm:table-cell">Email</TableHead>
                       <TableHead>Rol</TableHead>
-                      <TableHead>Teléfono</TableHead>
+                      <TableHead className="hidden md:table-cell">Teléfono</TableHead>
                       <TableHead></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -321,10 +321,10 @@ export function UsersPage() {
                               <span className="font-medium text-slate-900">{user.nombre}</span>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1.5 text-slate-600">
-                              <Mail size={13} className="text-slate-400" />
-                              {user.email}
+                          <TableCell className="hidden sm:table-cell">
+                            <div className="flex items-center gap-1.5 text-slate-600 text-sm">
+                              <Mail size={13} className="text-slate-400 flex-shrink-0" />
+                              <span className="truncate max-w-[180px]">{user.email}</span>
                             </div>
                           </TableCell>
                           <TableCell>
@@ -334,10 +334,10 @@ export function UsersPage() {
                                 : 'bg-slate-100 text-slate-600'
                             }`}>
                               {isAdmin ? <ShieldCheck size={11} /> : <Shield size={11} />}
-                              {isAdmin ? 'Administrador' : 'Usuario'}
+                              <span className="hidden xs:inline">{isAdmin ? 'Administrador' : 'Usuario'}</span>
                             </span>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden md:table-cell">
                             <span className="text-sm text-slate-500">{user.phone || '—'}</span>
                           </TableCell>
                           <TableCell>
@@ -403,7 +403,7 @@ export function UsersPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Nombre *"
                   value={createForm.first_name}
@@ -419,7 +419,7 @@ export function UsersPage() {
                   required
                 />
 
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <Input
                     label="Email *"
                     type="email"
@@ -430,7 +430,7 @@ export function UsersPage() {
                   />
                 </div>
 
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <Input
                     label="Contraseña *"
                     type="password"
@@ -490,7 +490,7 @@ export function UsersPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Nombre *"
                   value={editForm.first_name}

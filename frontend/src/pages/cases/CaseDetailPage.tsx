@@ -81,6 +81,7 @@ export function CaseDetailPage() {
   const [showNewProcessForm, setShowNewProcessForm] = useState(false)
   const [tareasView, setTareasView] = useState<'grid' | 'list'>('list')
   const [horasKey, setHorasKey] = useState(0)
+  const [billingKey, setBillingKey] = useState(0)
   const [showHorasForm, setShowHorasForm] = useState(false)
 
   // Sort
@@ -349,7 +350,7 @@ export function CaseDetailPage() {
   if (isNew) {
     return (
       <AppLayout>
-        <div className="p-6 max-w-3xl mx-auto">
+        <div className="px-4 py-6 sm:px-6 max-w-3xl mx-auto">
           <Button variant="ghost" onClick={() => navigate('/cases')} className="mb-4 gap-2">
             <ArrowLeft size={18} />
             Volver a Casos
@@ -380,16 +381,16 @@ export function CaseDetailPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="px-4 py-6 sm:px-6 max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-4">
           <Button variant="ghost" size="sm" onClick={() => navigate('/cases')} className="gap-2">
             <ArrowLeft size={16} />
-            Volver a Casos
+            <span className="hidden sm:inline">Volver a Casos</span>
           </Button>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setEditingCase(true)} className="gap-2">
               <Pencil size={14} />
-              Editar caso
+              <span className="hidden sm:inline">Editar caso</span>
             </Button>
             <Button
               variant="outline"
@@ -399,7 +400,7 @@ export function CaseDetailPage() {
               className="gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
             >
               <Trash2 size={14} />
-              {deletingCase ? 'Eliminando…' : 'Eliminar caso'}
+              <span className="hidden sm:inline">{deletingCase ? 'Eliminando…' : 'Eliminar caso'}</span>
             </Button>
           </div>
         </div>
@@ -407,7 +408,7 @@ export function CaseDetailPage() {
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-slate-900 mb-2">{caso.titulo}</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">{caso.titulo}</h1>
               <p className="text-slate-600">{caso.descripcion}</p>
             </div>
 
@@ -680,7 +681,7 @@ export function CaseDetailPage() {
                   tareas={tareas.map((t) => ({ id: t.id, titulo: t.titulo, fechaPresentacion: t.fechaPresentacion }))}
                   moneda={caso.monedaFacturacion ?? 'PEN'}
                   tipoFacturacion={caso.tipoFacturacion ?? null}
-                  onUpdate={() => setHorasKey((k) => k + 1)}
+                  onUpdate={() => { setHorasKey((k) => k + 1); setBillingKey((k) => k + 1) }}
                 />
               </div>
 
@@ -688,17 +689,87 @@ export function CaseDetailPage() {
                 <BillingAdjustments
                   caseId={caso.id}
                   moneda={caso.monedaFacturacion ?? 'PEN'}
+                  refreshKey={billingKey}
                 />
               </div>
 
-              <div className="border-t border-slate-200 pt-6">
-                <NotificationRules caseId={caso.id} />
-              </div>
             </div>
           </TabsContent>
 
           <TabsContent value="actualizaciones">
             <CaseUpdates caseId={caso.id} />
+          </TabsContent>
+
+          <TabsContent value="alertas">
+            <div className="space-y-8">
+
+              {/* ── Reglas de notificación ──────────────────────────────────── */}
+              <div>
+                <NotificationRules caseId={caso.id} />
+              </div>
+
+              {/* ── Alertas ─────────────────────────────────────────────────── */}
+              <div className="border-t border-slate-200 pt-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-900">
+                      Alertas
+                      {caseAlerts.length > 0 && (
+                        <span className="ml-2 text-sm font-normal text-slate-500">
+                          ({caseAlerts.length})
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Las alertas de vencimiento se generan automáticamente según las reglas configuradas arriba.
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => setShowAlertForm((v) => !v)}
+                    variant={showAlertForm ? 'ghost' : 'default'}
+                  >
+                    <Plus size={15} />
+                    {showAlertForm ? 'Cancelar' : 'Nueva alerta manual'}
+                  </Button>
+                </div>
+
+                {showAlertForm && (
+                  <div className="bg-white border border-blue-100 rounded-xl p-5 shadow-sm">
+                    <AlertForm
+                      fixedCaseId={caso.id}
+                      onCreate={async (caseId, data) => { await createAlert(caseId, data) }}
+                      onSuccess={() => setShowAlertForm(false)}
+                      onCancel={() => setShowAlertForm(false)}
+                    />
+                  </div>
+                )}
+
+                {alertsLoading ? (
+                  <LoadingSpinner />
+                ) : caseAlerts.length === 0 ? (
+                  <div className="text-center py-12 text-slate-400">
+                    <div className="text-3xl mb-3">🔔</div>
+                    <p className="font-medium text-slate-600 mb-1">Sin alertas aún</p>
+                    <p className="text-sm">Las alertas de vencimiento aparecerán aquí cuando el cron diario las genere.<br />También puedes crear alertas manuales.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {caseAlerts.map((alert) => (
+                      <AlertCard
+                        key={alert.id}
+                        alert={alert}
+                        onResolve={resolveAlert}
+                        onAcknowledge={acknowledgeAlert}
+                        onDelete={deleteAlert}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
           </TabsContent>
 
         </Tabs>
@@ -744,6 +815,7 @@ export function CaseDetailPage() {
                 onSuccess={() => {
                   setShowHorasForm(false)
                   setHorasKey((k) => k + 1)
+                  setBillingKey((k) => k + 1)
                 }}
                 onCancel={() => setShowHorasForm(false)}
               />

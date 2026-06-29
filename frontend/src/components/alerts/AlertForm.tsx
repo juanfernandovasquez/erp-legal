@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/DateInput'
 import { Select } from '@/components/ui/select'
 import { ALERT_SEVERITY_OPTIONS, ALERT_TYPE_OPTIONS } from '@/lib/utils'
 
@@ -83,7 +84,7 @@ export function AlertForm({ fixedCaseId, onSuccess, onCancel, onCreate }: AlertF
         />
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Select
           label="Tipo de alerta"
           options={ALERT_TYPE_OPTIONS}
@@ -120,9 +121,8 @@ export function AlertForm({ fixedCaseId, onSuccess, onCancel, onCreate }: AlertF
         />
       </div>
 
-      <Input
+      <DateInput
         label="Fecha de vencimiento (opcional)"
-        type="date"
         value={dueDate}
         onChange={(e) => setDueDate(e.target.value)}
       />

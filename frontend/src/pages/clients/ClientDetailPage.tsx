@@ -8,9 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { CaseStatusBadge } from '@/components/cases/CaseStatusBadge'
-import { ArrowLeft, Edit2, Save, X, Trash2, Mail, Phone, MapPin, Building2, FileText, Hash } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, Trash2, Mail, Phone, MapPin, Building2, FileText, Hash, Eye, EyeOff, KeyRound, Copy, Check } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import api from '@/lib/axios'
+import { ClientAlerts } from '@/components/clients/ClientAlerts'
 
 interface ClientData {
   id: string
@@ -26,6 +27,8 @@ interface ClientData {
   taxId: string
   isActive: boolean
   isPreferred: boolean
+  usuarioSol: string | null
+  claveSol: string | null
   createdAt: string
   updatedAt: string
 }
@@ -59,6 +62,16 @@ export function ClientDetailPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState('')
+  const [showClave, setShowClave] = useState(false)
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
+
+  const copyToClipboard = (key: string, value: string) => {
+    if (!value) return
+    navigator.clipboard.writeText(value).then(() => {
+      setCopiedKey(key)
+      setTimeout(() => setCopiedKey(null), 1500)
+    })
+  }
 
   const [form, setForm] = useState({
     name: '',
@@ -73,6 +86,8 @@ export function ClientDetailPage() {
     giro_negocio: '',
     tarifa_hora: '',
     tipo_cobro: 'por_hora',
+    usuario_sol: '',
+    clave_sol: '',
   })
 
   useEffect(() => {
@@ -101,6 +116,8 @@ export function ClientDetailPage() {
         giro_negocio: c.giroNegocio || c.notes || '',
         tarifa_hora: c.tarifaHora ? String(c.tarifaHora) : '',
         tipo_cobro: c.tipoCobro || 'por_hora',
+        usuario_sol: c.usuarioSol || '',
+        clave_sol: c.claveSol || '',
       })
     } catch {
       setError('No se pudo cargar el cliente.')
@@ -129,7 +146,11 @@ export function ClientDetailPage() {
     setIsSaving(true)
     setError('')
     try {
-      const res = await api.patch(`/clients/${id}`, form)
+      const payload: Record<string, any> = { ...form }
+      // No enviar strings vacíos para campos sensibles — evita sobrescribir valores existentes
+      if (!payload.usuario_sol) delete payload.usuario_sol
+      if (!payload.clave_sol) delete payload.clave_sol
+      const res = await api.patch(`/clients/${id}`, payload)
       setClient(res.data.data)
       setIsEditing(false)
     } catch (err: any) {
@@ -154,6 +175,8 @@ export function ClientDetailPage() {
         giro_negocio: (client as any).giroNegocio || '',
         tarifa_hora: (client as any).tarifaHora ? String((client as any).tarifaHora) : '',
         tipo_cobro: (client as any).tipoCobro || 'por_hora',
+        usuario_sol: client.usuarioSol || '',
+        clave_sol: client.claveSol || '',
       })
     }
     setIsEditing(false)
@@ -271,8 +294,8 @@ export function ClientDetailPage() {
               </CardHeader>
               <CardContent>
                 {isEditing ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2">
                       <Input
                         label="Nombre completo o razón social *"
                         value={form.name}
@@ -333,7 +356,7 @@ export function ClientDetailPage() {
                       onChange={(e) => setForm({ ...form, country: e.target.value })}
                     />
 
-                    <div className="col-span-2">
+                    <div className="sm:col-span-2">
                       <Input
                         label="Dirección"
                         value={form.street_address}
@@ -342,7 +365,7 @@ export function ClientDetailPage() {
                       />
                     </div>
 
-                    <div className="col-span-2">
+                    <div className="sm:col-span-2">
                       <label className="block text-sm font-medium text-slate-700 mb-1.5">Giro del negocio</label>
                       <textarea
                         value={form.giro_negocio}
@@ -378,7 +401,14 @@ export function ClientDetailPage() {
                       <dt className="text-xs text-slate-500 uppercase font-semibold mb-1 flex items-center gap-1">
                         <Mail size={13} /> Email
                       </dt>
-                      <dd className="text-sm text-slate-900">{client.email || '—'}</dd>
+                      <dd className="text-sm text-slate-900 flex items-center gap-1.5">
+                        <span>{client.email || '—'}</span>
+                        {client.email && (
+                          <button onClick={() => copyToClipboard('email', client.email)} className="p-1 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Copiar email">
+                            {copiedKey === 'email' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                          </button>
+                        )}
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-xs text-slate-500 uppercase font-semibold mb-1 flex items-center gap-1">
@@ -390,7 +420,14 @@ export function ClientDetailPage() {
                       <dt className="text-xs text-slate-500 uppercase font-semibold mb-1 flex items-center gap-1">
                         <Hash size={13} /> RUC / Tax ID
                       </dt>
-                      <dd className="text-sm text-slate-900">{client.taxId || '—'}</dd>
+                      <dd className="text-sm text-slate-900 flex items-center gap-1.5">
+                        <span className="font-mono">{client.taxId || <span className="font-sans">—</span>}</span>
+                        {client.taxId && (
+                          <button onClick={() => copyToClipboard('taxId', client.taxId)} className="p-1 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Copiar RUC">
+                            {copiedKey === 'taxId' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                          </button>
+                        )}
+                      </dd>
                     </div>
                     <div>
                       <dt className="text-xs text-slate-500 uppercase font-semibold mb-1 flex items-center gap-1">
@@ -401,13 +438,13 @@ export function ClientDetailPage() {
                       </dd>
                     </div>
                     {client.streetAddress && (
-                      <div className="col-span-2">
+                      <div className="sm:col-span-2">
                         <dt className="text-xs text-slate-500 uppercase font-semibold mb-1">Dirección</dt>
                         <dd className="text-sm text-slate-900">{client.streetAddress}</dd>
                       </div>
                     )}
                     {(client as any).giroNegocio && (
-                      <div className="col-span-2">
+                      <div className="sm:col-span-2">
                         <dt className="text-xs text-slate-500 uppercase font-semibold mb-1">Giro del negocio</dt>
                         <dd className="text-sm text-slate-900">{(client as any).giroNegocio}</dd>
                       </div>
@@ -430,6 +467,82 @@ export function ClientDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Credenciales SOL */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <KeyRound size={18} />
+                  Credenciales SOL
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {isEditing ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Input
+                      label="Usuario SOL"
+                      value={form.usuario_sol}
+                      onChange={(e) => setForm({ ...form, usuario_sol: e.target.value })}
+                      placeholder="Ej. RAMIREZ20"
+                    />
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Clave SOL</label>
+                      <div className="relative">
+                        <input
+                          type={showClave ? 'text' : 'password'}
+                          value={form.clave_sol}
+                          onChange={(e) => setForm({ ...form, clave_sol: e.target.value })}
+                          placeholder="Clave SOL"
+                          className="w-full border border-slate-300 rounded-md px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowClave(v => !v)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        >
+                          {showClave ? <EyeOff size={15} /> : <Eye size={15} />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <dl className="grid grid-cols-2 gap-4">
+                    <div>
+                      <dt className="text-xs text-slate-500 uppercase font-semibold mb-1">Usuario SOL</dt>
+                      <dd className="text-sm text-slate-900 flex items-center gap-1.5">
+                        <span className="font-mono">{client.usuarioSol || <span className="text-slate-400 font-sans">—</span>}</span>
+                        {client.usuarioSol && (
+                          <button onClick={() => copyToClipboard('usuarioSol', client.usuarioSol!)} className="p-1 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Copiar usuario SOL">
+                            {copiedKey === 'usuarioSol' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                          </button>
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs text-slate-500 uppercase font-semibold mb-1">Clave SOL</dt>
+                      <dd className="text-sm text-slate-900 flex items-center gap-2">
+                        {client.claveSol ? (
+                          <>
+                            <span className="font-mono">{showClave ? client.claveSol : '••••••••'}</span>
+                            <button onClick={() => setShowClave(v => !v)} className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+                              {showClave ? <EyeOff size={13} /> : <Eye size={13} />}
+                            </button>
+                            <button onClick={() => copyToClipboard('claveSol', client.claveSol!)} className="p-1 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Copiar clave SOL">
+                              {copiedKey === 'claveSol' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-slate-400">—</span>
+                        )}
+                      </dd>
+                    </div>
+                  </dl>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Alertas personalizadas */}
+            <ClientAlerts clientId={id!} />
 
             {/* Cases */}
             <Card>

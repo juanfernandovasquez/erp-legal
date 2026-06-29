@@ -5,9 +5,11 @@ import { AppLayout } from '@/components/layout/AppLayout'
 import { Button } from '@/components/ui/button'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { HoursForm } from '@/components/hours/HoursForm'
+import { ExportBillingModal } from '@/components/billing/ExportBillingModal'
 import {
   Clock, DollarSign, TrendingUp, Filter, RotateCcw, Plus, X,
   ChevronRight, ChevronDown, Users, BarChart2, Activity, Loader, Zap, Table2,
+  SlidersHorizontal, FileDown,
 } from 'lucide-react'
 import api from '@/lib/axios'
 
@@ -24,6 +26,16 @@ interface HEntry {
   tarifaHora?: number
   fechaRegistro: string
   usuario?: { nombre: string }
+}
+
+interface AdjEntry {
+  id: string
+  casoId: string
+  casoTitulo?: string
+  moneda?: string
+  descripcion: string
+  monto: number
+  fechaAplicacion: string | null
 }
 
 interface CasoInfo {
@@ -607,8 +619,9 @@ export function HoursPage() {
   const navigate = useNavigate()
 
   // ── Data ──────────────────────────────────────────────────────────────────
-  const [allHours, setAllHours]       = useState<HEntry[]>([])
-  const [cases, setCases]             = useState<CasoInfo[]>([])
+  const [allHours, setAllHours]           = useState<HEntry[]>([])
+  const [allAdjustments, setAllAdjustments] = useState<AdjEntry[]>([])
+  const [cases, setCases]                 = useState<CasoInfo[]>([])
   const [rootCaseIds, setRootCaseIds] = useState<Set<string>>(new Set())
   const [clients, setClients]         = useState<any[]>([])
   const [users, setUsers]             = useState<any[]>([])
@@ -617,7 +630,8 @@ export function HoursPage() {
   // ── Modals ─────────────────────────────────────────────────────────────────
   const [showModal, setShowModal]                     = useState(false)
   const [quickRegisterCaso, setQuickRegisterCaso]     = useState<string | null>(null)
-  useEscapeKey(() => { setShowModal(false); setQuickRegisterCaso(null) }, showModal || !!quickRegisterCaso)
+  const [showExportModal, setShowExportModal]         = useState(false)
+  useEscapeKey(() => { setShowModal(false); setQuickRegisterCaso(null); setShowExportModal(false) }, showModal || !!quickRegisterCaso || showExportModal)
 
   // ── Expandable rows ────────────────────────────────────────────────────────
   const [expandedCasos, setExpandedCasos]             = useState<Set<string>>(new Set())
@@ -652,8 +666,10 @@ export function HoursPage() {
       api.get('/cases?limit=500&include_subcases=true'),     // todos → para el mapa (evita huérfanos)
       api.get('/clients?limit=100'),
       api.get('/users?limit=100'),
-    ]).then(([hRes, rootRes, allCasesRes, clRes, uRes]) => {
+      api.get('/hours/firm-adjustments?limit=1000'),
+    ]).then(([hRes, rootRes, allCasesRes, clRes, uRes, adjRes]) => {
       if (hRes.status === 'fulfilled') setAllHours(hRes.value.data.data || [])
+      if (adjRes.status === 'fulfilled') setAllAdjustments(adjRes.value.data.data || [])
 
       const mapCase = (c: any): CasoInfo => ({
         id: c.id,
@@ -781,12 +797,14 @@ export function HoursPage() {
     [applyFiltersExcept]
   )
 
-  // Auto-deseleccionar opciones que ya no están disponibles cuando cambian los demás filtros
-  useEffect(() => { setCasoFilter  (prev => prev.filter(v => availableCasoIds.has(v)))   }, [availableCasoIds])
-  useEffect(() => { setClientFilter(prev => prev.filter(v => availableClientIds.has(v))) }, [availableClientIds])
-  useEffect(() => { setUserFilter  (prev => prev.filter(v => availableUserIds.has(v)))   }, [availableUserIds])
-  useEffect(() => { setTarifaFilter(prev => prev.filter(v => availableTarifas.has(v)))   }, [availableTarifas])
-  useEffect(() => { setMonthFilter (prev => prev.filter(v => availableMonths.has(v)))    }, [availableMonths])
+  // Auto-deseleccionar opciones que ya no están disponibles cuando cambian los demás filtros.
+  // IMPORTANTE: retornar `prev` cuando nada cambia evita el bucle infinito de renders,
+  // porque React solo re-renderiza si la referencia del estado cambia.
+  useEffect(() => { setCasoFilter  (prev => { const n = prev.filter(v => availableCasoIds.has(v));   return n.length === prev.length ? prev : n }) }, [availableCasoIds])
+  useEffect(() => { setClientFilter(prev => { const n = prev.filter(v => availableClientIds.has(v)); return n.length === prev.length ? prev : n }) }, [availableClientIds])
+  useEffect(() => { setUserFilter  (prev => { const n = prev.filter(v => availableUserIds.has(v));   return n.length === prev.length ? prev : n }) }, [availableUserIds])
+  useEffect(() => { setTarifaFilter(prev => { const n = prev.filter(v => availableTarifas.has(v));   return n.length === prev.length ? prev : n }) }, [availableTarifas])
+  useEffect(() => { setMonthFilter (prev => { const n = prev.filter(v => availableMonths.has(v));    return n.length === prev.length ? prev : n }) }, [availableMonths])
 
   // ── Filtered hours (table, by-proceso, by-abogado) ────────────────────────
   const filtered = useMemo(() => {
@@ -813,23 +831,37 @@ export function HoursPage() {
       .reduce((a, h) => a + getM(h), 0)
   }, [casesMap])
 
+  // Ajustes filtrados por año/mes activos
+  const filteredAdjustments = useMemo(() => {
+    return allAdjustments.filter(a => {
+      if (!a.fechaAplicacion) return false  // sin fecha no se grafica por período
+      const d = new Date(a.fechaAplicacion + 'T12:00:00')
+      if (d.getFullYear() !== yearFilter) return false
+      if (monthFilter.length > 0 && !monthFilter.includes(String(d.getMonth()))) return false
+      if (casoFilter.length > 0 && !casoFilter.includes(a.casoId)) return false
+      return true
+    })
+  }, [allAdjustments, yearFilter, monthFilter, casoFilter])
+
   const statsFiltered = useMemo(() => {
     const flatM    = flatBillingFor(filtered)
     const hourlyM  = filtered
       .filter(h => casesMap[h.casoId]?.tipoFacturacion !== 'flat')
       .reduce((a, h) => a + getM(h), 0)
+    const adjM = filteredAdjustments.reduce((a, adj) => a + adj.monto, 0)
     return {
       horas:       filtered.reduce((a, h) => a + getH(h), 0),
-      monto:       hourlyM + flatM,
+      monto:       hourlyM + flatM + adjM,
       flatMonto:   flatM,
       hourlyMonto: hourlyM,
+      adjMonto:    adjM,
       registros:   filtered.length,
       // Solo contar casos raíz (los mismos que aparecen en la pestaña Procesos)
       procesos: new Set(
         filtered.map(h => h.casoId).filter(id => rootCaseIds.has(id))
       ).size,
     }
-  }, [filtered, casesMap, flatBillingFor])
+  }, [filtered, casesMap, flatBillingFor, filteredAdjustments])
 
   // Días laborables (L–V) en el período seleccionado
   const workingDaysInPeriod = useMemo(() => {
@@ -951,9 +983,17 @@ export function HoursPage() {
         const d = new Date(h.fechaRegistro + 'T00:00:00')
         return d.getMonth() === i && d.getFullYear() === yearFilter
       })
-      return { label: MONTHS[i], ...bucket(mh) }
+      const { horas, monto: horasMonto } = bucket(mh)
+      // Sumar ajustes con fechaAplicacion en este mes
+      const adjMonto = allAdjustments.filter(a => {
+        if (!a.fechaAplicacion) return false
+        const d = new Date(a.fechaAplicacion + 'T12:00:00')
+        return d.getMonth() === i && d.getFullYear() === yearFilter &&
+          (casoFilter.length === 0 || casoFilter.includes(a.casoId))
+      }).reduce((s, a) => s + a.monto, 0)
+      return { label: MONTHS[i], horas, monto: horasMonto + adjMonto }
     })
-  }, [baseHours, yearFilter, monthFilter, casoFilter, clientFilter, tarifaFilter, userFilter, casesMap, chartGroupBy, usersMap])
+  }, [baseHours, allAdjustments, yearFilter, monthFilter, casoFilter, clientFilter, tarifaFilter, userFilter, casesMap, chartGroupBy, usersMap])
 
   // ── Chart series (segunda agrupación) ────────────────────────────────────
   // Cuando chartGroupBy2 !== 'none', devuelve SeriesData[] para el gráfico multi-series.
@@ -1182,14 +1222,23 @@ export function HoursPage() {
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <AppLayout>
-      <div className="p-6 max-w-7xl mx-auto space-y-6">
+      <div className="px-4 py-6 sm:px-6 max-w-7xl mx-auto space-y-6">
 
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-1">Facturación</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Facturación</h1>
             <p className="text-slate-500 text-sm">Horas trabajadas y facturación por proceso</p>
           </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowExportModal(true)}
+            className="flex items-center gap-2 border-emerald-300 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-400"
+          >
+            <FileDown size={15} />
+            Exportar Excel
+          </Button>
         </div>
 
         {/* Stats */}
@@ -1625,6 +1674,27 @@ export function HoursPage() {
                             )
                           })
                         )}
+
+                        {/* Adjustments for this case */}
+                        {filteredAdjustments.filter(a => a.casoId === casoId).map(adj => (
+                          <div key={adj.id} className="flex items-center gap-3 px-14 py-2.5 border-t border-violet-100 bg-violet-50/30">
+                            <div className="flex-shrink-0"><SlidersHorizontal size={12} className="text-violet-400" /></div>
+                            <div className="w-0.5 h-5 rounded-full bg-violet-200 flex-shrink-0" />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-violet-700 truncate">
+                                {adj.descripcion || <span className="italic text-violet-400">Ajuste sin descripción</span>}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                {adj.fechaAplicacion
+                                  ? new Date(adj.fechaAplicacion + 'T12:00:00').toLocaleDateString('es-PE', { month: 'short', year: 'numeric' })
+                                  : 'Sin mes asignado'}
+                              </p>
+                            </div>
+                            <span className={`text-xs font-semibold flex-shrink-0 ${adj.monto < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+                              {adj.monto < 0 ? '−' : '+'} {simbolo} {formatMonto(Math.abs(adj.monto))}
+                            </span>
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -1846,6 +1916,16 @@ export function HoursPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal: exportar a Excel */}
+      {showExportModal && (
+        <ExportBillingModal
+          onClose={() => setShowExportModal(false)}
+          allHours={allHours}
+          casesMap={casesMap}
+          clients={clients}
+        />
       )}
 
     </AppLayout>

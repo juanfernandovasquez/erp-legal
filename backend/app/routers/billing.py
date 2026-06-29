@@ -4,7 +4,7 @@ Billing endpoints for case-level billing summaries, adjustments and PDF.
 
 import io
 import uuid as uuid_module
-from datetime import datetime
+from datetime import datetime, date
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
@@ -26,13 +26,16 @@ router = APIRouter(tags=["Facturación"])
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _format_adjustment(adj: BillingAdjustment) -> dict:
+def _format_adjustment(adj: BillingAdjustment, case: "Case | None" = None) -> dict:
     return {
         "id": str(adj.id),
         "casoId": str(adj.case_id),
+        "casoTitulo": case.title if case else None,
+        "moneda": case.moneda_facturacion if case else None,
         "nombre": adj.nombre,
         "descripcion": adj.descripcion,
         "monto": float(adj.monto),
+        "fechaAplicacion": adj.fecha_aplicacion.isoformat() if adj.fecha_aplicacion else None,
         "createdAt": adj.created_at.isoformat() if adj.created_at else None,
         "updatedAt": adj.updated_at.isoformat() if adj.updated_at else None,
     }
@@ -110,7 +113,7 @@ async def get_billing_summary(
         data={
             "casoId": str(case.id),
             "subtotalHoras": round(subtotal, 2),
-            "ajustes": [_format_adjustment(a) for a in adjustments],
+            "ajustes": [_format_adjustment(a, case) for a in adjustments],
             "totalAjustes": round(total_ajustes, 2),
             "totalFinal": total_final,
             "moneda": case.moneda_facturacion or "PEN",
@@ -146,12 +149,20 @@ async def create_adjustment(
     except (TypeError, ValueError):
         raise HTTPException(status_code=422, detail="El monto debe ser un número")
 
+    fecha_aplicacion = None
+    if request.get("fechaAplicacion"):
+        try:
+            fecha_aplicacion = date.fromisoformat(request["fechaAplicacion"])
+        except (ValueError, TypeError):
+            pass
+
     adj = BillingAdjustment(
         case_id=case.id,
         law_firm_id=current_user.law_firm_id,
         nombre=None,
         descripcion=descripcion or "",
         monto=monto,
+        fecha_aplicacion=fecha_aplicacion,
         created_by=current_user.id,
         is_deleted=False,
     )
@@ -194,6 +205,14 @@ async def update_adjustment(
             adj.monto = float(request["monto"])
         except (TypeError, ValueError):
             raise HTTPException(status_code=422, detail="El monto debe ser un número")
+    if "fechaAplicacion" in request:
+        if request["fechaAplicacion"]:
+            try:
+                adj.fecha_aplicacion = date.fromisoformat(request["fechaAplicacion"])
+            except (ValueError, TypeError):
+                pass
+        else:
+            adj.fecha_aplicacion = None
 
     adj.updated_at = datetime.utcnow()
     adj.updated_by = current_user.id

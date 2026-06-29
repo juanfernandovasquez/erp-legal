@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/DateInput'
 import { Select } from '@/components/ui/select'
 import api from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
@@ -187,9 +188,8 @@ export function HoursForm({
         />
       )}
 
-      <Input
+      <DateInput
         label="Fecha de trabajo *"
-        type="date"
         value={fecha}
         onChange={(e) => setFecha(e.target.value)}
         required
@@ -206,7 +206,7 @@ export function HoursForm({
       )}
 
       {/* Minutes + rate */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <Input
             label="Minutos trabajados *"

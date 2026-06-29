@@ -34,6 +34,9 @@ class ClientCreate(BaseModel):
 
     is_preferred: bool = Field(default=False, description="Is preferred")
 
+    usuario_sol: Optional[str] = Field(None, max_length=100, description="Usuario SOL (SUNAT)")
+    clave_sol: Optional[str] = Field(None, max_length=255, description="Clave SOL (SUNAT)")
+
     model_config = {"from_attributes": True}
 
 
@@ -67,6 +70,9 @@ class ClientUpdate(BaseModel):
 
     is_active: Optional[bool] = Field(None, description="Is active")
     is_preferred: Optional[bool] = Field(None, description="Is preferred")
+
+    usuario_sol: Optional[str] = Field(None, max_length=100, description="Usuario SOL (SUNAT)")
+    clave_sol: Optional[str] = Field(None, max_length=255, description="Clave SOL (SUNAT)")
 
     model_config = {"from_attributes": True}
 

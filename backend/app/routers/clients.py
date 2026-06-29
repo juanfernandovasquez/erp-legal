@@ -40,6 +40,8 @@ def _format_client(client: Client) -> dict:
         "taxId": client.tax_id,
         "isActive": client.is_active,
         "isPreferred": client.is_preferred,
+        "usuarioSol": client.usuario_sol,
+        "claveSol": client.clave_sol,
         "createdAt": client.created_at.isoformat() if client.created_at else None,
         "updatedAt": client.updated_at.isoformat() if client.updated_at else None,
     }
@@ -144,6 +146,8 @@ async def create_client(
         website=request.website,
         notes=request.notes,
         is_preferred=request.is_preferred,
+        usuario_sol=request.usuario_sol,
+        clave_sol=request.clave_sol,
         is_deleted=False,
     )
 
@@ -347,6 +351,10 @@ async def update_client(
         client.is_active = request.is_active
     if request.is_preferred is not None:
         client.is_preferred = request.is_preferred
+    if request.usuario_sol is not None:
+        client.usuario_sol = request.usuario_sol
+    if request.clave_sol is not None:
+        client.clave_sol = request.clave_sol
 
     client.updated_at = datetime.utcnow()
     await db.commit()

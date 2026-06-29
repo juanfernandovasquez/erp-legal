@@ -4,6 +4,7 @@ import { useEscapeKey } from '@/hooks/useEscapeKey'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DateInput } from '@/components/ui/DateInput'
 import { Textarea } from '@/components/ui/textarea'
 import { Select } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +29,7 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
   const [isDeleting, setIsDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [saveError, setSaveError] = useState('')
   const [users, setUsers] = useState<any[]>([])
 
   const [titulo, setTitulo] = useState(task.titulo)
@@ -55,6 +57,7 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
 
   const handleSave = async () => {
     setIsSaving(true)
+    setSaveError('')
     try {
       const res = await api.patch(`/tasks/${task.id}`, {
         titulo,
@@ -67,8 +70,9 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
       })
       onSave(res.data.data)
       onClose()
-    } catch (error) {
-      console.error('Error saving task:', error)
+    } catch (error: any) {
+      const msg = error?.response?.data?.detail || error?.response?.data?.message || 'Error al guardar la tarea'
+      setSaveError(typeof msg === 'string' ? msg : JSON.stringify(msg))
     } finally {
       setIsSaving(false)
     }
@@ -145,7 +149,7 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
 
           {/* Status + Priority row (edit mode) */}
           {isEditing && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Select
                 label="Estado"
                 options={TASK_STATUS_OPTIONS}
@@ -187,7 +191,7 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
           </div>
 
           {/* Assignee + Due date row */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <div className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
                 <User size={15} />
@@ -215,8 +219,7 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
                 <span>Fecha de Presentación</span>
               </div>
               {isEditing ? (
-                <Input
-                  type="date"
+                <DateInput
                   value={fechaPresentacion}
                   onChange={(e) => setFechaPresentacion(e.target.value)}
                 />
@@ -237,8 +240,7 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
               <span className={isOverdue ? 'text-red-600' : ''}>Fecha de Vencimiento</span>
             </div>
             {isEditing ? (
-              <Input
-                type="date"
+              <DateInput
                 value={fechaVencimiento}
                 onChange={(e) => setFechaVencimiento(e.target.value)}
               />
@@ -278,6 +280,13 @@ export function TaskDetailModal({ task, onClose, onSave, onDelete }: TaskDetailM
             <span>Actualizado: {task.updatedAt ? formatDate(task.updatedAt) : '—'}</span>
           </div>
         </div>
+
+        {/* Save error */}
+        {saveError && (
+          <div className="mx-6 mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+            <p className="text-sm text-red-600">{saveError}</p>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="flex items-center justify-between p-6 border-t border-slate-200 bg-slate-50 rounded-b-xl">

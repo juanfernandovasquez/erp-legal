@@ -1,0 +1,293 @@
+{
+  "_description": "Mapa de correspondencia entre archivos del proyecto y tests relevantes. Usado por el agente seleccionar-tests para recomendar qué tests ejecutar dado un conjunto de cambios.",
+  "_version": "1.1",
+  "_updated": "2026-06-28",
+
+  "siempre_ejecutar": [
+    "tests/test_security.py"
+  ],
+
+  "reglas": [
+    {
+      "patron": "backend/app/routers/auth.py",
+      "marcadores": ["auth"],
+      "archivos_test": ["tests/test_auth.py", "tests/test_security.py"],
+      "descripcion": "Router de autenticación: login, logout, registro, refresh token, perfil"
+    },
+    {
+      "patron": "backend/app/schemas/auth.py",
+      "marcadores": ["auth", "validation"],
+      "archivos_test": ["tests/test_auth.py"],
+      "descripcion": "Schemas Pydantic de auth: LoginRequest, RegisterRequest, etc."
+    },
+    {
+      "patron": "backend/app/dependencies.py",
+      "marcadores": ["auth", "security"],
+      "archivos_test": ["tests/test_auth.py", "tests/test_security.py"],
+      "descripcion": "Dependencias de autenticación: get_current_user, require_roles"
+    },
+    {
+      "patron": "backend/app/utils/auth.py",
+      "marcadores": ["auth", "security"],
+      "archivos_test": ["tests/test_auth.py", "tests/test_security.py"],
+      "descripcion": "Utilidades JWT: create_access_token, verify_token, verify_password"
+    },
+    {
+      "patron": "backend/app/middleware/rls.py",
+      "marcadores": ["security"],
+      "archivos_test": ["tests/test_security.py"],
+      "descripcion": "Middleware de Row Level Security: aislamiento entre firmas"
+    },
+    {
+      "patron": "backend/app/middleware/audit.py",
+      "marcadores": ["security"],
+      "archivos_test": ["tests/test_security.py"],
+      "descripcion": "Middleware de auditoría"
+    },
+    {
+      "patron": "backend/app/routers/cases.py",
+      "marcadores": ["cases"],
+      "archivos_test": ["tests/test_cases.py", "tests/test_security.py::TestAislamientoEntreFirmas"],
+      "descripcion": "Router de casos: CRUD, equipo, filtros, estado, tipo_facturacion"
+    },
+    {
+      "patron": "backend/app/models/case.py",
+      "marcadores": ["cases", "hours", "billing_calc"],
+      "archivos_test": ["tests/test_cases.py", "tests/test_hours.py"],
+      "descripcion": "Modelo Case: tipo_facturacion, precio_facturacion, moneda_facturacion"
+    },
+    {
+      "patron": "backend/app/schemas/case.py",
+      "marcadores": ["cases", "validation"],
+      "archivos_test": ["tests/test_cases.py"],
+      "descripcion": "Schemas de casos: CaseCreate, CaseUpdate"
+    },
+    {
+      "patron": "backend/app/routers/processes.py",
+      "marcadores": ["processes"],
+      "archivos_test": ["tests/test_processes.py", "tests/test_hours.py::TestCalculoBillingFlat"],
+      "descripcion": "Router de procesos: CRUD, tipo_tarifa, tarifa, totales calculados"
+    },
+    {
+      "patron": "backend/app/models/process.py",
+      "marcadores": ["processes", "billing_calc"],
+      "archivos_test": ["tests/test_processes.py", "tests/test_hours.py"],
+      "descripcion": "Modelo CaseProcess: titulo, tipo_tarifa, tarifa, moneda (columnas en español)"
+    },
+    {
+      "patron": "backend/app/routers/tasks.py",
+      "marcadores": ["tasks"],
+      "archivos_test": ["tests/test_tasks.py"],
+      "descripcion": "Router de tareas: CRUD, estados, asignación, cascade delete"
+    },
+    {
+      "patron": "backend/app/models/task.py",
+      "marcadores": ["tasks", "hours", "billing_calc"],
+      "archivos_test": ["tests/test_tasks.py", "tests/test_hours.py"],
+      "descripcion": "Modelos Task y CaseHours: horas, tarifa, is_billable, soft-delete"
+    },
+    {
+      "patron": "backend/app/routers/hours.py",
+      "marcadores": ["hours", "billing_calc"],
+      "archivos_test": ["tests/test_hours.py", "tests/test_processes.py::TestTotalesProceso"],
+      "descripcion": "Router de horas: registro, actualización, eliminación, cálculo flat y por_horas"
+    },
+    {
+      "patron": "backend/app/routers/clients.py",
+      "marcadores": ["clients"],
+      "archivos_test": ["tests/test_clients.py"],
+      "descripcion": "Router de clientes: CRUD, tipos (persona/empresa), estadísticas"
+    },
+    {
+      "patron": "backend/app/models/client.py",
+      "marcadores": ["clients"],
+      "archivos_test": ["tests/test_clients.py"],
+      "descripcion": "Modelo Client"
+    },
+    {
+      "patron": "backend/app/routers/alerts.py",
+      "marcadores": ["alerts"],
+      "archivos_test": ["tests/test_alerts.py"],
+      "descripcion": "Router de alertas: CRUD, resolución, severidad"
+    },
+    {
+      "patron": "backend/app/routers/notification_rules.py",
+      "marcadores": ["notifications"],
+      "archivos_test": ["tests/test_alerts.py::TestReglasNotificacion"],
+      "descripcion": "Router de reglas de notificación: CRUD, days_before, notify_assignee"
+    },
+    {
+      "patron": "backend/app/routers/billing.py",
+      "marcadores": ["billing"],
+      "archivos_test": ["tests/test_billing.py"],
+      "descripcion": "Router de ajustes de facturación: CRUD, símbolo de moneda (BUG-003)"
+    },
+    {
+      "patron": "backend/app/models/billing.py",
+      "marcadores": ["billing"],
+      "archivos_test": ["tests/test_billing.py"],
+      "descripcion": "Modelo BillingAdjustment: nombre, descripcion, monto (campos en español)"
+    },
+    {
+      "patron": "backend/app/routers/users.py",
+      "marcadores": ["security"],
+      "archivos_test": ["tests/test_security.py::TestRoles"],
+      "descripcion": "Router de usuarios: CRUD, roles, solo admin puede crear usuarios"
+    },
+    {
+      "patron": "backend/app/database.py",
+      "marcadores": ["auth", "security"],
+      "archivos_test": ["tests/test_auth.py", "tests/test_security.py"],
+      "descripcion": "Motor de BD: init_db, get_db, sesiones async"
+    },
+    {
+      "patron": "backend/app/config.py",
+      "marcadores": ["auth", "security"],
+      "archivos_test": ["tests/test_auth.py", "tests/test_security.py"],
+      "descripcion": "Configuración: SECRET_KEY, JWT expiry, DATABASE_URL"
+    },
+    {
+      "patron": "backend/app/main.py",
+      "marcadores": ["auth", "security"],
+      "archivos_test": ["tests/test_auth.py", "tests/test_security.py"],
+      "descripcion": "App principal: middlewares, router registration, lifespan"
+    },
+    {
+      "patron": "backend/alembic/versions/",
+      "marcadores": [],
+      "archivos_test": [],
+      "descripcion": "Migraciones de BD: si es una migración destructiva o renombra columnas, ejecutar TODOS los tests",
+      "nota": "Correr pytest completo (sin filtro) para verificar que la migración no rompió ningún modelo"
+    },
+    {
+      "patron": "backend/app/utils/security.py",
+      "marcadores": ["auth", "security"],
+      "archivos_test": ["tests/test_auth.py", "tests/test_security.py"],
+      "descripcion": "Utilidades de seguridad: hashing de contraseñas, oauth2_scheme"
+    },
+    {
+      "patron": "backend/app/services/",
+      "marcadores": ["auth", "security"],
+      "archivos_test": ["tests/test_auth.py"],
+      "descripcion": "Servicios: audit_log y otros"
+    },
+    {
+      "patron": "frontend/src/pages/hours/HoursPage.tsx",
+      "marcadores": ["hours", "billing_calc"],
+      "archivos_test": ["tests/test_hours.py", "frontend/tests/e2e/horas.spec.ts"],
+      "descripcion": "Página de horas frontend (BUG-001: símbolo $ siempre). Tests E2E verifican símbolo de moneda y KPIs."
+    },
+    {
+      "patron": "frontend/src/components/hours/",
+      "marcadores": ["hours", "billing_calc"],
+      "archivos_test": ["tests/test_hours.py", "frontend/tests/e2e/horas.spec.ts"],
+      "descripcion": "Componentes de horas: HoursForm, HoursTable"
+    },
+    {
+      "patron": "frontend/src/pages/cases/CasesListPage.tsx",
+      "marcadores": ["cases"],
+      "archivos_test": ["tests/test_cases.py", "frontend/tests/e2e/casos.spec.ts"],
+      "descripcion": "Página lista de casos: búsqueda, filtros, creación"
+    },
+    {
+      "patron": "frontend/src/pages/cases/CaseDetailPage.tsx",
+      "marcadores": ["cases", "processes", "tasks"],
+      "archivos_test": ["tests/test_cases.py", "frontend/tests/e2e/casos.spec.ts", "frontend/tests/e2e/procesos.spec.ts", "frontend/tests/e2e/tareas.spec.ts"],
+      "descripcion": "Página detalle de caso: tabs (Procesos, Tareas, Facturación, Alertas). BUG-002: tab Alertas vacía."
+    },
+    {
+      "patron": "frontend/src/components/cases/",
+      "marcadores": ["cases", "processes"],
+      "archivos_test": ["tests/test_cases.py", "tests/test_processes.py", "frontend/tests/e2e/casos.spec.ts", "frontend/tests/e2e/procesos.spec.ts"],
+      "descripcion": "Componentes de casos: CaseForm, CaseCard, CaseProcessSection, ProcessForm"
+    },
+    {
+      "patron": "frontend/src/components/billing/",
+      "marcadores": ["billing"],
+      "archivos_test": ["tests/test_billing.py", "frontend/tests/e2e/facturacion.spec.ts"],
+      "descripcion": "Componentes de facturación: BillingAdjustments (BUG-003 símbolo USD)"
+    },
+    {
+      "patron": "frontend/src/components/tasks/",
+      "marcadores": ["tasks"],
+      "archivos_test": ["tests/test_tasks.py", "frontend/tests/e2e/tareas.spec.ts"],
+      "descripcion": "Componentes de tareas: TaskForm, TaskCard, TaskDetailModal"
+    },
+    {
+      "patron": "frontend/src/pages/tasks/",
+      "marcadores": ["tasks"],
+      "archivos_test": ["tests/test_tasks.py", "frontend/tests/e2e/tareas.spec.ts"],
+      "descripcion": "Página de tareas /tasks: lista de tareas del usuario, filtros por estado"
+    },
+    {
+      "patron": "frontend/src/pages/clients/",
+      "marcadores": ["clients"],
+      "archivos_test": ["tests/test_clients.py", "frontend/tests/e2e/clientes.spec.ts"],
+      "descripcion": "Páginas de clientes: lista, detalle, CRUD"
+    },
+    {
+      "patron": "frontend/src/pages/users/",
+      "marcadores": ["security"],
+      "archivos_test": ["tests/test_security.py::TestRoles", "frontend/tests/e2e/usuarios.spec.ts"],
+      "descripcion": "Página de usuarios: CRUD, roles, cambio de contraseña, eliminación"
+    },
+    {
+      "patron": "frontend/src/components/notifications/",
+      "marcadores": ["notifications"],
+      "archivos_test": ["tests/test_alerts.py::TestReglasNotificacion"],
+      "descripcion": "Componente NotificationRules"
+    },
+    {
+      "patron": "frontend/src/lib/axios.ts",
+      "marcadores": ["auth", "security"],
+      "archivos_test": ["tests/test_auth.py", "tests/test_security.py"],
+      "descripcion": "Cliente HTTP: baseURL, interceptores de auth (BUG-HARD-004: fallback localhost)"
+    },
+    {
+      "patron": "frontend/tests/e2e/",
+      "marcadores": [],
+      "archivos_test": [],
+      "descripcion": "Tests E2E Playwright: si cambias un helper o spec, usar agente actualizar-tests para evaluar impacto",
+      "nota": "npx playwright test --reporter=list"
+    },
+    {
+      "patron": "docker-compose",
+      "marcadores": [],
+      "archivos_test": [],
+      "descripcion": "CRÍTICO: cambios en docker-compose pueden destruir la BD. Ejecutar todos los tests + verificar manualmente staging.",
+      "nota": "pytest completo obligatorio antes de deploy"
+    }
+  ],
+
+  "comandos_por_marcador": {
+    "auth":         "pytest tests/test_auth.py tests/test_security.py -m auth",
+    "security":     "pytest tests/test_security.py",
+    "cases":        "pytest tests/test_cases.py tests/test_security.py::TestAislamientoEntreFirmas",
+    "tasks":        "pytest tests/test_tasks.py",
+    "hours":        "pytest tests/test_hours.py",
+    "billing_calc": "pytest tests/test_hours.py -m billing_calc",
+    "processes":    "pytest tests/test_processes.py tests/test_hours.py::TestCalculoBillingFlat",
+    "clients":      "pytest tests/test_clients.py",
+    "alerts":       "pytest tests/test_alerts.py",
+    "notifications":"pytest tests/test_alerts.py::TestReglasNotificacion",
+    "billing":      "pytest tests/test_billing.py",
+    "validation":   "pytest -m validation",
+    "soft_delete":  "pytest -m soft_delete",
+    "todo":         "pytest"
+  },
+
+  "comandos_e2e": {
+    "clientes":     "npx playwright test tests/e2e/clientes.spec.ts",
+    "usuarios":     "npx playwright test tests/e2e/usuarios.spec.ts",
+    "tareas":       "npx playwright test tests/e2e/tareas.spec.ts",
+    "horas":        "npx playwright test tests/e2e/horas.spec.ts",
+    "procesos":     "npx playwright test tests/e2e/procesos.spec.ts",
+    "casos":        "npx playwright test tests/e2e/casos.spec.ts",
+    "facturacion":  "npx playwright test tests/e2e/facturacion.spec.ts",
+    "todo_e2e":     "npx playwright test",
+    "modo_ui":      "npx playwright test --ui",
+    "con_browser":  "npx playwright test --headed"
+  },
+
+  "_nota_e2e": "Los tests E2E requieren que el frontend y backend estén corriendo. Configurar PLAYWRIGHT_BASE_URL y PLAYWRIGHT_API_URL o usar los defaults (localhost:5173 y localhost:8000). Credenciales via TEST_USER_EMAIL y TEST_USER_PASSWORD en .env.test."
+}

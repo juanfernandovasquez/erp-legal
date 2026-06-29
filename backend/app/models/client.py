@@ -61,6 +61,10 @@ class Client(BaseModel):
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     tags: Mapped[Optional[list[str]]] = mapped_column(JSON, nullable=True)
 
+    # Credenciales SOL (SUNAT Sistema en Línea)
+    usuario_sol: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    clave_sol: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_preferred: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

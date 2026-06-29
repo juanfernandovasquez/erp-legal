@@ -8,6 +8,7 @@ interface Ajuste {
   nombre: string | null
   descripcion: string
   monto: number
+  fechaAplicacion: string | null
 }
 
 interface BillingResumen {
@@ -23,6 +24,7 @@ interface BillingResumen {
 interface Props {
   caseId: string
   moneda?: string
+  refreshKey?: number
 }
 
 function fmt(amount: number, moneda: string): string {
@@ -33,7 +35,7 @@ function fmt(amount: number, moneda: string): string {
 const inputCls =
   'w-full border border-slate-200 rounded-lg px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white'
 
-export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
+export function BillingAdjustments({ caseId, moneda = 'PEN', refreshKey }: Props) {
   const [data, setData]       = useState<BillingResumen | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState('')
@@ -43,6 +45,7 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
   const [showForm, setShowForm]           = useState(false)
   const [formDesc, setFormDesc]           = useState('')
   const [formMonto, setFormMonto]         = useState('')
+  const [formFecha, setFormFecha]         = useState('')
   const [formError, setFormError]         = useState('')
   const [saving, setSaving]               = useState(false)
 
@@ -50,6 +53,7 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
   const [editingId, setEditingId]         = useState<string | null>(null)
   const [editDesc, setEditDesc]           = useState('')
   const [editMonto, setEditMonto]         = useState('')
+  const [editFecha, setEditFecha]         = useState('')
   const [editError, setEditError]         = useState('')
   const [savingEdit, setSavingEdit]       = useState(false)
 
@@ -64,7 +68,7 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
     finally { setLoading(false) }
   }, [caseId])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load() }, [load, refreshKey])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault(); setFormError('')
@@ -75,8 +79,9 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
       await api.post(`/cases/${caseId}/billing/adjustments`, {
         descripcion: formDesc.trim() || null,
         monto,
+        fechaAplicacion: formFecha ? `${formFecha}-01` : null,
       })
-      setShowForm(false); setFormDesc(''); setFormMonto('')
+      setShowForm(false); setFormDesc(''); setFormMonto(''); setFormFecha('')
       await load()
     } catch (err: any) {
       setFormError(err?.response?.data?.detail || 'Error al guardar')
@@ -85,7 +90,10 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
 
   const startEdit = (adj: Ajuste) => {
     setEditingId(adj.id)
-    setEditDesc(adj.descripcion); setEditMonto(String(adj.monto)); setEditError('')
+    setEditDesc(adj.descripcion ?? '')
+    setEditMonto(String(adj.monto))
+    setEditFecha(adj.fechaAplicacion ? adj.fechaAplicacion.slice(0, 7) : '')
+    setEditError('')
   }
 
   const handleEdit = async (adj: Ajuste) => {
@@ -95,8 +103,9 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
     setSavingEdit(true)
     try {
       await api.patch(`/cases/${caseId}/billing/adjustments/${adj.id}`, {
-        descripcion: editDesc.trim() || null,
+        descripcion: editDesc?.trim() || null,
         monto,
+        fechaAplicacion: editFecha ? `${editFecha}-01` : null,
       })
       setEditingId(null); await load()
     } catch (err: any) {
@@ -164,11 +173,16 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
         {showForm && (
           <form onSubmit={handleCreate} className="px-5 py-4 bg-slate-50 border-b border-slate-100 space-y-3">
             {formError && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded px-3 py-1.5">{formError}</p>}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Monto <span className="font-normal text-slate-400">(negativo = descuento)</span></label>
                 <input type="number" step="0.01" value={formMonto} onChange={e => setFormMonto(e.target.value)}
                   placeholder="0.00" className={inputCls} required />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-500 mb-1">Mes de aplicación <span className="font-normal text-slate-400">(opcional)</span></label>
+                <input type="month" value={formFecha} onChange={e => setFormFecha(e.target.value)}
+                  className={inputCls} />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-500 mb-1">Descripción <span className="font-normal text-slate-400">(opcional)</span></label>
@@ -200,6 +214,7 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50/60">
                 <th className="px-5 py-2.5 text-left text-xs font-medium text-slate-500">Descripción</th>
+                <th className="px-5 py-2.5 text-left text-xs font-medium text-slate-500">Mes</th>
                 <th className="px-5 py-2.5 text-right text-xs font-medium text-slate-500">Monto</th>
                 <th className="px-4 py-2.5 w-20" />
               </tr>
@@ -212,6 +227,10 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
                       <input type="text" value={editDesc} onChange={e => setEditDesc(e.target.value)}
                         placeholder="Descripción (opcional)" className={inputCls} />
                       {editError && <p className="text-xs text-red-500 mt-1">{editError}</p>}
+                    </td>
+                    <td className="px-3 py-2">
+                      <input type="month" value={editFecha} onChange={e => setEditFecha(e.target.value)}
+                        className={inputCls} />
                     </td>
                     <td className="px-3 py-2">
                       <input type="number" step="0.01" value={editMonto} onChange={e => setEditMonto(e.target.value)}
@@ -234,6 +253,11 @@ export function BillingAdjustments({ caseId, moneda = 'PEN' }: Props) {
                   <tr key={adj.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-5 py-3 text-slate-600">
                       {adj.descripcion || <span className="text-slate-400 italic text-xs">Sin descripción</span>}
+                    </td>
+                    <td className="px-5 py-3 text-slate-500 text-xs">
+                      {adj.fechaAplicacion
+                        ? new Date(adj.fechaAplicacion + 'T12:00:00').toLocaleDateString('es-PE', { month: 'short', year: 'numeric' })
+                        : <span className="text-slate-300">—</span>}
                     </td>
                     <td className="px-5 py-3 text-right font-semibold">
                       <span className={adj.monto < 0 ? 'text-red-500' : 'text-emerald-600'}>

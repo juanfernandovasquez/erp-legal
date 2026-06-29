@@ -119,7 +119,7 @@ export function ProcessForm({ caseId, proceso, onSuccess, onCancel }: Props) {
         </p>
 
         {/* Tipo de tarifa + Moneda */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className={labelCls}>Tipo de tarifa</label>
             <select

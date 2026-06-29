@@ -12,9 +12,9 @@ export function SettingsPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="px-4 py-6 sm:px-6 max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Configuración</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">Configuración</h1>
           <p className="text-slate-600">Gestiona tu cuenta y preferencias</p>
         </div>
 

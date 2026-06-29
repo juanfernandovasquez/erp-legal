@@ -13,8 +13,8 @@ import { CASE_STATUS_OPTIONS } from '@/lib/utils'
 
 const caseSchema = z.object({
   titulo: z.string().min(3, 'El título debe tener al menos 3 caracteres'),
-  descripcion: z.string().min(10, 'La descripción debe tener al menos 10 caracteres'),
-  clienteId: z.string().nonempty('El cliente es requerido'),
+  descripcion: z.string().optional(),
+  clienteId: z.string().optional(),
   abogadoPrincipalId: z.string().optional(),
   estado: z.string().optional(),
   // Billing
@@ -163,7 +163,7 @@ export function CaseForm({ onSuccess, initialData, defaultClienteId, inline = fa
           Facturación <span className="font-normal normal-case text-slate-400">(opcional)</span>
         </p>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Select
             label="Tipo de facturación"
             options={[

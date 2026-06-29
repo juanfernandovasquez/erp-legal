@@ -6,15 +6,12 @@ import {
   LayoutDashboard,
   FileText,
   CheckSquare,
-  Clock,
   Receipt,
   AlertCircle,
   Users,
   UserCog,
   Settings,
   LogOut,
-  Menu,
-  X,
   Mail,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -52,13 +49,6 @@ export function Sidebar() {
 
   return (
     <>
-      <button
-        onClick={toggleSidebar}
-        className="fixed top-4 left-4 z-40 lg:hidden text-slate-700 hover:text-primary-700"
-      >
-        {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
-      </button>
-
       {sidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-30 lg:hidden"
@@ -68,17 +58,17 @@ export function Sidebar() {
 
       <aside
         className={cn(
-          'fixed left-0 top-0 bottom-0 w-64 bg-primary-700 text-white overflow-y-auto transition-all z-40',
+          'fixed left-0 top-0 bottom-0 w-64 bg-primary-700 text-white flex flex-col transition-all z-40',
           'lg:translate-x-0',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="p-6 border-b border-primary-600">
+        <div className="p-6 border-b border-primary-600 shrink-0">
           <h1 className="text-2xl font-bold">Legal ERP</h1>
           <p className="text-primary-200 text-sm mt-1">Sistema de Gestión</p>
         </div>
 
-        <nav className="p-4 space-y-2">
+        <nav className="flex-1 overflow-y-auto p-4 space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon
             const active = isActive(item.href)
@@ -86,6 +76,7 @@ export function Sidebar() {
               <Link
                 key={item.href}
                 to={item.href}
+                onClick={() => { if (sidebarOpen) toggleSidebar() }}
                 className={cn(
                   'flex items-center gap-3 px-4 py-3 rounded-md transition-colors',
                   active
@@ -100,12 +91,12 @@ export function Sidebar() {
           })}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-primary-600">
+        <div className="shrink-0 p-4 border-t border-primary-600">
           <div className="flex items-center gap-3 mb-4 pb-4 border-b border-primary-600">
             <div className="h-10 w-10 rounded-full bg-primary-600 flex items-center justify-center">
               {user?.nombre?.charAt(0).toUpperCase() ?? '?'}
             </div>
-            <div className="text-sm">
+            <div className="text-sm min-w-0">
               <p className="font-medium truncate">{user?.nombre}</p>
               <p className="text-primary-200 text-xs">{ROLE_LABELS[user?.rol ?? ''] ?? user?.rol}</p>
             </div>
@@ -120,11 +111,6 @@ export function Sidebar() {
         </div>
       </aside>
 
-      <div className={cn(
-        'transition-all duration-300',
-        sidebarOpen ? 'lg:ml-64' : 'ml-0'
-      )}>
-      </div>
     </>
   )
 }

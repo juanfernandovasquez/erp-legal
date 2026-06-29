@@ -55,17 +55,17 @@ export function AlertsPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-4xl mx-auto">
+      <div className="px-4 py-6 sm:px-6 max-w-4xl mx-auto">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-start sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-1">Alertas</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Alertas</h1>
             <p className="text-slate-600 text-sm">Seguimiento de plazos y eventos críticos</p>
           </div>
-          <Button className="gap-2" onClick={() => setShowCreateModal(true)}>
+          <Button className="gap-2 flex-shrink-0" onClick={() => setShowCreateModal(true)}>
             <Plus size={16} />
-            Nueva alerta
+            <span className="hidden sm:inline">Nueva </span>Alerta
           </Button>
         </div>
 

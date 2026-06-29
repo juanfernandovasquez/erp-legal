@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/common/EmptyState'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { Cliente } from '@/types'
-import { Users, Plus, Mail, X, Search, FileText, CheckSquare, AlertTriangle, Clock } from 'lucide-react'
+import { Users, Plus, Mail, X, Search, FileText, CheckSquare, Clock, Copy, Check, Hash } from 'lucide-react'
 import api from '@/lib/axios'
 
 interface ClientStats {
@@ -44,7 +44,17 @@ export function ClientsListPage() {
   const [form, setForm] = useState({ ...EMPTY_FORM })
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
+  const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const navigate = useNavigate()
+
+  const copyToClipboard = (e: React.MouseEvent, key: string, value: string) => {
+    e.stopPropagation()
+    if (!value) return
+    navigator.clipboard.writeText(value).then(() => {
+      setCopiedKey(key)
+      setTimeout(() => setCopiedKey(null), 1500)
+    })
+  }
 
   useEffect(() => {
     fetchClientes()
@@ -101,21 +111,21 @@ export function ClientsListPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="px-4 py-6 sm:px-6 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-start sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-1">Clientes</h1>
-            <p className="text-slate-600">{clientes.length} cliente{clientes.length !== 1 ? 's' : ''} registrado{clientes.length !== 1 ? 's' : ''}</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-1">Clientes</h1>
+            <p className="text-slate-600 text-sm sm:text-base">{clientes.length} cliente{clientes.length !== 1 ? 's' : ''} registrado{clientes.length !== 1 ? 's' : ''}</p>
           </div>
-          <Button className="gap-2" onClick={() => { setShowModal(true); setError('') }}>
+          <Button className="gap-2 flex-shrink-0" onClick={() => { setShowModal(true); setError('') }}>
             <Plus size={18} />
-            Nuevo Cliente
+            <span className="hidden sm:inline">Nuevo </span>Cliente
           </Button>
         </div>
 
         {/* Search */}
-        <div className="mb-4 relative max-w-sm">
+        <div className="mb-4 relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -146,30 +156,30 @@ export function ClientsListPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nombre</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead className="text-center">
+                      <TableHead className="hidden sm:table-cell">Email</TableHead>
+                      <TableHead className="hidden md:table-cell">
+                        <span className="flex items-center gap-1">
+                          <Hash size={13} /> RUC
+                        </span>
+                      </TableHead>
+                      <TableHead className="hidden sm:table-cell text-center">
                         <span className="flex items-center justify-center gap-1">
                           <FileText size={13} /> Casos activos
                         </span>
                       </TableHead>
-                      <TableHead className="text-center">
+                      <TableHead className="hidden md:table-cell text-center">
                         <span className="flex items-center justify-center gap-1">
                           <Clock size={13} /> Pendientes
                         </span>
                       </TableHead>
-                      <TableHead className="text-center">
+                      <TableHead className="hidden md:table-cell text-center">
                         <span className="flex items-center justify-center gap-1">
                           <CheckSquare size={13} /> En progreso
                         </span>
                       </TableHead>
-                      <TableHead className="text-center">
+                      <TableHead className="hidden md:table-cell text-center">
                         <span className="flex items-center justify-center gap-1">
                           <CheckSquare size={13} /> Completadas
-                        </span>
-                      </TableHead>
-                      <TableHead className="text-center">
-                        <span className="flex items-center justify-center gap-1">
-                          <AlertTriangle size={13} /> Vencidas
                         </span>
                       </TableHead>
                     </TableRow>
@@ -184,15 +194,44 @@ export function ClientsListPage() {
                           onClick={() => navigate(`/clients/${cliente.id}`)}
                         >
                           <TableCell className="font-medium">{cliente.nombre}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
+                          <TableCell className="hidden sm:table-cell">
+                            <div className="flex items-center gap-1.5">
                               <Mail size={14} className="text-slate-400 flex-shrink-0" />
-                              <span className="truncate max-w-[200px]">{cliente.email}</span>
+                              <span className="truncate max-w-[180px]">{cliente.email}</span>
+                              {cliente.email && (
+                                <button
+                                  onClick={(e) => copyToClipboard(e, `email-${cliente.id}`, cliente.email)}
+                                  className="flex-shrink-0 p-1 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                  title="Copiar email"
+                                >
+                                  {copiedKey === `email-${cliente.id}`
+                                    ? <Check size={12} className="text-green-500" />
+                                    : <Copy size={12} />}
+                                </button>
+                              )}
+                            </div>
+                          </TableCell>
+
+                          {/* RUC */}
+                          <TableCell className="hidden md:table-cell">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm text-slate-700 font-mono">{cliente.ruc || <span className="text-slate-300 font-sans">—</span>}</span>
+                              {cliente.ruc && (
+                                <button
+                                  onClick={(e) => copyToClipboard(e, `ruc-${cliente.id}`, cliente.ruc)}
+                                  className="flex-shrink-0 p-1 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                  title="Copiar RUC"
+                                >
+                                  {copiedKey === `ruc-${cliente.id}`
+                                    ? <Check size={12} className="text-green-500" />
+                                    : <Copy size={12} />}
+                                </button>
+                              )}
                             </div>
                           </TableCell>
 
                           {/* Casos activos */}
-                          <TableCell className="text-center">
+                          <TableCell className="hidden sm:table-cell text-center">
                             {s.active_cases > 0 ? (
                               <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
                                 {s.active_cases}
@@ -203,7 +242,7 @@ export function ClientsListPage() {
                           </TableCell>
 
                           {/* Tareas pendientes */}
-                          <TableCell className="text-center">
+                          <TableCell className="hidden md:table-cell text-center">
                             {s.pending_tasks > 0 ? (
                               <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold">
                                 {s.pending_tasks}
@@ -214,7 +253,7 @@ export function ClientsListPage() {
                           </TableCell>
 
                           {/* Tareas en progreso */}
-                          <TableCell className="text-center">
+                          <TableCell className="hidden md:table-cell text-center">
                             {s.in_progress_tasks > 0 ? (
                               <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-indigo-100 text-indigo-700 text-xs font-semibold">
                                 {s.in_progress_tasks}
@@ -225,7 +264,7 @@ export function ClientsListPage() {
                           </TableCell>
 
                           {/* Tareas completadas */}
-                          <TableCell className="text-center">
+                          <TableCell className="hidden md:table-cell text-center">
                             {s.completed_tasks > 0 ? (
                               <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
                                 {s.completed_tasks}
@@ -235,16 +274,6 @@ export function ClientsListPage() {
                             )}
                           </TableCell>
 
-                          {/* Tareas vencidas */}
-                          <TableCell className="text-center">
-                            {s.overdue_tasks > 0 ? (
-                              <span className="inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-100 text-red-700 text-xs font-semibold">
-                                {s.overdue_tasks}
-                              </span>
-                            ) : (
-                              <span className="text-slate-300 text-sm">—</span>
-                            )}
-                          </TableCell>
                         </TableRow>
                       )
                     })}
@@ -274,8 +303,8 @@ export function ClientsListPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
                   <Input
                     label="Nombre completo o razón social *"
                     value={form.name}
@@ -328,7 +357,7 @@ export function ClientsListPage() {
                   placeholder="Lima"
                 />
 
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <Input
                     label="Dirección"
                     value={form.street_address}
@@ -338,7 +367,7 @@ export function ClientsListPage() {
                 </div>
 
                 {(form.client_type === 'business' || form.client_type === 'government' || form.client_type === 'non_profit') && (
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <Input
                       label="Nombre de la organización"
                       value={form.organization_name}
@@ -348,7 +377,7 @@ export function ClientsListPage() {
                   </div>
                 )}
 
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-1">Notas</label>
                   <textarea
                     value={form.notes}

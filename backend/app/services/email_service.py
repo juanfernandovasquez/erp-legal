@@ -228,6 +228,40 @@ async def notify_deadline_approaching(
     return await _send(to_email, to_name, subject, _base_html("Plazo próximo a vencer", body))
 
 
+async def notify_client_alert(
+    to_email: str,
+    to_name: str,
+    client_name: str,
+    titulo: str,
+    descripcion: Optional[str],
+    event_date: str,
+    dias: int,
+) -> bool:
+    dias_label = "el mismo día" if dias == 0 else (f"mañana" if dias == 1 else f"en {dias} días")
+    urgency_color = "#ef4444" if dias <= 1 else ("#f59e0b" if dias <= 3 else "#6366f1")
+    desc_html = f'<p style="margin:12px 0 0;color:#374151;font-size:13px;">{descripcion}</p>' if descripcion else ""
+
+    body = f"""
+    <p style="margin:0 0 20px;color:#374151;font-size:15px;">
+      Hola <strong>{to_name}</strong>, tienes un recordatorio para el cliente <strong>{client_name}</strong>.
+    </p>
+    <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:20px 24px;margin-bottom:24px;">
+      <p style="margin:0 0 12px;font-size:16px;font-weight:700;color:#1e293b;">{titulo}</p>
+      <table cellpadding="0" cellspacing="0" style="width:100%;">
+        {_row("Cliente:", client_name)}
+        {_row("Fecha del evento:", event_date)}
+        {_row("Ocurre:", _badge(dias_label, urgency_color))}
+      </table>
+      {desc_html}
+    </div>
+    <p style="margin:0;color:#64748b;font-size:13px;">
+      Ingresa al ERP para ver la ficha completa del cliente.
+    </p>
+    """
+    subject = f"Recordatorio: {titulo} — {client_name}"
+    return await _send(to_email, to_name, subject, _base_html("Recordatorio de cliente", body))
+
+
 async def send_manual_email(
     recipients: list[dict],  # [{"email": ..., "name": ...}]
     subject: str,

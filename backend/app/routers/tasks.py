@@ -425,7 +425,9 @@ async def get_task(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
     result = await db.execute(
-        select(Task).where(Task.id == task_uuid).options(selectinload(Task.assignee))
+        select(Task).where(Task.id == task_uuid).options(
+            selectinload(Task.assignee), selectinload(Task.case), selectinload(Task.process)
+        )
     )
     task = result.scalars().first()
 
@@ -539,7 +541,7 @@ async def update_task(
     result2 = await db.execute(
         select(Task)
         .where(Task.id == task_uuid)
-        .options(selectinload(Task.assignee), selectinload(Task.case))
+        .options(selectinload(Task.assignee), selectinload(Task.case), selectinload(Task.process))
     )
     task = result2.scalars().first()
 
