@@ -2,9 +2,9 @@ import paramiko
 import os
 from pathlib import Path
 
-HOST = '137.184.54.245'
-USER = 'root'
-PASS = 'KDB_2026_PROYECTO'
+HOST = os.environ.get('DEPLOY_HOST', '137.184.54.245')
+USER = os.environ.get('DEPLOY_USER', 'root')
+PASS = os.environ['DEPLOY_PASS']  # export DEPLOY_PASS=... antes de correr
 LOCAL_DIST = Path('frontend/dist')
 REMOTE_DIR = '/opt/erp-legal/frontend/dist'
 CONTAINER  = 'erp-legal-frontend'
