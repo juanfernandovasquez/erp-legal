@@ -40,7 +40,7 @@ class LawFirmUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=255, description="Law firm name")
     email: Optional[EmailStr] = Field(None, description="Law firm email")
     phone: Optional[str] = Field(None, max_length=20, description="Law firm phone")
-    website: Optional[HttpUrl] = Field(None, description="Law firm website")
+    website: Optional[str] = Field(None, description="Law firm website")
     description: Optional[str] = Field(None, description="Law firm description")
 
     street_address: Optional[str] = Field(None, max_length=255, description="Street address")

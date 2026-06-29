@@ -11,6 +11,7 @@ export function useAuth() {
     register,
     logout,
     checkAuth,
+    setUser,
   } = useAuthStore()
 
   return {
@@ -23,5 +24,6 @@ export function useAuth() {
     register,
     logout,
     checkAuth,
+    setUser,
   }
 }
