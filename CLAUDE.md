@@ -102,6 +102,39 @@ docker compose exec backend alembic upgrade head
 docker compose down -v  # Borra el volumen postgres_data → PIERDE TODA LA BD
 ```
 
+### ⚠️ Limitaciones del droplet (1GB RAM) — leer antes de deployar
+
+**El `vite build` del frontend necesita ~1.5GB de RAM.** En un droplet de 1GB sin swap, el proceso muere silenciosamente (OOM kill) a los pocos segundos de empezar.
+
+**Antes de cualquier deploy que rebuilde el frontend, verificar que hay swap activo:**
+```bash
+free -h  # swap debe mostrar > 0
+```
+
+Si no hay swap, crearlo (solo se hace una vez — se pierde al reiniciar el droplet):
+```bash
+fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+```
+
+Para que el swap sobreviva reinicios, agregar al `/etc/fstab`:
+```bash
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+```
+
+**Siempre usar `tmux` para deploys largos** (el build del frontend tarda ~1-2 min con swap):
+```bash
+tmux new-session -d -s deploy 'cd /opt/erp-legal && git pull origin main && docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d --force-recreate backend frontend --build 2>&1 | tee /tmp/deploy.log && docker compose exec backend alembic upgrade head >> /tmp/deploy.log 2>&1 && echo "=== DEPLOY COMPLETO ===" >> /tmp/deploy.log' && tmux attach -t deploy
+```
+
+Si se corta la conexión SSH, reconectarse y ver el progreso con:
+```bash
+tmux attach -t deploy   # si el proceso sigue corriendo
+tail /tmp/deploy.log    # si ya terminó
+```
+
+**¿Por qué el primer intento falla y el segundo es rápido?**
+Docker cachea las capas: `npm install` (~2000 paquetes) y `COPY . .` solo corren la primera vez. El `vite build` real tarda ~40s. El primer deploy "calienta" el cache aunque falle — el segundo lo aprovecha.
+
 ### Configuración del servidor
 - Docker frontend → `127.0.0.1:8080` (solo interno)
 - Docker backend → `0.0.0.0:8000`
