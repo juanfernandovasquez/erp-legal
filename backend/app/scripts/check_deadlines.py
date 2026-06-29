@@ -57,7 +57,7 @@ async def run():
                     Task.case_id == case_rules[0].case_id,
                     Task.is_deleted == False,
                     Task.due_date.isnot(None),
-                    Task.status.not_in(["done", "cancelled"]),
+                    Task.status.not_in(["done", "cancelled", "completado", "cancelado", "rechazado"]),
                 ).options(
                     selectinload(Task.assignee),
                     selectinload(Task.case),
