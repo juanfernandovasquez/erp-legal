@@ -24,7 +24,7 @@ interface LawFirm {
 
 function FirmSettingsTab() {
   const { user } = useAuth()
-  const isAdmin = user?.rol === 'admin_firma' || user?.rol === 'super_admin' || user?.rol === 'admin'
+  const isAdmin = user?.rol === 'admin_firma' || user?.rol === 'super_admin'
   const [firm, setFirm] = useState<LawFirm | null>(null)
   const [editing, setEditing] = useState(false)
   const [form, setForm] = useState<Partial<LawFirm>>({})

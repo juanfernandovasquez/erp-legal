@@ -33,7 +33,7 @@ export function Sidebar() {
   const { user, logout } = useAuth()
   const location = useLocation()
 
-  const isAdmin = ['admin_firma', 'super_admin', 'admin'].includes(user?.rol ?? '')
+  const isAdmin = ['admin_firma', 'super_admin'].includes(user?.rol ?? '')
 
   const menuItems = [
     { icon: LayoutDashboard, label: 'Panel de Control', href: '/dashboard' },
