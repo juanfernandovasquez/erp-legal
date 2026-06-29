@@ -357,6 +357,18 @@ async def update_user(user_id: str, request: Request):
     USERS[user_id]["updatedAt"] = now_iso()
     return ok(USERS[user_id])
 
+@app.patch("/api/v1/users/me/password")
+async def change_my_password(request: Request):
+    body = await request.json()
+    current_password = body.get("current_password", "")
+    new_password = body.get("new_password", "")
+    if not current_password or not new_password:
+        raise HTTPException(400, "Faltan campos requeridos")
+    if len(new_password) < 8:
+        raise HTTPException(400, "La nueva contraseña debe tener al menos 8 caracteres")
+    # En el mock aceptamos cualquier contraseña actual
+    return ok({"message": "Contraseña actualizada correctamente"})
+
 @app.delete("/api/v1/users/{user_id}")
 async def delete_user(user_id: str):
     if user_id not in USERS:

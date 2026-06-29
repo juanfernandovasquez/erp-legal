@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAuth } from '@/hooks/useAuth'
-import { Lock, Bell, Building2, Save, Pencil } from 'lucide-react'
+import { Lock, Bell, Building2, Save, Pencil, Eye, EyeOff } from 'lucide-react'
 import api from '@/lib/axios'
 
 interface LawFirm {
@@ -20,6 +20,85 @@ interface LawFirm {
   postal_code: string
   country: string
   website: string
+}
+
+function PasswordInput({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
+  const [show, setShow] = useState(false)
+  return (
+    <div>
+      <label className="block text-xs font-medium text-slate-500 mb-1">{label}</label>
+      <div className="relative">
+        <input
+          type={show ? 'text' : 'password'}
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder={placeholder ?? '••••••••'}
+          className="w-full border border-slate-300 rounded-lg px-3 py-2 pr-10 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+        />
+        <button
+          type="button"
+          onClick={() => setShow(s => !s)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+          tabIndex={-1}
+        >
+          {show ? <EyeOff size={15} /> : <Eye size={15} />}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PasswordChangeCard() {
+  const [current, setCurrent] = useState('')
+  const [next, setNext] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+
+  const handleSubmit = async () => {
+    setError('')
+    setSuccess(false)
+    if (!current || !next || !confirm) { setError('Completa todos los campos.'); return }
+    if (next.length < 8) { setError('La nueva contraseña debe tener al menos 8 caracteres.'); return }
+    if (next !== confirm) { setError('La nueva contraseña y la confirmación no coinciden.'); return }
+    setSaving(true)
+    try {
+      await api.patch('/users/me/password', { current_password: current, new_password: next })
+      setSuccess(true)
+      setCurrent(''); setNext(''); setConfirm('')
+    } catch (e: any) {
+      setError(e?.response?.data?.detail ?? 'Error al cambiar la contraseña.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center gap-2">
+          <Lock size={20} className="text-primary-700" />
+          <CardTitle>Cambiar Contraseña</CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4 max-w-md">
+        <PasswordInput label="Contraseña Actual" value={current} onChange={setCurrent} />
+        <PasswordInput label="Nueva Contraseña" value={next} onChange={setNext} placeholder="Mínimo 8 caracteres" />
+        <PasswordInput label="Confirmar Nueva Contraseña" value={confirm} onChange={setConfirm} />
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+        {success && <p className="text-sm text-emerald-600 font-medium">✓ Contraseña actualizada correctamente</p>}
+
+        <div className="pt-2">
+          <Button onClick={handleSubmit} isLoading={saving} className="gap-2">
+            {!saving && <Save size={14} />}
+            Actualizar Contraseña
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 function FirmSettingsTab() {
@@ -201,27 +280,7 @@ export function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="security">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Lock size={20} className="text-primary-700" />
-                  <CardTitle>Seguridad</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div>
-                  <h4 className="font-medium text-slate-900 mb-4">Cambiar Contraseña</h4>
-                  <div className="space-y-4">
-                    <Input label="Contraseña Actual" type="password" placeholder="••••••••" />
-                    <Input label="Nueva Contraseña" type="password" placeholder="••••••••" />
-                    <Input label="Confirmar Nueva Contraseña" type="password" placeholder="••••••••" />
-                  </div>
-                </div>
-                <div className="pt-4 border-t border-slate-200">
-                  <Button variant="secondary" disabled title="Próximamente">Actualizar Contraseña</Button>
-                </div>
-              </CardContent>
-            </Card>
+            <PasswordChangeCard />
           </TabsContent>
 
           <TabsContent value="notifications">

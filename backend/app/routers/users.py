@@ -12,7 +12,7 @@ from sqlalchemy import select, func, and_, or_
 
 from app.database import get_db
 from app.utils.responses import success_response, paginated_response
-from app.utils.auth import get_current_user, check_role, get_password_hash
+from app.utils.auth import get_current_user, check_role, get_password_hash, verify_password
 from app.schemas.user import UserCreate, UserUpdate
 from app.models import User, LawFirm
 from app.services.audit_service import audit_log
@@ -158,6 +158,45 @@ async def get_me(
     current_user: User = Depends(get_current_user),
 ):
     return success_response(data=_format_user(current_user), meta={})
+
+
+@router.patch(
+    "/me/password",
+    response_model=dict,
+    summary="Change own password",
+)
+async def change_my_password(
+    request: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    current_password = request.get("current_password", "")
+    new_password = request.get("new_password", "")
+
+    if not current_password or not new_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Faltan campos requeridos")
+
+    if len(new_password) < 8:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La nueva contraseña debe tener al menos 8 caracteres")
+
+    if not verify_password(current_password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="La contraseña actual es incorrecta")
+
+    current_user.password_hash = get_password_hash(new_password)
+    current_user.updated_at = datetime.utcnow()
+    await db.commit()
+
+    await audit_log(
+        db=db,
+        law_firm_id=current_user.law_firm_id,
+        user_id=current_user.id,
+        action="UPDATE",
+        entity_type="User",
+        entity_id=current_user.id,
+        description="User changed their own password",
+    )
+
+    return success_response(data={"message": "Contraseña actualizada correctamente"}, meta={})
 
 
 @router.get(
