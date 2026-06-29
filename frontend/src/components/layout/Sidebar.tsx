@@ -33,6 +33,8 @@ export function Sidebar() {
   const { user, logout } = useAuth()
   const location = useLocation()
 
+  const isAdmin = ['admin_firma', 'super_admin', 'admin'].includes(user?.rol ?? '')
+
   const menuItems = [
     { icon: LayoutDashboard, label: 'Panel de Control', href: '/dashboard' },
     { icon: FileText, label: 'Procesos', href: '/cases' },
@@ -40,7 +42,7 @@ export function Sidebar() {
     { icon: Receipt, label: 'Facturación', href: '/hours' },
     { icon: AlertCircle, label: 'Alertas', href: '/alerts' },
     { icon: Users, label: 'Clientes', href: '/clients' },
-    { icon: UserCog, label: 'Usuarios', href: '/users' },
+    ...(isAdmin ? [{ icon: UserCog, label: 'Usuarios', href: '/users' }] : []),
     { icon: Mail, label: 'Comunicaciones', href: '/emails' },
     { icon: Settings, label: 'Configuración', href: '/settings' },
   ]

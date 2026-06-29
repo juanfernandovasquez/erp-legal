@@ -1183,21 +1183,34 @@ async def delete_sub_case(case_id: str, sub_id: str):
 
 # ── dashboard ─────────────────────────────────────────────────────────────────
 
+LAW_FIRM = {
+    "id": LAW_FIRM_ID,
+    "name": "Katarzyna & Asociados",
+    "registration_number": "20612345678",
+    "email": "contacto@katarzyna.pe",
+    "phone": "+51 998 765 432",
+    "street_address": "Av. Javier Prado Este 1234, Of. 502",
+    "city": "Lima",
+    "state": "Lima",
+    "postal_code": "",
+    "country": "Perú",
+    "website": "www.katarzyna.pe",
+    "is_active": True,
+}
+
 @app.get("/api/v1/law-firms")
+@app.get("/api/v1/law-firms/current")
 async def get_law_firm():
-    return ok({
-        "id": LAW_FIRM_ID,
-        "name": "Katarzyna & Asociados",
-        "registration_number": "20612345678",
-        "email": "contacto@katarzyna.pe",
-        "phone": "+51 998 765 432",
-        "street_address": "Av. Javier Prado Este 1234, Of. 502",
-        "city": "Lima",
-        "state": "Lima",
-        "country": "Perú",
-        "website": "www.katarzyna.pe",
-        "is_active": True,
-    })
+    return ok(LAW_FIRM)
+
+@app.patch("/api/v1/law-firms/current")
+async def update_law_firm(request: Request):
+    body = await request.json()
+    editable = ["name","email","phone","street_address","city","state","postal_code","country","website"]
+    for field in editable:
+        if field in body:
+            LAW_FIRM[field] = body[field]
+    return ok(LAW_FIRM)
 
 @app.get("/api/v1/admin/dashboard")
 async def dashboard():

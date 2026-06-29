@@ -170,7 +170,7 @@ export function ExportBillingModal({ onClose, allHours, casesMap, clients }: Pro
   const [lawFirm, setLawFirm] = useState<LawFirm | null>(null)
 
   useEffect(() => {
-    api.get('/law-firms').then(r => setLawFirm(r.data.data ?? null)).catch(() => {})
+    api.get('/law-firms/current').then(r => setLawFirm(r.data.data ?? null)).catch(() => {})
   }, [])
 
   const toggleMonth = (m: number) =>
