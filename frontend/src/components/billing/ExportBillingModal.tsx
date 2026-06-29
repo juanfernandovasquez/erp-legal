@@ -366,7 +366,7 @@ function generateExcel({
   const todayStr = `${today.getDate().toString().padStart(2, '0')}/${(today.getMonth() + 1).toString().padStart(2, '0')}/${today.getFullYear()}`
 
   const firmAddress = lawFirm
-    ? `${lawFirm.street_address}${lawFirm.city ? ', ' + lawFirm.city : ''}`
+    ? [lawFirm.street_address, lawFirm.city].filter(v => v != null && v !== '').join(', ')
     : ''
 
   // Columna helper: convierte índice 0-based a letra(s) Excel
@@ -392,11 +392,12 @@ function generateExcel({
   for (let c = 1; c < totalCols; c++) setCell(0, c, cell('', S.headerEmpty))
 
   // Filas 1-4: datos del bufete (izq) | espacio vacío (centro) | período/fecha (der)
+  const fw = (v: string | null | undefined) => v ?? ''
   const infoRows = [
-    { label: 'Razón Social:', value: lawFirm?.name ?? '',                rLabel: 'Período:',     rValue: periodStr  },
-    { label: 'RUC:',          value: lawFirm?.registration_number ?? '', rLabel: 'Generado el:', rValue: todayStr   },
-    { label: 'Dirección:',    value: firmAddress,                         rLabel: '',              rValue: ''         },
-    { label: 'Teléfono:',     value: lawFirm?.phone ?? '',                rLabel: '',              rValue: ''         },
+    { label: 'Razón Social:', value: fw(lawFirm?.name),                rLabel: 'Período:',     rValue: periodStr },
+    { label: 'RUC:',          value: fw(lawFirm?.registration_number), rLabel: 'Generado el:', rValue: todayStr  },
+    { label: 'Dirección:',    value: firmAddress,                       rLabel: '',              rValue: ''        },
+    { label: 'Teléfono:',     value: fw(lawFirm?.phone),               rLabel: '',              rValue: ''        },
   ]
   infoRows.forEach(({ label, value, rLabel, rValue }, i) => {
     const row = i + 1
