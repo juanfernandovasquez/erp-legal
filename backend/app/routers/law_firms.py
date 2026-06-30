@@ -96,7 +96,7 @@ async def update_current_law_firm(
         "name": law_firm.name,
         "email": law_firm.email,
         "phone": law_firm.phone,
-        "address": law_firm.address,
+        "street_address": law_firm.street_address,
         "city": law_firm.city,
         "state": law_firm.state,
         "postal_code": law_firm.postal_code,
