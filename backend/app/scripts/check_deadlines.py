@@ -10,6 +10,7 @@ Cron entry (8am Lima time = 1pm UTC):
 
 import asyncio
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
@@ -24,8 +25,9 @@ from app.models.email_log import EmailLog
 
 async def run():
     await _db.init_db()
-    today = datetime.now(timezone.utc).date()
-    print(f"[check_deadlines] Running for date: {today}", flush=True)
+    lima_tz = ZoneInfo("America/Lima")
+    today = datetime.now(lima_tz).date()
+    print(f"[check_deadlines] Running for date: {today} (Lima time)", flush=True)
 
     async with _db.async_session_factory() as db:
         # Load all active notification rules
@@ -115,7 +117,7 @@ async def run():
                             CaseAlert.is_deleted == False,
                             CaseAlert.source == "auto",
                             # Same calendar day
-                            CaseAlert.alert_date >= datetime.combine(today, datetime.min.time()).replace(tzinfo=timezone.utc),
+                            CaseAlert.alert_date >= datetime.combine(today, datetime.min.time()).replace(tzinfo=lima_tz),
                         )
                     )
                     if not existing.scalars().first():

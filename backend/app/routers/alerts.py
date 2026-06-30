@@ -4,6 +4,7 @@ Handles alert creation, status tracking, and deadline monitoring.
 """
 
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -319,12 +320,13 @@ async def get_alerts_summary(
     resolved = resolved_result.scalar() or 0
 
     # Overdue: due_date in past, not resolved
+    lima_now = datetime.now(ZoneInfo("America/Lima")).replace(tzinfo=None)
     overdue_result = await db.execute(
         select(func.count(CaseAlert.id)).where(
             and_(
                 base_filter,
                 CaseAlert.is_resolved == False,
-                CaseAlert.due_date < datetime.utcnow(),
+                CaseAlert.due_date < lima_now,
             )
         )
     )

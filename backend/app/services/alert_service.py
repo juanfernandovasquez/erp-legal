@@ -4,10 +4,18 @@ Handles alert processing, escalation, and reminders.
 """
 
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
 from app.models import CaseAlert, User
+
+_LIMA_TZ = ZoneInfo("America/Lima")
+
+
+def _lima_now() -> datetime:
+    """Current datetime in Lima timezone, stripped of tzinfo for naive DB columns."""
+    return datetime.now(_LIMA_TZ).replace(tzinfo=None)
 
 
 async def process_pending_alerts(db: AsyncSession) -> dict:
@@ -18,7 +26,7 @@ async def process_pending_alerts(db: AsyncSession) -> dict:
 
     Returns dict with processing results.
     """
-    today = datetime.utcnow()
+    today = _lima_now()
 
     # Get all unresolved alerts that are now overdue
     result = await db.execute(
@@ -71,7 +79,7 @@ async def check_upcoming_deadlines(
     Get alerts due in the next N days.
     Useful for dashboard notifications.
     """
-    today = datetime.utcnow()
+    today = _lima_now()
     future_date = today + timedelta(days=days_ahead)
 
     result = await db.execute(

@@ -4,7 +4,8 @@ Accepts Spanish field names from frontend, returns Spanish names in responses.
 """
 
 import uuid as uuid_module
-from datetime import datetime
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -133,20 +134,26 @@ async def list_all_tasks(
         except (ValueError, AttributeError):
             pass
 
-    now = datetime.utcnow()
+    lima_tz = ZoneInfo("America/Lima")
+    lima_now = datetime.now(lima_tz)
+    lima_today_start = lima_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    lima_today_end = lima_now.replace(hour=23, minute=59, second=59, microsecond=999999)
+    # Strip tzinfo for comparison against naive due_date stored in DB
+    today_start = lima_today_start.replace(tzinfo=None)
+    today_end = lima_today_end.replace(tzinfo=None)
     if due_filter == "overdue":
-        conditions.append(Task.due_date < now)
+        conditions.append(Task.due_date < today_start)
         conditions.append(Task.status != "done")
         conditions.append(Task.status != "completado")
     elif due_filter == "today":
-        conditions.append(Task.due_date >= now.replace(hour=0, minute=0, second=0))
-        conditions.append(Task.due_date < now.replace(hour=23, minute=59, second=59))
+        conditions.append(Task.due_date >= today_start)
+        conditions.append(Task.due_date < today_end)
     elif due_filter == "this_week":
-        conditions.append(Task.due_date >= now)
-        conditions.append(Task.due_date <= now + timedelta(days=7))
+        conditions.append(Task.due_date >= today_start)
+        conditions.append(Task.due_date <= today_start + timedelta(days=7))
     elif due_filter == "this_month":
-        conditions.append(Task.due_date >= now)
-        conditions.append(Task.due_date <= now + timedelta(days=30))
+        conditions.append(Task.due_date >= today_start)
+        conditions.append(Task.due_date <= today_start + timedelta(days=30))
 
     count_q = select(func.count(Task.id)).where(and_(*conditions))
     main_q = (
