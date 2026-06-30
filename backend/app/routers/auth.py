@@ -290,15 +290,24 @@ async def get_me(
     """
     law_firm = await db.get(LawFirm, current_user.law_firm_id)
 
+    nombre = f"{current_user.first_name} {current_user.last_name}".strip()
     return success_response(
         data={
             "user": {
                 "id": str(current_user.id),
+                "nombre": nombre,
+                "firstName": current_user.first_name,
+                "lastName": current_user.last_name,
                 "email": current_user.email,
-                "full_name": current_user.get_full_name(),
+                "phone": current_user.phone,
+                "telefono": current_user.phone or "",
+                "rol": current_user.role,
                 "role": current_user.role,
+                "bufeteId": str(current_user.law_firm_id),
                 "law_firm_id": str(current_user.law_firm_id),
-                "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
+                "avatarUrl": current_user.avatar_url,
+                "createdAt": current_user.created_at.isoformat() if current_user.created_at else None,
+                "updatedAt": current_user.updated_at.isoformat() if current_user.updated_at else None,
             },
             "law_firm": {
                 "id": str(law_firm.id),
