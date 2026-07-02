@@ -89,7 +89,8 @@ export function ClientsListPage() {
     setIsSaving(true)
     setError('')
     try {
-      const res = await api.post('/clients', form)
+      const payload = { ...form, email: form.email || null }
+      const res = await api.post('/clients', payload)
       const nuevo = res.data.data
       setClientes((prev) => [nuevo, ...prev])
       setShowModal(false)
