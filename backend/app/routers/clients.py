@@ -113,17 +113,17 @@ async def create_client(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Check for duplicate email
-    result = await db.execute(
-        select(Client).where(
-            and_(
-                Client.law_firm_id == current_user.law_firm_id,
-                Client.email == request.email,
+    if request.email:
+        result = await db.execute(
+            select(Client).where(
+                and_(
+                    Client.law_firm_id == current_user.law_firm_id,
+                    Client.email == request.email,
+                )
             )
         )
-    )
-    if result.scalars().first():
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Client email already exists")
+        if result.scalars().first():
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Client email already exists")
 
     client = Client(
         law_firm_id=current_user.law_firm_id,

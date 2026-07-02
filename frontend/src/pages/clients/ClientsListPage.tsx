@@ -82,8 +82,8 @@ export function ClientsListPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.name || !form.email) {
-      setError('El nombre y el email son obligatorios.')
+    if (!form.name) {
+      setError('El nombre es obligatorio.')
       return
     }
     setIsSaving(true)
@@ -328,12 +328,11 @@ export function ClientsListPage() {
                 />
 
                 <Input
-                  label="Email *"
+                  label="Email"
                   type="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   placeholder="cliente@email.com"
-                  required
                 />
 
                 <Input
