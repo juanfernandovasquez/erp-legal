@@ -33,7 +33,7 @@ class Client(BaseModel):
     # Basic Information
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     client_type: Mapped[ClientType] = mapped_column(String(50), nullable=False)
-    email: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     phone: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
     # Organization Details (for business clients)
