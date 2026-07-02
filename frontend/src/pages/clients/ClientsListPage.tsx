@@ -160,7 +160,7 @@ export function ClientsListPage() {
                       <TableHead className="hidden sm:table-cell">Email</TableHead>
                       <TableHead className="hidden md:table-cell">
                         <span className="flex items-center gap-1">
-                          <Hash size={13} /> RUC
+                          <Hash size={13} /> RUC / DNI
                         </span>
                       </TableHead>
                       <TableHead className="hidden sm:table-cell text-center">

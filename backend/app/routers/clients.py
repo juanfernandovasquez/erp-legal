@@ -38,6 +38,7 @@ def _format_client(client: Client) -> dict:
         "clientType": client.client_type,
         "organizationName": client.organization_name,
         "taxId": client.tax_id,
+        "ruc": client.tax_id,
         "isActive": client.is_active,
         "isPreferred": client.is_preferred,
         "usuarioSol": client.usuario_sol,
