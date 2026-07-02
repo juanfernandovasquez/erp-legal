@@ -21,7 +21,6 @@ from app.models.alert import CaseAlert
 from app.models.case import CaseTeam
 from app.services.email_service import notify_deadline_approaching
 from app.models.email_log import EmailLog
-from sqlalchemy import func
 
 
 async def run():
@@ -147,21 +146,8 @@ async def run():
                         alert_count += 1
                         print(f"[check_deadlines] Alert created — task: {task.title} ({rule.days_before}d before)", flush=True)
 
-                    # --- Send emails (deduplicated: one per recipient per task per day) ---
+                    # --- Send emails ---
                     for recipient in recipients:
-                        already_sent = await db.execute(
-                            select(EmailLog).where(
-                                EmailLog.event_type == "deadline_reminder",
-                                EmailLog.to_email == recipient.email,
-                                EmailLog.success == True,
-                                func.date(EmailLog.sent_at) == today,
-                                EmailLog.subject == f"Recordatorio: {task.title}",
-                            )
-                        )
-                        if already_sent.scalars().first():
-                            print(f"[check_deadlines] Already sent today to {recipient.email} — task: {task.title}, skipping.", flush=True)
-                            continue
-
                         ok = await notify_deadline_approaching(
                             to_email=recipient.email,
                             to_name=f"{recipient.first_name} {recipient.last_name}".strip(),
