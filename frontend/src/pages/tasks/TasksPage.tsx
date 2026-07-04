@@ -10,7 +10,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import {
   CheckSquare, Plus, X, Filter, RotateCcw,
-  LayoutGrid, List, Calendar, AlertCircle, User,
+  LayoutGrid, List, Calendar, AlertCircle, User, Search,
   ChevronUp, ChevronDown, ChevronsUpDown,
 } from 'lucide-react'
 import { Tarea } from '@/types'
@@ -41,6 +41,7 @@ export function TasksPage() {
   const [sortDir, setSortDir] = useState<SortDir>('asc')
 
   // Filters
+  const [searchText, setSearchText] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('')
   const [assigneeFilter, setAssigneeFilter] = useState('')
@@ -85,11 +86,11 @@ export function TasksPage() {
   const fetchClients = async () => { try { setClients((await api.get('/clients?limit=100')).data.data || []) } catch {} }
 
   const clearFilters = () => {
-    setStatusFilter(''); setPriorityFilter(''); setAssigneeFilter('')
+    setSearchText(''); setStatusFilter(''); setPriorityFilter(''); setAssigneeFilter('')
     setCaseFilter(''); setClientFilter(''); setDueFilter('')
   }
 
-  const hasActiveFilters = statusFilter || priorityFilter || assigneeFilter || caseFilter || clientFilter || dueFilter
+  const hasActiveFilters = searchText || statusFilter || priorityFilter || assigneeFilter || caseFilter || clientFilter || dueFilter
   const openModal = () => { setSelectedCaseId(''); setShowModal(true) }
 
   // ── sort logic ──────────────────────────────────────────────────────────────
@@ -104,9 +105,21 @@ export function TasksPage() {
     }
   }
 
+  const filteredTasks = useMemo(() => {
+    const q = searchText.toLowerCase().trim()
+    if (!q) return tasks
+    return tasks.filter((t) => {
+      const hay = [
+        t.titulo, t.casoTitulo, t.clienteNombre,
+        t.asignadoA?.nombre, t.prioridad, t.estado,
+      ].filter(Boolean).join(' ').toLowerCase()
+      return hay.includes(q)
+    })
+  }, [tasks, searchText])
+
   const sortedTasks = useMemo(() => {
-    if (!sortKey) return tasks
-    return [...tasks].sort((a, b) => {
+    if (!sortKey) return filteredTasks
+    return [...filteredTasks].sort((a, b) => {
       let diff = 0
 
       if (sortKey === 'cliente') {
@@ -158,10 +171,10 @@ export function TasksPage() {
   // ── grouped (kanban) ───────────────────────────────────────────────────────
 
   const groupedTasks = {
-    pendiente:   tasks.filter((t) => ['pendiente','todo'].includes(t.estado)),
-    en_progreso: tasks.filter((t) => ['en_progreso','in_progress','en_revision','in_review'].includes(t.estado)),
-    completado:  tasks.filter((t) => ['completado','done'].includes(t.estado)),
-    cancelado:   tasks.filter((t) => ['cancelado','cancelled','rechazado','bloqueado','blocked'].includes(t.estado)),
+    pendiente:   filteredTasks.filter((t) => ['pendiente','todo'].includes(t.estado)),
+    en_progreso: filteredTasks.filter((t) => ['en_progreso','in_progress','en_revision','in_review'].includes(t.estado)),
+    completado:  filteredTasks.filter((t) => ['completado','done'].includes(t.estado)),
+    cancelado:   filteredTasks.filter((t) => ['cancelado','cancelled','rechazado','bloqueado','blocked'].includes(t.estado)),
   }
 
   // ── list view ──────────────────────────────────────────────────────────────
@@ -333,7 +346,7 @@ export function TasksPage() {
             <span className="text-sm font-medium text-slate-700">Filtros</span>
             {hasActiveFilters && (
               <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
-                {[statusFilter, priorityFilter, assigneeFilter, caseFilter, clientFilter, dueFilter].filter(Boolean).length}
+                {[searchText, statusFilter, priorityFilter, assigneeFilter, caseFilter, clientFilter, dueFilter].filter(Boolean).length}
               </span>
             )}
             {hasActiveFilters && (
@@ -346,6 +359,26 @@ export function TasksPage() {
               </button>
             )}
           </div>
+          {/* Text search */}
+          <div className="relative mb-3">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar por tarea, proceso, cliente, asignado..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 placeholder:text-slate-400"
+            />
+            {searchText && (
+              <button
+                onClick={() => setSearchText('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             <Select
               label="Estado"

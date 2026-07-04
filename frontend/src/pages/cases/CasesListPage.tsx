@@ -12,7 +12,7 @@ import { useCases } from '@/hooks/useCases'
 import {
   FileText, Plus, LayoutGrid, List,
   ChevronUp, ChevronDown, ChevronsUpDown,
-  Filter, RotateCcw, Calendar, User,
+  Filter, RotateCcw, Calendar, User, Search,
 } from 'lucide-react'
 import { CASE_STATUS_OPTIONS, formatDate } from '@/lib/utils'
 import { Caso } from '@/types'
@@ -32,6 +32,7 @@ export function CasesListPage() {
   const { cases, isLoading, error, pagination, fetchCases } = useCases()
 
   const [view, setView]                   = useState<'grid' | 'list'>(() => window.innerWidth < 640 ? 'grid' : 'list')
+  const [searchText, setSearchText]       = useState('')
   const [statusFilter, setStatusFilter]   = useState('')
   const [clientFilter, setClientFilter]   = useState('')
   const [abogadoFilter, setAbogadoFilter] = useState('')
@@ -72,17 +73,25 @@ export function CasesListPage() {
   const today = new Date().toISOString().split('T')[0]
   const in7   = new Date(Date.now() + 7 * 864e5).toISOString().split('T')[0]
 
-  const hasActiveFilters = !!(statusFilter || clientFilter || abogadoFilter || tipoFilter || vencFilter)
-  const activeCount = [statusFilter, clientFilter, abogadoFilter, tipoFilter, vencFilter].filter(Boolean).length
+  const hasActiveFilters = !!(searchText || statusFilter || clientFilter || abogadoFilter || tipoFilter || vencFilter)
+  const activeCount = [searchText, statusFilter, clientFilter, abogadoFilter, tipoFilter, vencFilter].filter(Boolean).length
 
   const clearFilters = () => {
-    setStatusFilter(''); setClientFilter(''); setAbogadoFilter('')
+    setSearchText(''); setStatusFilter(''); setClientFilter(''); setAbogadoFilter('')
     setTipoFilter(''); setVencFilter(''); setCurrentPage(1)
   }
 
   // Client-side filters
   const filtered = useMemo(() => {
+    const q = searchText.toLowerCase().trim()
     return cases.filter((c) => {
+      if (q) {
+        const hay = [
+          c.titulo, c.descripcion,
+          c.cliente?.nombre, c.abogadoPrincipal?.nombre, c.estado,
+        ].filter(Boolean).join(' ').toLowerCase()
+        if (!hay.includes(q)) return false
+      }
       if (clientFilter  && c.clienteId !== clientFilter) return false
       if (abogadoFilter && c.abogadoPrincipal?.id !== abogadoFilter) return false
       if (tipoFilter    && (c.tipoFacturacion ?? '') !== tipoFilter) return false
@@ -95,7 +104,7 @@ export function CasesListPage() {
       }
       return true
     })
-  }, [cases, clientFilter, abogadoFilter, tipoFilter, vencFilter, nearestDue, today, in7])
+  }, [cases, searchText, clientFilter, abogadoFilter, tipoFilter, vencFilter, nearestDue, today, in7])
 
   // Sort
   const handleSort = (key: SortKey) => {
@@ -285,6 +294,26 @@ export function CasesListPage() {
               </button>
             )}
           </div>
+          {/* Text search */}
+          <div className="relative mb-3">
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Buscar por título, cliente, encargado..."
+              value={searchText}
+              onChange={(e) => { setSearchText(e.target.value); setCurrentPage(1) }}
+              className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-lg bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-blue-400 placeholder:text-slate-400"
+            />
+            {searchText && (
+              <button
+                onClick={() => setSearchText('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
             <Select
               label="Estado"
