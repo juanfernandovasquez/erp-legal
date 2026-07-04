@@ -171,7 +171,7 @@ async def get_dashboard(
     )
     total_users = users_result.scalar() or 0
 
-    # --- Hours this month ---
+    # --- Hours + Billing this month ---
     first_day_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     hours_result = await db.execute(
         select(func.sum(CaseHours.hours))
@@ -185,6 +185,19 @@ async def get_dashboard(
         )
     )
     hours_this_month = float(hours_result.scalar() or 0)
+
+    billing_result = await db.execute(
+        select(func.sum(CaseHours.total_amount))
+        .join(Case, CaseHours.case_id == Case.id)
+        .where(
+            and_(
+                CaseHours.is_deleted == False,
+                CaseHours.work_date >= first_day_of_month.date(),
+                Case.law_firm_id == law_firm_id,
+            )
+        )
+    )
+    billing_this_month = float(billing_result.scalar() or 0)
 
     # Top members by case assignment
     top_members_result = await db.execute(
@@ -234,6 +247,9 @@ async def get_dashboard(
             },
             "hours": {
                 "this_month": hours_this_month,
+            },
+            "billing": {
+                "this_month": billing_this_month,
             },
             "team": {
                 "total_users": total_users,

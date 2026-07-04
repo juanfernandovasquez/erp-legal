@@ -6,7 +6,7 @@ import { CaseCard } from '@/components/cases/CaseCard'
 import { TaskCard } from '@/components/tasks/TaskCard'
 import { AlertCard } from '@/components/alerts/AlertCard'
 import { Caso, Tarea, Alerta } from '@/types'
-import { FileText, CheckSquare, AlertCircle, Clock, TrendingUp } from 'lucide-react'
+import { FileText, CheckSquare, AlertCircle, TrendingUp } from 'lucide-react'
 import api from '@/lib/axios'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 
@@ -22,6 +22,7 @@ export function DashboardPage() {
     overdueTasks: 0,
     alertCount: 0,
     hoursThisMonth: 0,
+    billingThisMonth: 0,
   })
   const [isLoading, setIsLoading] = useState(true)
 
@@ -58,6 +59,7 @@ export function DashboardPage() {
           overdueTasks: statsData.tasks?.overdue ?? 0,
           alertCount: statsData.alerts?.overdue ?? 0,
           hoursThisMonth: statsData.hours?.this_month ?? 0,
+          billingThisMonth: statsData.billing?.this_month ?? 0,
         })
       }
     } catch (error) {
@@ -104,9 +106,9 @@ export function DashboardPage() {
             onClick={() => navigate('/alerts')}
           />
           <StatCard
-            icon={Clock}
-            title="Horas Este Mes"
-            value={stats.hoursThisMonth % 1 === 0 ? stats.hoursThisMonth : stats.hoursThisMonth.toFixed(1)}
+            icon={TrendingUp}
+            title="Facturación Este Mes"
+            value={`S/ ${stats.billingThisMonth.toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
             bgColor="green"
             onClick={() => navigate('/hours')}
           />
