@@ -12,7 +12,7 @@ import { useCases } from '@/hooks/useCases'
 import {
   FileText, Plus, LayoutGrid, List,
   ChevronUp, ChevronDown, ChevronsUpDown,
-  Filter, RotateCcw, Calendar, User, Search,
+  Filter, RotateCcw, Calendar, User, Search, X,
 } from 'lucide-react'
 import { CASE_STATUS_OPTIONS, formatDate } from '@/lib/utils'
 import { Caso } from '@/types'

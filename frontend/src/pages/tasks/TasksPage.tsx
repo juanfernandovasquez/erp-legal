@@ -152,7 +152,7 @@ export function TasksPage() {
 
       return sortDir === 'asc' ? diff : -diff
     })
-  }, [tasks, sortKey, sortDir])
+  }, [filteredTasks, sortKey, sortDir])
 
   // ── sort icon helper ────────────────────────────────────────────────────────
 
