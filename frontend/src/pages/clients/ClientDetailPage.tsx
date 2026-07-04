@@ -139,14 +139,15 @@ export function ClientDetailPage() {
   }
 
   const handleSave = async () => {
-    if (!form.name || !form.email) {
-      setError('El nombre y el email son obligatorios.')
+    if (!form.name) {
+      setError('El nombre es obligatorio.')
       return
     }
     setIsSaving(true)
     setError('')
     try {
       const payload: Record<string, any> = { ...form }
+      payload.email = payload.email || null
       // No enviar strings vacíos para campos sensibles — evita sobrescribir valores existentes
       if (!payload.usuario_sol) delete payload.usuario_sol
       if (!payload.clave_sol) delete payload.clave_sol
@@ -318,11 +319,10 @@ export function ClientDetailPage() {
                     />
 
                     <Input
-                      label="Email *"
+                      label="Email"
                       type="email"
                       value={form.email}
                       onChange={(e) => setForm({ ...form, email: e.target.value })}
-                      required
                     />
 
                     <Input
