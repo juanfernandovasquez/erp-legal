@@ -147,7 +147,38 @@ export function ClientsListPage() {
             action={!search ? { label: 'Agregar Primer Cliente', onClick: () => setShowModal(true) } : undefined}
           />
         ) : (
-          <Card>
+          <>
+          {/* Mobile: cards */}
+          <div className="sm:hidden space-y-2">
+            {filtered.map((cliente) => {
+              const s = stats[cliente.id] || { active_cases: 0, pending_tasks: 0, in_progress_tasks: 0, completed_tasks: 0 }
+              return (
+                <div
+                  key={cliente.id}
+                  onClick={() => navigate(`/clients/${cliente.id}`)}
+                  className="bg-white border border-slate-200 rounded-lg px-4 py-3 cursor-pointer hover:bg-slate-50 active:bg-slate-100 transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="font-medium text-slate-900 leading-snug">{cliente.nombre}</p>
+                    {s.active_cases > 0 && (
+                      <span className="flex-shrink-0 inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                        <FileText size={11} /> {s.active_cases}
+                      </span>
+                    )}
+                  </div>
+                  {(cliente.ruc || cliente.email || cliente.phone) && (
+                    <div className="mt-1 space-y-0.5">
+                      {cliente.ruc && <p className="text-xs text-slate-500 font-mono">{cliente.ruc}</p>}
+                      {cliente.email && <p className="text-xs text-slate-400 truncate">{cliente.email}</p>}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Desktop: table */}
+          <Card className="hidden sm:block">
             <CardHeader>
               <CardTitle>Lista de Clientes</CardTitle>
             </CardHeader>
@@ -285,6 +316,7 @@ export function ClientsListPage() {
               </div>
             </CardContent>
           </Card>
+          </>
         )}
       </div>
 

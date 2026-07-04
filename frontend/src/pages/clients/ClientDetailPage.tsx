@@ -220,7 +220,7 @@ export function ClientDetailPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-5xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-5xl mx-auto">
         {/* Back */}
         <Button variant="ghost" onClick={() => navigate('/clients')} className="mb-4 gap-2">
           <ArrowLeft size={18} />
@@ -228,52 +228,75 @@ export function ClientDetailPage() {
         </Button>
 
         {/* Header */}
-        <div className="flex items-start justify-between mb-6 gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-bold text-slate-900">{client.nombre}</h1>
-              {client.isPreferred && (
-                <span className="text-xs bg-amber-100 text-amber-700 font-medium px-2 py-0.5 rounded-full">⭐ Preferente</span>
+        <div className="mb-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 truncate">{client.nombre}</h1>
+                {client.isPreferred && (
+                  <span className="text-xs bg-amber-100 text-amber-700 font-medium px-2 py-0.5 rounded-full flex-shrink-0">⭐ Preferente</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-sm text-slate-500">
+                <span>{CLIENT_TYPE_LABELS[client.clientType] || client.clientType}</span>
+                <span>·</span>
+                <Badge variant={client.isActive ? 'success' : 'secondary'}>
+                  {client.isActive ? 'Activo' : 'Inactivo'}
+                </Badge>
+              </div>
+            </div>
+            {/* Desktop buttons */}
+            <div className="hidden sm:flex items-center gap-2 flex-shrink-0">
+              {!isEditing && (
+                <>
+                  <Button variant="ghost" onClick={handleToggleActive} className="text-sm">
+                    {client.isActive ? 'Desactivar' : 'Activar'}
+                  </Button>
+                  <Button variant="ghost" onClick={() => setIsEditing(true)} className="gap-2">
+                    <Edit2 size={16} />
+                    Editar
+                  </Button>
+                  <Button variant="ghost" onClick={handleDelete} disabled={isDeleting} className="gap-2 text-red-500 hover:text-red-700 hover:bg-red-50">
+                    <Trash2 size={16} />
+                    Eliminar
+                  </Button>
+                </>
+              )}
+              {isEditing && (
+                <>
+                  <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>
+                    <X size={16} className="mr-1" />Cancelar
+                  </Button>
+                  <Button onClick={handleSave} isLoading={isSaving} className="gap-2">
+                    <Save size={16} />Guardar
+                  </Button>
+                </>
               )}
             </div>
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <span>{CLIENT_TYPE_LABELS[client.clientType] || client.clientType}</span>
-              <span>·</span>
-              <Badge variant={client.isActive ? 'success' : 'secondary'}>
-                {client.isActive ? 'Activo' : 'Inactivo'}
-              </Badge>
-            </div>
           </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+
+          {/* Mobile buttons */}
+          <div className="sm:hidden flex gap-2 mt-3 flex-wrap">
             {!isEditing && (
               <>
-                <Button variant="ghost" onClick={handleToggleActive} className="text-sm">
+                <Button variant="outline" size="sm" onClick={handleToggleActive}>
                   {client.isActive ? 'Desactivar' : 'Activar'}
                 </Button>
-                <Button variant="ghost" onClick={() => setIsEditing(true)} className="gap-2">
-                  <Edit2 size={16} />
-                  Editar
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="gap-1.5">
+                  <Edit2 size={14} />Editar
                 </Button>
-                <Button
-                  variant="ghost"
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="gap-2 text-red-500 hover:text-red-700 hover:bg-red-50"
-                >
-                  <Trash2 size={16} />
-                  Eliminar
+                <Button variant="outline" size="sm" onClick={handleDelete} disabled={isDeleting} className="gap-1.5 text-red-500 border-red-200 hover:bg-red-50">
+                  <Trash2 size={14} />Eliminar
                 </Button>
               </>
             )}
             {isEditing && (
               <>
-                <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>
-                  <X size={16} className="mr-1" />
-                  Cancelar
+                <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>
+                  <X size={14} className="mr-1" />Cancelar
                 </Button>
-                <Button onClick={handleSave} isLoading={isSaving} className="gap-2">
-                  <Save size={16} />
-                  Guardar
+                <Button size="sm" onClick={handleSave} isLoading={isSaving} className="gap-1.5">
+                  <Save size={14} />Guardar
                 </Button>
               </>
             )}
