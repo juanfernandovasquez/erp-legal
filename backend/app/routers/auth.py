@@ -3,10 +3,11 @@ Authentication endpoints for Legal ERP.
 Handles login, logout, token refresh, registration, and user profile.
 """
 
-from datetime import datetime, timedelta
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 
@@ -19,6 +20,7 @@ from app.utils.auth import (
     verify_password,
     get_password_hash,
 )
+from app.config import settings
 
 router = APIRouter(tags=["auth"])
 
@@ -59,7 +61,13 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
     if not user or not verify_password(request.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
+            detail="Email o contraseña incorrectos",
+        )
+
+    if not user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Debes confirmar tu correo electrónico antes de iniciar sesión. Revisa tu bandeja de entrada.",
         )
 
     # Get law firm info
@@ -219,7 +227,11 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
     db.add(law_firm)
     await db.flush()
 
-    # Create admin user
+    # Generate email verification token
+    verification_token = secrets.token_urlsafe(32)
+    verification_expires = datetime.now(timezone.utc) + timedelta(hours=24)
+
+    # Create admin user (not verified yet)
     admin_user = User(
         first_name=request.full_name.split()[0] if request.full_name else "Admin",
         last_name=" ".join(request.full_name.split()[1:]) if request.full_name and len(request.full_name.split()) > 1 else "User",
@@ -227,6 +239,9 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
         password_hash=get_password_hash(request.password),
         law_firm_id=law_firm.id,
         role="admin_firma",
+        is_verified=False,
+        email_verification_token=verification_token,
+        email_verification_expires=verification_expires,
         is_deleted=False,
     )
     db.add(admin_user)
@@ -246,30 +261,16 @@ async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db))
         description=f"New law firm registered: {law_firm.name}",
     )
 
-    access_token = create_access_token(
-        data={
-            "sub": str(admin_user.id),
-            "law_firm_id": str(law_firm.id),
-            "role": admin_user.role,
-        }
-    )
-    refresh_token = create_refresh_token(data={"sub": str(admin_user.id)})
+    # Send verification email
+    from app.services.email_service import send_verification_email
+    verification_url = f"{settings.frontend_url}/verify-email?token={verification_token}"
+    await send_verification_email(admin_user.email, admin_user.get_full_name(), verification_url)
 
     return success_response(
         data={
-            "access_token": access_token,
-            "refresh_token": refresh_token,
-            "token_type": "bearer",
-            "law_firm": {
-                "id": str(law_firm.id),
-                "name": law_firm.name,
-            },
-            "user": {
-                "id": str(admin_user.id),
-                "email": admin_user.email,
-                "full_name": admin_user.get_full_name(),
-                "role": admin_user.role,
-            },
+            "email_sent": True,
+            "email": admin_user.email,
+            "message": "Registro exitoso. Revisa tu correo para confirmar tu cuenta.",
         },
         meta={"timestamp": datetime.utcnow().isoformat()},
     )
@@ -316,6 +317,121 @@ async def get_me(
             "permissions": get_user_permissions(current_user.role),
         },
         meta={"timestamp": datetime.utcnow().isoformat()},
+    )
+
+
+@router.get(
+    "/verify-email",
+    response_model=dict,
+    summary="Verify email address",
+)
+async def verify_email(token: str = Query(...), db: AsyncSession = Depends(get_db)):
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(User).where(
+            and_(
+                User.email_verification_token == token,
+                User.is_deleted == False,
+            )
+        )
+    )
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Token de verificación inválido.")
+
+    if user.email_verification_expires and user.email_verification_expires < now:
+        raise HTTPException(status_code=400, detail="El enlace de verificación ha expirado. Solicita uno nuevo.")
+
+    user.is_verified = True
+    user.email_verification_token = None
+    user.email_verification_expires = None
+    await db.commit()
+
+    return success_response(
+        data={"message": "Correo verificado correctamente. Ya puedes iniciar sesión."},
+        meta={"timestamp": now.isoformat()},
+    )
+
+
+@router.post(
+    "/forgot-password",
+    response_model=dict,
+    summary="Request password reset",
+)
+async def forgot_password(request: dict, db: AsyncSession = Depends(get_db)):
+    email = request.get("email", "").strip().lower()
+    if not email:
+        raise HTTPException(status_code=422, detail="El email es obligatorio.")
+
+    result = await db.execute(
+        select(User).where(and_(User.email == email, User.is_deleted == False))
+    )
+    user = result.scalars().first()
+
+    # Always return success to avoid email enumeration
+    if not user or not user.is_verified:
+        return success_response(
+            data={"message": "Si el correo existe, recibirás un enlace para restablecer tu contraseña."},
+            meta={"timestamp": datetime.utcnow().isoformat()},
+        )
+
+    reset_token = secrets.token_urlsafe(32)
+    user.password_reset_token = reset_token
+    user.password_reset_expires = datetime.now(timezone.utc) + timedelta(hours=1)
+    await db.commit()
+
+    from app.services.email_service import send_password_reset_email
+    reset_url = f"{settings.frontend_url}/reset-password?token={reset_token}"
+    await send_password_reset_email(user.email, user.get_full_name(), reset_url)
+
+    return success_response(
+        data={"message": "Si el correo existe, recibirás un enlace para restablecer tu contraseña."},
+        meta={"timestamp": datetime.utcnow().isoformat()},
+    )
+
+
+@router.post(
+    "/reset-password",
+    response_model=dict,
+    summary="Reset password using token",
+)
+async def reset_password(request: dict, db: AsyncSession = Depends(get_db)):
+    token = request.get("token", "").strip()
+    new_password = request.get("password", "").strip()
+
+    if not token or not new_password:
+        raise HTTPException(status_code=422, detail="Token y contraseña son obligatorios.")
+
+    if len(new_password) < 8:
+        raise HTTPException(status_code=422, detail="La contraseña debe tener al menos 8 caracteres.")
+
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(User).where(
+            and_(
+                User.password_reset_token == token,
+                User.is_deleted == False,
+            )
+        )
+    )
+    user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Token inválido o ya utilizado.")
+
+    if user.password_reset_expires and user.password_reset_expires < now:
+        raise HTTPException(status_code=400, detail="El enlace ha expirado. Solicita uno nuevo.")
+
+    user.password_hash = get_password_hash(new_password)
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    user.last_password_change = now
+    await db.commit()
+
+    return success_response(
+        data={"message": "Contraseña actualizada correctamente. Ya puedes iniciar sesión."},
+        meta={"timestamp": now.isoformat()},
     )
 
 

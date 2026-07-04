@@ -4,6 +4,9 @@ import { useAuth } from '@/hooks/useAuth'
 
 import { LoginPage } from '@/pages/auth/LoginPage'
 import { RegisterPage } from '@/pages/auth/RegisterPage'
+import { VerifyEmailPage } from '@/pages/auth/VerifyEmailPage'
+import { ForgotPasswordPage } from '@/pages/auth/ForgotPasswordPage'
+import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { CasesListPage } from '@/pages/cases/CasesListPage'
 import { CaseDetailPage } from '@/pages/cases/CaseDetailPage'
@@ -43,6 +46,9 @@ export default function App() {
           path="/register"
           element={isAuthenticated ? <Navigate to="/dashboard" /> : <RegisterPage />}
         />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
 
         <Route
           path="/dashboard"

@@ -60,6 +60,9 @@ class Settings(BaseSettings):
     # Brevo
     brevo_api_key: Optional[str] = None
 
+    # Frontend URL (used to build links in emails)
+    frontend_url: str = "https://erp.katarzyna.pe"
+
     # AWS S3
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None

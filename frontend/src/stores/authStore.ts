@@ -62,19 +62,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
         registration_number: data.rucBuffete || undefined,
       }
       const response = await api.post('/auth/register', payload)
-      // Backend returns { data: { access_token, refresh_token, user }, meta: {} }
-      const { access_token: accessToken, refresh_token: refreshToken, user } = response.data.data
-
-      localStorage.setItem('accessToken', accessToken)
-      localStorage.setItem('refreshToken', refreshToken)
-
-      set({
-        user: normalizeUser(user),
-        accessToken,
-        refreshToken,
-        isAuthenticated: true,
-        isLoading: false,
-      })
+      // Backend now returns { data: { email_sent, email, message } }
+      set({ isLoading: false })
+      return response.data.data
     } catch (error: any) {
       const message = error.response?.data?.detail || error.response?.data?.message || 'Error al registrar'
       set({ error: message, isLoading: false })

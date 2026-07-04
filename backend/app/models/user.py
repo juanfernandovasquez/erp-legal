@@ -57,6 +57,14 @@ class User(BaseModel):
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     mfa_secret: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
+    # Email verification
+    email_verification_token: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    email_verification_expires: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Password reset
+    password_reset_token: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
+    password_reset_expires: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
     # Relationships
     law_firm: Mapped["LawFirm"] = relationship(
         "LawFirm",

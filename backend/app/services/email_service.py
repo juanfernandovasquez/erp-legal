@@ -262,6 +262,56 @@ async def notify_client_alert(
     return await _send(to_email, to_name, subject, _base_html("Recordatorio de cliente", body))
 
 
+async def send_verification_email(to_email: str, to_name: str, verification_url: str) -> bool:
+    body = f"""
+    <p style="margin:0 0 20px;color:#374151;font-size:15px;">
+      Hola <strong>{to_name}</strong>, gracias por registrarte en Legal ERP.
+    </p>
+    <p style="margin:0 0 24px;color:#374151;font-size:15px;">
+      Para activar tu cuenta, confirma tu dirección de correo haciendo clic en el botón:
+    </p>
+    <div style="text-align:center;margin-bottom:28px;">
+      <a href="{verification_url}"
+         style="display:inline-block;background:#1e293b;color:#ffffff;font-size:14px;font-weight:600;padding:12px 32px;border-radius:8px;text-decoration:none;">
+        Confirmar correo electrónico
+      </a>
+    </div>
+    <p style="margin:0 0 8px;color:#64748b;font-size:13px;">
+      Si el botón no funciona, copia y pega este enlace en tu navegador:
+    </p>
+    <p style="margin:0 0 20px;word-break:break-all;color:#3b82f6;font-size:12px;">{verification_url}</p>
+    <p style="margin:0;color:#94a3b8;font-size:12px;">
+      Este enlace expira en 24 horas. Si no creaste esta cuenta, ignora este correo.
+    </p>
+    """
+    return await _send(to_email, to_name, "Confirma tu correo — Legal ERP", _base_html("Confirma tu correo", body))
+
+
+async def send_password_reset_email(to_email: str, to_name: str, reset_url: str) -> bool:
+    body = f"""
+    <p style="margin:0 0 20px;color:#374151;font-size:15px;">
+      Hola <strong>{to_name}</strong>, recibimos una solicitud para restablecer tu contraseña.
+    </p>
+    <p style="margin:0 0 24px;color:#374151;font-size:15px;">
+      Haz clic en el botón para crear una nueva contraseña:
+    </p>
+    <div style="text-align:center;margin-bottom:28px;">
+      <a href="{reset_url}"
+         style="display:inline-block;background:#dc2626;color:#ffffff;font-size:14px;font-weight:600;padding:12px 32px;border-radius:8px;text-decoration:none;">
+        Restablecer contraseña
+      </a>
+    </div>
+    <p style="margin:0 0 8px;color:#64748b;font-size:13px;">
+      Si el botón no funciona, copia y pega este enlace en tu navegador:
+    </p>
+    <p style="margin:0 0 20px;word-break:break-all;color:#3b82f6;font-size:12px;">{reset_url}</p>
+    <p style="margin:0;color:#94a3b8;font-size:12px;">
+      Este enlace expira en 1 hora. Si no solicitaste este cambio, ignora este correo — tu contraseña no cambiará.
+    </p>
+    """
+    return await _send(to_email, to_name, "Restablece tu contraseña — Legal ERP", _base_html("Restablecer contraseña", body))
+
+
 async def send_manual_email(
     recipients: list[dict],  # [{"email": ..., "name": ...}]
     subject: str,

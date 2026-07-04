@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Mail } from 'lucide-react'
 
 export function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -18,8 +19,8 @@ export function RegisterPage() {
     confirmarPassword: '',
   })
   const [error, setError] = useState('')
+  const [emailSent, setEmailSent] = useState<string | null>(null)
   const { register, isLoading } = useAuth()
-  const navigate = useNavigate()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -36,11 +37,40 @@ export function RegisterPage() {
     }
 
     try {
-      await register(formData)
-      navigate('/dashboard')
+      const result = await register(formData)
+      if (result?.email_sent) {
+        setEmailSent(result.email)
+      }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al registrarse')
+      setError(err.response?.data?.detail || err.response?.data?.message || 'Error al registrarse')
     }
+  }
+
+  if (emailSent) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-700 to-primary-900 p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-8 pb-8 text-center">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+                <Mail size={32} className="text-green-600" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">¡Revisa tu correo!</h2>
+            <p className="text-slate-600 mb-1">
+              Enviamos un enlace de confirmación a:
+            </p>
+            <p className="font-semibold text-slate-900 mb-6">{emailSent}</p>
+            <p className="text-sm text-slate-500 mb-6">
+              Haz clic en el enlace del correo para activar tu cuenta. El enlace expira en 24 horas.
+            </p>
+            <Link to="/login" className="text-primary-700 hover:text-primary-800 font-medium text-sm">
+              Volver al inicio de sesión
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
