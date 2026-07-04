@@ -1,17 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Bell, Search, Settings, Menu, X, AlertCircle } from 'lucide-react'
+import { Bell, Settings, Menu, X, AlertCircle } from 'lucide-react'
 import { useUIStore } from '@/stores/uiStore'
 import { useAuth } from '@/hooks/useAuth'
 import { DropdownMenu, DropdownMenuItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '@/lib/axios'
 
-interface HeaderProps {
-  onSearch?: (query: string) => void
-}
-
-export function Header({ onSearch }: HeaderProps) {
-  const [searchQuery, setSearchQuery] = useState('')
+export function Header() {
   const { notifications, sidebarOpen, toggleSidebar } = useUIStore()
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -43,12 +38,6 @@ export function Header({ onSearch }: HeaderProps) {
     }
   }
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const query = e.target.value
-    setSearchQuery(query)
-    onSearch?.(query)
-  }
-
   const unreadNotifications = notifications.filter(
     (n) => n.type === 'warning' || n.type === 'error'
   )
@@ -64,22 +53,8 @@ export function Header({ onSearch }: HeaderProps) {
         {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
       </button>
 
-      {/* Buscador — oculto en móvil, visible desde sm */}
-      <div className="hidden sm:flex flex-1 max-w-md">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input
-            type="text"
-            placeholder="Buscar casos, tareas, documentos..."
-            value={searchQuery}
-            onChange={handleSearch}
-            className="w-full pl-9 pr-4 py-2 text-sm border border-slate-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
-        </div>
-      </div>
-
-      {/* Spacer — empuja las acciones a la derecha en móvil */}
-      <div className="flex-1 sm:hidden" />
+      {/* Spacer */}
+      <div className="flex-1" />
 
       {/* Acciones */}
       <div className="flex items-center gap-2 sm:gap-3 ml-4 sm:ml-auto">
