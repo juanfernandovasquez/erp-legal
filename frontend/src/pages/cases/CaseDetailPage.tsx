@@ -501,7 +501,7 @@ export function CaseDetailPage() {
             <TabsTrigger value="info">Información</TabsTrigger>
             <TabsTrigger value="timeline">Línea de Tiempo</TabsTrigger>
             <TabsTrigger value="tareas">Tareas</TabsTrigger>
-            <TabsTrigger value="documentos">Documentos</TabsTrigger>
+            {/* <TabsTrigger value="documentos">Documentos</TabsTrigger> */}
             <TabsTrigger value="equipo">Equipo</TabsTrigger>
             <TabsTrigger value="horas">Facturación</TabsTrigger>
             <TabsTrigger value="actualizaciones">Actualizaciones</TabsTrigger>
@@ -645,12 +645,7 @@ export function CaseDetailPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="documentos">
-            <div className="space-y-6">
-              <DocumentUpload caseId={caso.id} onSuccess={() => fetchCaseById(caso.id)} />
-              <DocumentList caseId={caso.id} onDelete={() => fetchCaseById(caso.id)} />
-            </div>
-          </TabsContent>
+          {/* TabsContent value="documentos" — oculto hasta implementar */}
 
           <TabsContent value="equipo">
             <CaseTeamList
