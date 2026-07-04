@@ -30,7 +30,7 @@ export function LoginPage() {
         <CardHeader className="text-center">
           <h1 className="text-3xl font-bold text-primary-700 mb-2">Legal ERP</h1>
           <CardTitle>Iniciar Sesión</CardTitle>
-          <p className="text-sm text-slate-600 mt-2">Accede a tu cuenta profesional</p>
+          <p className="text-sm text-slate-600 mt-2">Ingresa tus credenciales para acceder</p>
         </CardHeader>
 
         <CardContent>
@@ -71,13 +71,6 @@ export function LoginPage() {
             >
               Iniciar Sesión
             </Button>
-
-            <p className="text-center text-sm text-slate-600">
-              ¿No tienes cuenta?{' '}
-              <Link to="/register" className="text-primary-700 hover:text-primary-800 font-medium">
-                Registrate aquí
-              </Link>
-            </p>
           </form>
         </CardContent>
       </Card>
