@@ -34,7 +34,7 @@ type SortDir = 'asc' | 'desc'
 export function TasksPage() {
   const [tasks, setTasks] = useState<Tarea[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [view, setView] = useState<'kanban' | 'list'>('list')
+  const [view, setView] = useState<'kanban' | 'list'>(() => window.innerWidth < 640 ? 'kanban' : 'list')
 
   // Sort state
   const [sortKey, setSortKey] = useState<SortKey | null>(null)
@@ -168,7 +168,8 @@ export function TasksPage() {
 
   const ListView = () => (
     <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm min-w-[560px]">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
             <th className={`${thClass('cliente')} text-left w-[16%] hidden md:table-cell`} onClick={() => handleSort('cliente')}>
@@ -251,6 +252,7 @@ export function TasksPage() {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   )
 

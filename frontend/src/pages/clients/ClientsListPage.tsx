@@ -194,7 +194,9 @@ export function ClientsListPage() {
                           className="cursor-pointer hover:bg-slate-50"
                           onClick={() => navigate(`/clients/${cliente.id}`)}
                         >
-                          <TableCell className="font-medium">{cliente.nombre}</TableCell>
+                          <TableCell className="font-medium max-w-[200px] sm:max-w-none">
+                            <span className="block truncate">{cliente.nombre}</span>
+                          </TableCell>
                           <TableCell className="hidden sm:table-cell">
                             <div className="flex items-center gap-1.5">
                               <Mail size={14} className="text-slate-400 flex-shrink-0" />

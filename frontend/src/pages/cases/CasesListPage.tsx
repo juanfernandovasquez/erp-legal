@@ -31,7 +31,7 @@ export function CasesListPage() {
   const navigate = useNavigate()
   const { cases, isLoading, error, pagination, fetchCases } = useCases()
 
-  const [view, setView]                   = useState<'grid' | 'list'>('list')
+  const [view, setView]                   = useState<'grid' | 'list'>(() => window.innerWidth < 640 ? 'grid' : 'list')
   const [statusFilter, setStatusFilter]   = useState('')
   const [clientFilter, setClientFilter]   = useState('')
   const [abogadoFilter, setAbogadoFilter] = useState('')
@@ -134,7 +134,8 @@ export function CasesListPage() {
 
   const ListView = () => (
     <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-      <table className="w-full text-sm">
+      <div className="overflow-x-auto">
+      <table className="w-full text-sm min-w-[640px]">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
             <th className={`${thCls('titulo')} text-left w-[32%]`} onClick={() => handleSort('titulo')}>
@@ -224,6 +225,7 @@ export function CasesListPage() {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   )
 
