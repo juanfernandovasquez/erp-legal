@@ -8,7 +8,7 @@ Create Date: 2026-07-04
 from alembic import op
 import sqlalchemy as sa
 
-revision = "016_user_email_verification_tokens"
+revision = "016_email_verify_tokens"
 down_revision = "015_client_email_nullable"
 branch_labels = None
 depends_on = None
