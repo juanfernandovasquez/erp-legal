@@ -96,7 +96,7 @@ async def get_dashboard(
 
     # --- Tasks (firm-wide via JOIN) ---
     # Only count tasks that belong to active cases (not cerrado/archivado)
-    PENDING_TASK_STATUSES = ["pendiente", "pending"]
+    PENDING_TASK_STATUSES = ["todo", "pendiente", "pending"]
     pending_tasks_result = await db.execute(
         select(func.count(Task.id))
         .join(Case, Task.case_id == Case.id)

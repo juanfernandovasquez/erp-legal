@@ -35,7 +35,7 @@ export function DashboardPage() {
       // Fetch in parallel — each independently so one failure doesn't break all
       const results = await Promise.allSettled([
         api.get('/cases?limit=6'),                          // recent cases
-        api.get('/tasks?limit=5&status=pendiente'),        // pending tasks
+        api.get('/tasks?limit=5&status=todo'),              // pending tasks
         api.get('/alerts?limit=5&status=pendiente'),        // alerts
         api.get('/admin/dashboard'),                        // stats
       ])
