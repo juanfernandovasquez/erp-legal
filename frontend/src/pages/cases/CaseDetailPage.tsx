@@ -237,92 +237,136 @@ export function CaseDetailPage() {
     }`
 
   const TareasListView = () => (
-    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-slate-200 bg-slate-50">
-            <th className={`${thClass('titulo')} text-left w-[28%]`} onClick={() => handleSort('titulo')}>
-              Tarea <SortIcon col="titulo" />
-            </th>
-            <th className={`${thClass('asignado')} text-left`} onClick={() => handleSort('asignado')}>
-              Asignado a <SortIcon col="asignado" />
-            </th>
-            <th className={`${thClass('prioridad')} text-center`} onClick={() => handleSort('prioridad')}>
-              Prioridad <SortIcon col="prioridad" />
-            </th>
-            <th className={`${thClass('estado')} text-center`} onClick={() => handleSort('estado')}>
-              Estado <SortIcon col="estado" />
-            </th>
-            <th className={`${thClass('presentacion')} text-left`} onClick={() => handleSort('presentacion')}>
-              Presentación <SortIcon col="presentacion" />
-            </th>
-            <th className={`${thClass('vencimiento')} text-left`} onClick={() => handleSort('vencimiento')}>
-              Vencimiento <SortIcon col="vencimiento" />
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {sortedTareas.map((task, idx) => {
-            const isOverdue = task.fechaVencimiento
-              ? new Date(task.fechaVencimiento) < new Date() && !['completado','done'].includes(task.estado)
-              : false
-            return (
-              <tr
-                key={task.id}
-                onClick={() => setSelectedTask(task)}
-                className={`border-b border-slate-100 cursor-pointer hover:bg-blue-50/40 transition-colors ${
-                  idx % 2 === 0 ? '' : 'bg-slate-50/40'
-                }`}
-              >
-                <td className="px-4 py-3 align-top">
-                  <p className="font-medium text-slate-900 leading-snug">{task.titulo}</p>
-                </td>
-                <td className="px-4 py-3 align-top">
-                  {task.asignadoA ? (
-                    <div className="flex items-start gap-1.5">
-                      <User size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-slate-700">{task.asignadoA.nombre}</span>
-                    </div>
-                  ) : (
-                    <span className="text-slate-400 italic text-xs">Sin asignar</span>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-center align-top">
-                  <Badge variant={getPriorityColor(task.prioridad) as any}>
-                    {getPriorityLabel(task.prioridad)}
-                  </Badge>
-                </td>
-                <td className="px-4 py-3 text-center align-top">
-                  <Badge variant={getTaskStatusColor(task.estado) as any}>
-                    {getTaskStatusLabel(task.estado)}
-                  </Badge>
-                </td>
-                <td className="px-4 py-3 text-sm text-slate-600 align-top">
-                  {task.fechaPresentacion
-                    ? formatDate(task.fechaPresentacion)
-                    : <span className="text-slate-400 italic text-xs">—</span>}
-                </td>
-                <td className="px-4 py-3 align-top">
-                  {task.fechaVencimiento ? (
-                    <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-600 font-medium' : 'text-slate-600'}`}>
-                      {isOverdue && <AlertCircle size={13} />}
-                      <Calendar size={13} className="flex-shrink-0" />
-                      <span>{formatDate(task.fechaVencimiento)}</span>
-                    </div>
-                  ) : (
-                    <span className="text-slate-400 italic text-xs">—</span>
-                  )}
-                </td>
-              </tr>
-            )
-          })}
-        </tbody>
-      </table>
-    </div>
+    <>
+      {/* Mobile: card list */}
+      <div className="space-y-2 md:hidden">
+        {sortedTareas.map((task) => {
+          const isOverdue = task.fechaVencimiento
+            ? new Date(task.fechaVencimiento) < new Date() && !['completado','done'].includes(task.estado)
+            : false
+          return (
+            <div
+              key={task.id}
+              onClick={() => setSelectedTask(task)}
+              className="bg-white border border-slate-200 rounded-lg p-3 cursor-pointer hover:bg-blue-50/40 transition-colors"
+            >
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <p className="font-medium text-slate-900 text-sm leading-snug">{task.titulo}</p>
+                <Badge variant={getPriorityColor(task.prioridad) as any} className="flex-shrink-0 text-xs">
+                  {getPriorityLabel(task.prioridad)}
+                </Badge>
+              </div>
+              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs text-slate-500">
+                <Badge variant={getTaskStatusColor(task.estado) as any}>
+                  {getTaskStatusLabel(task.estado)}
+                </Badge>
+                {task.asignadoA && (
+                  <span className="flex items-center gap-1">
+                    <User size={11} />
+                    {task.asignadoA.nombre}
+                  </span>
+                )}
+                {task.fechaVencimiento && (
+                  <span className={`flex items-center gap-1 ${isOverdue ? 'text-red-600 font-medium' : ''}`}>
+                    {isOverdue && <AlertCircle size={11} />}
+                    <Calendar size={11} />
+                    {formatDate(task.fechaVencimiento)}
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Desktop: table */}
+      <div className="hidden md:block bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-200 bg-slate-50">
+              <th className={`${thClass('titulo')} text-left w-[28%]`} onClick={() => handleSort('titulo')}>
+                Tarea <SortIcon col="titulo" />
+              </th>
+              <th className={`${thClass('asignado')} text-left`} onClick={() => handleSort('asignado')}>
+                Asignado a <SortIcon col="asignado" />
+              </th>
+              <th className={`${thClass('prioridad')} text-center`} onClick={() => handleSort('prioridad')}>
+                Prioridad <SortIcon col="prioridad" />
+              </th>
+              <th className={`${thClass('estado')} text-center`} onClick={() => handleSort('estado')}>
+                Estado <SortIcon col="estado" />
+              </th>
+              <th className={`${thClass('presentacion')} text-left`} onClick={() => handleSort('presentacion')}>
+                Presentación <SortIcon col="presentacion" />
+              </th>
+              <th className={`${thClass('vencimiento')} text-left`} onClick={() => handleSort('vencimiento')}>
+                Vencimiento <SortIcon col="vencimiento" />
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedTareas.map((task, idx) => {
+              const isOverdue = task.fechaVencimiento
+                ? new Date(task.fechaVencimiento) < new Date() && !['completado','done'].includes(task.estado)
+                : false
+              return (
+                <tr
+                  key={task.id}
+                  onClick={() => setSelectedTask(task)}
+                  className={`border-b border-slate-100 cursor-pointer hover:bg-blue-50/40 transition-colors ${
+                    idx % 2 === 0 ? '' : 'bg-slate-50/40'
+                  }`}
+                >
+                  <td className="px-4 py-3 align-top">
+                    <p className="font-medium text-slate-900 leading-snug">{task.titulo}</p>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    {task.asignadoA ? (
+                      <div className="flex items-start gap-1.5">
+                        <User size={13} className="text-slate-400 flex-shrink-0 mt-0.5" />
+                        <span className="text-slate-700">{task.asignadoA.nombre}</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 italic text-xs">Sin asignar</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-center align-top">
+                    <Badge variant={getPriorityColor(task.prioridad) as any}>
+                      {getPriorityLabel(task.prioridad)}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-center align-top">
+                    <Badge variant={getTaskStatusColor(task.estado) as any}>
+                      {getTaskStatusLabel(task.estado)}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600 align-top">
+                    {task.fechaPresentacion
+                      ? formatDate(task.fechaPresentacion)
+                      : <span className="text-slate-400 italic text-xs">—</span>}
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    {task.fechaVencimiento ? (
+                      <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-600 font-medium' : 'text-slate-600'}`}>
+                        {isOverdue && <AlertCircle size={13} />}
+                        <Calendar size={13} className="flex-shrink-0" />
+                        <span>{formatDate(task.fechaVencimiento)}</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-400 italic text-xs">—</span>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   )
 
   const TareasKanbanView = () => (
-    <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {([
         { key: 'pendiente',   label: 'Pendientes',  color: 'bg-slate-400' },
         { key: 'en_progreso', label: 'En progreso', color: 'bg-blue-400'  },
@@ -407,14 +451,14 @@ export function CaseDetailPage() {
         </div>
 
         <div className="mb-8">
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">{caso.titulo}</h1>
-              <p className="text-slate-600">{caso.descripcion}</p>
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-3xl font-bold text-slate-900 mb-2 break-words">{caso.titulo}</h1>
+              <p className="text-slate-600 text-sm sm:text-base">{caso.descripcion}</p>
             </div>
 
             {/* Status area */}
-            <div className="flex flex-col items-end gap-2 min-w-[180px]">
+            <div className="flex flex-row sm:flex-col items-start sm:items-end gap-2 flex-wrap sm:flex-nowrap sm:min-w-[180px]">
               <CaseStatusBadge status={caso.estado} />
 
               {/* Inactive case warning */}
@@ -430,7 +474,7 @@ export function CaseDetailPage() {
                   Cambiar estado
                 </Button>
               ) : (
-                <div className="flex flex-col items-end gap-2 bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
+                <div className="flex flex-col items-start sm:items-end gap-2 bg-white border border-slate-200 rounded-lg p-3 shadow-sm w-full sm:w-auto">
                   <select
                     value={newStatus}
                     onChange={(e) => setNewStatus(e.target.value)}
@@ -511,8 +555,8 @@ export function CaseDetailPage() {
           </TabsList>
 
           <TabsContent value="info">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+              <div className="md:col-span-2">
                 <Card>
                   <CardHeader>
                     <CardTitle>Detalles del Caso</CardTitle>
@@ -574,18 +618,18 @@ export function CaseDetailPage() {
           <TabsContent value="tareas">
             <div className="space-y-4">
               {/* Header */}
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-slate-900">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-base font-semibold text-slate-900 truncate">
                   Tareas
                   {tareas.length > 0 && (
                     <span className="ml-2 text-sm font-normal text-slate-500">
-                      ({tareas.length} tarea{tareas.length !== 1 ? 's' : ''})
+                      ({tareas.length})
                     </span>
                   )}
                 </h3>
-                <div className="flex items-center gap-2">
-                  {/* View toggle */}
-                  <div className="flex items-center bg-slate-100 rounded-lg p-1 gap-1">
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {/* View toggle — hidden on mobile (cards are auto) */}
+                  <div className="hidden sm:flex items-center bg-slate-100 rounded-lg p-1 gap-1">
                     <button
                       onClick={() => setTareasView('grid')}
                       className={`p-1.5 rounded-md transition-colors ${tareasView === 'grid' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
@@ -601,12 +645,12 @@ export function CaseDetailPage() {
                   </div>
                   <Button
                     size="sm"
-                    className="gap-2"
+                    className="gap-1.5"
                     onClick={() => setShowNewProcessForm((v) => !v)}
                     variant={showNewProcessForm ? 'ghost' : 'default'}
                   >
                     <Plus size={15} />
-                    {showNewProcessForm ? 'Cancelar' : 'Nueva tarea'}
+                    <span>{showNewProcessForm ? 'Cancelar' : 'Nueva tarea'}</span>
                   </Button>
                 </div>
               </div>
@@ -707,8 +751,8 @@ export function CaseDetailPage() {
 
               {/* ── Alertas ─────────────────────────────────────────────────── */}
               <div className="border-t border-slate-200 pt-6 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
                     <h3 className="text-base font-semibold text-slate-900">
                       Alertas
                       {caseAlerts.length > 0 && (
@@ -717,18 +761,19 @@ export function CaseDetailPage() {
                         </span>
                       )}
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-400 mt-0.5 hidden sm:block">
                       Las alertas de vencimiento se generan automáticamente según las reglas configuradas arriba.
                     </p>
                   </div>
                   <Button
                     size="sm"
-                    className="gap-2"
+                    className="gap-1.5 flex-shrink-0"
                     onClick={() => setShowAlertForm((v) => !v)}
                     variant={showAlertForm ? 'ghost' : 'default'}
                   >
                     <Plus size={15} />
-                    {showAlertForm ? 'Cancelar' : 'Nueva alerta manual'}
+                    <span className="hidden sm:inline">{showAlertForm ? 'Cancelar' : 'Nueva alerta manual'}</span>
+                    <span className="sm:hidden">{showAlertForm ? 'Cancelar' : 'Nueva alerta'}</span>
                   </Button>
                 </div>
 

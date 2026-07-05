@@ -75,7 +75,7 @@ export function AIChatTab({ caseId }: AIChatTabProps) {
   }
 
   return (
-    <div className="flex flex-col h-[600px] bg-white rounded-xl border border-slate-200 overflow-hidden">
+    <div className="flex flex-col h-[calc(100svh-280px)] min-h-[400px] sm:h-[600px] bg-white rounded-xl border border-slate-200 overflow-hidden">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 && (

@@ -175,7 +175,7 @@ export function HoursTable({ caseId, tareas = [], moneda = 'PEN', tipoFacturacio
 
         {/* Summary cards */}
         {horas.length > 0 && (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
               <div className="p-2 bg-blue-50 rounded-lg"><Clock size={18} className="text-blue-600" /></div>
               <div>

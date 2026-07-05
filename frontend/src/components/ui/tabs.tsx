@@ -31,7 +31,7 @@ export const TabsList = React.forwardRef<HTMLDivElement, TabsListProps>(
     <div
       ref={ref}
       className={cn(
-        'flex items-center border-b border-slate-200 bg-transparent',
+        'flex items-center border-b border-slate-200 bg-transparent overflow-x-auto scrollbar-hide',
         className
       )}
       {...props}
@@ -58,7 +58,7 @@ export const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>
         ref={ref}
         onClick={() => setActiveTab(value)}
         className={cn(
-          'px-4 py-3 font-medium text-sm transition-colors relative',
+          'px-4 py-3 font-medium text-sm transition-colors relative whitespace-nowrap flex-shrink-0',
           'hover:text-primary-700',
           isActive
             ? 'text-primary-700'
