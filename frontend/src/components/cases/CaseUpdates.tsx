@@ -118,7 +118,7 @@ export function CaseUpdates({ caseId }: CaseUpdatesProps) {
     setIsSaving(true)
     setEditError('')
     try {
-      const res = await api.patch(`/${caseId}/updates/${editingId}`, { content })
+      const res = await api.patch(`/updates/${editingId}`, { content })
       setUpdates((prev) => prev.map((u) => (u.id === editingId ? res.data.data : u)))
       setEditingId(null)
     } catch (e: any) {
@@ -133,7 +133,7 @@ export function CaseUpdates({ caseId }: CaseUpdatesProps) {
     if (!deleteTarget) return
     setIsDeleting(true)
     try {
-      await api.delete(`/${caseId}/updates/${deleteTarget}`)
+      await api.delete(`/updates/${deleteTarget}`)
       setUpdates((prev) => prev.filter((u) => u.id !== deleteTarget))
       setDeleteTarget(null)
     } catch (e: any) {
