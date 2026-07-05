@@ -58,7 +58,7 @@ export const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>
         ref={ref}
         onClick={() => setActiveTab(value)}
         className={cn(
-          'px-4 py-3 font-medium text-sm transition-colors relative whitespace-nowrap flex-shrink-0',
+          'px-3 py-2.5 sm:px-4 sm:py-3 font-medium text-sm transition-colors relative whitespace-nowrap flex-shrink-0',
           'hover:text-primary-700',
           isActive
             ? 'text-primary-700'

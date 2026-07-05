@@ -450,11 +450,11 @@ export function CaseDetailPage() {
           </div>
         </div>
 
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
+        <div className="mb-4 sm:mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3 sm:mb-4">
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-3xl font-bold text-slate-900 mb-2 break-words">{caso.titulo}</h1>
-              <p className="text-slate-600 text-sm sm:text-base">{caso.descripcion}</p>
+              <h1 className="text-lg sm:text-3xl font-bold text-slate-900 mb-1 sm:mb-2 break-words leading-snug">{caso.titulo}</h1>
+              <p className="text-slate-600 text-xs sm:text-base line-clamp-2 sm:line-clamp-none">{caso.descripcion}</p>
             </div>
 
             {/* Status area */}
@@ -502,47 +502,47 @@ export function CaseDetailPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 mt-4">
             {caso.cliente && (
-              <div className="bg-white p-4 rounded-lg border border-slate-200">
-                <p className="text-xs text-slate-600 uppercase font-semibold mb-1">Cliente</p>
-                <p className="font-medium text-slate-900">{caso.cliente.nombre}</p>
+              <div className="bg-white p-3 sm:p-4 rounded-lg border border-slate-200">
+                <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5">Cliente</p>
+                <p className="font-medium text-slate-900 text-sm truncate">{caso.cliente.nombre}</p>
               </div>
             )}
-            <div className="bg-white p-4 rounded-lg border border-slate-200">
-              <p className="text-xs text-slate-600 uppercase font-semibold mb-1 flex items-center gap-1">
-                <Calendar size={14} />
+            <div className="bg-white p-3 sm:p-4 rounded-lg border border-slate-200">
+              <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5 flex items-center gap-1">
+                <Calendar size={12} />
                 Abierto
               </p>
-              <p className="font-medium text-slate-900">{formatDate(caso.fechaApertura)}</p>
+              <p className="font-medium text-slate-900 text-sm">{formatDate(caso.fechaApertura)}</p>
             </div>
             {caso.tipoFacturacion && caso.precioFacturacion != null && (
-              <div className="bg-white p-4 rounded-lg border border-slate-200">
-                <p className="text-xs text-slate-600 uppercase font-semibold mb-1 flex items-center gap-1">
-                  <DollarSign size={14} />
+              <div className="bg-white p-3 sm:p-4 rounded-lg border border-slate-200">
+                <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5 flex items-center gap-1">
+                  <DollarSign size={12} />
                   Facturación
                 </p>
-                <p className="font-medium text-slate-900">
+                <p className="font-medium text-slate-900 text-sm">
                   {caso.monedaFacturacion === 'USD' ? '$' : 'S/'}{' '}
-                  {caso.precioFacturacion.toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                  {caso.precioFacturacion.toLocaleString('es-PE', { minimumFractionDigits: 0 })}
                   {caso.tipoFacturacion === 'por_horas' ? '/h' : ' flat'}
                 </p>
               </div>
             )}
             {caso.abogadoPrincipal && (
-              <div className="bg-white p-4 rounded-lg border border-slate-200">
-                <p className="text-xs text-slate-600 uppercase font-semibold mb-1 flex items-center gap-1">
-                  <User size={14} />
+              <div className="bg-white p-3 sm:p-4 rounded-lg border border-slate-200">
+                <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5 flex items-center gap-1">
+                  <User size={12} />
                   Abogado
                 </p>
-                <p className="font-medium text-slate-900">{caso.abogadoPrincipal.nombre}</p>
+                <p className="font-medium text-slate-900 text-sm truncate">{caso.abogadoPrincipal.nombre}</p>
               </div>
             )}
           </div>
         </div>
 
         <Tabs defaultValue={defaultTab}>
-          <TabsList className="mb-6">
+          <TabsList className="mb-4 sm:mb-6">
             <TabsTrigger value="info">Información</TabsTrigger>
             <TabsTrigger value="timeline">Línea de Tiempo</TabsTrigger>
             <TabsTrigger value="tareas">Tareas</TabsTrigger>

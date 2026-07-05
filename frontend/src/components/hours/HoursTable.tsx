@@ -175,28 +175,28 @@ export function HoursTable({ caseId, tareas = [], moneda = 'PEN', tipoFacturacio
 
         {/* Summary cards */}
         {horas.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
-              <div className="p-2 bg-blue-50 rounded-lg"><Clock size={18} className="text-blue-600" /></div>
-              <div>
-                <p className="text-xl font-bold text-slate-900">{formatDuration(totalHoras)}</p>
-                <p className="text-xs text-slate-500">{totalMin} minutos en total</p>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-blue-50 rounded-lg flex-shrink-0"><Clock size={16} className="text-blue-600" /></div>
+              <div className="min-w-0">
+                <p className="text-sm sm:text-xl font-bold text-slate-900 truncate">{formatDuration(totalHoras)}</p>
+                <p className="text-xs text-slate-500 hidden sm:block">{totalMin} min en total</p>
               </div>
             </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
-              <div className="p-2 bg-green-50 rounded-lg"><DollarSign size={18} className="text-green-600" /></div>
-              <div>
-                <p className="text-xl font-bold text-slate-900">{simbolo} {totalMonto.toFixed(2)}</p>
-                <p className="text-xs text-slate-500">monto facturable</p>
+            <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-green-50 rounded-lg flex-shrink-0"><DollarSign size={16} className="text-green-600" /></div>
+              <div className="min-w-0">
+                <p className="text-sm sm:text-xl font-bold text-slate-900 truncate">{simbolo} {totalMonto.toFixed(0)}</p>
+                <p className="text-xs text-slate-500 hidden sm:block">monto facturable</p>
               </div>
             </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-4 flex items-center gap-3">
-              <div className="p-2 bg-purple-50 rounded-lg"><TrendingUp size={18} className="text-purple-600" /></div>
-              <div>
-                <p className="text-xl font-bold text-slate-900">
-                  {totalHoras > 0 ? `${simbolo} ${(totalMonto / totalHoras).toFixed(2)}/h` : '—'}
+            <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+              <div className="p-1.5 sm:p-2 bg-purple-50 rounded-lg flex-shrink-0"><TrendingUp size={16} className="text-purple-600" /></div>
+              <div className="min-w-0">
+                <p className="text-sm sm:text-xl font-bold text-slate-900 truncate">
+                  {totalHoras > 0 ? `${simbolo}${(totalMonto / totalHoras).toFixed(0)}/h` : '—'}
                 </p>
-                <p className="text-xs text-slate-500">tarifa promedio</p>
+                <p className="text-xs text-slate-500 hidden sm:block">tarifa promedio</p>
               </div>
             </div>
           </div>
