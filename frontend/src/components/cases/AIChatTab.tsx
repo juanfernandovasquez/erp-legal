@@ -11,8 +11,17 @@ interface AIChatTabProps {
   caseId: string
 }
 
+const storageKey = (caseId: string) => `ai_chat_${caseId}`
+
 export function AIChatTab({ caseId }: AIChatTabProps) {
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<Message[]>(() => {
+    try {
+      const saved = sessionStorage.getItem(storageKey(caseId))
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -22,6 +31,12 @@ export function AIChatTab({ caseId }: AIChatTabProps) {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(storageKey(caseId), JSON.stringify(messages))
+    } catch {}
+  }, [messages, caseId])
 
   const sendMessage = async () => {
     const text = input.trim()
