@@ -1,7 +1,7 @@
 """Add error_logs table for backend error monitoring.
 
-Revision ID: 007_add_error_logs
-Revises: 006_add_billing_adjustments
+Revision ID: 017_add_error_logs
+Revises: 016_email_verify_tokens
 Create Date: 2026-07-05
 
 Changes:
@@ -15,8 +15,8 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import UUID
 
-revision = "007_add_error_logs"
-down_revision = "006_add_billing_adjustments"
+revision = "017_add_error_logs"
+down_revision = "016_email_verify_tokens"
 branch_labels = None
 depends_on = None
 

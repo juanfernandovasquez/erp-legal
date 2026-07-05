@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { api } from '@/lib/axios'
+import api from '@/lib/axios'
 import { AlertCircle, CheckCircle, ChevronDown, ChevronUp, Trash2, RefreshCw } from 'lucide-react'
 
 interface ErrorLog {
