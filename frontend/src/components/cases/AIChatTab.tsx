@@ -80,13 +80,15 @@ export function AIChatTab({ caseId }: AIChatTabProps) {
               </div>
             )}
             <div
-              className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm whitespace-pre-wrap leading-relaxed ${
+              className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
                 msg.role === 'user'
                   ? 'bg-primary-700 text-white rounded-br-sm'
                   : 'bg-slate-100 text-slate-800 rounded-bl-sm'
               }`}
             >
-              {msg.content}
+              {msg.content.split('\n').filter(l => l.trim()).map((para, i) => (
+                <p key={i} className={i > 0 ? 'mt-2' : ''}>{para}</p>
+              ))}
             </div>
             {msg.role === 'user' && (
               <div className="flex-shrink-0 h-8 w-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center">
