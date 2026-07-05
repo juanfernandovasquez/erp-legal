@@ -27,6 +27,7 @@ import { useCases } from '@/hooks/useCases'
 import { formatDate, formatCurrency, getPriorityColor, getPriorityLabel, getTaskStatusColor, getTaskStatusLabel, CASE_STATUS_OPTIONS } from '@/lib/utils'
 import { Caso, Tarea } from '@/types'
 import { BillingAdjustments } from '@/components/billing/BillingAdjustments'
+import { AIChatTab } from '@/components/cases/AIChatTab'
 import { NotificationRules } from '@/components/notifications/NotificationRules'
 import {
   ArrowLeft, Calendar, DollarSign, User, Plus, Pencil, Check, X,
@@ -506,6 +507,7 @@ export function CaseDetailPage() {
             <TabsTrigger value="horas">Facturación</TabsTrigger>
             <TabsTrigger value="actualizaciones">Actualizaciones</TabsTrigger>
             <TabsTrigger value="alertas">Alertas</TabsTrigger>
+            <TabsTrigger value="ia">IA</TabsTrigger>
           </TabsList>
 
           <TabsContent value="info">
@@ -765,6 +767,10 @@ export function CaseDetailPage() {
               </div>
 
             </div>
+          </TabsContent>
+
+          <TabsContent value="ia">
+            <AIChatTab caseId={id!} />
           </TabsContent>
 
         </Tabs>
