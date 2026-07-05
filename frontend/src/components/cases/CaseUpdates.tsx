@@ -72,7 +72,7 @@ export function CaseUpdates({ caseId }: CaseUpdatesProps) {
   const fetchUpdates = async () => {
     setIsLoading(true)
     try {
-      const res = await api.get(`/cases/${caseId}/updates?limit=50&sort=-created_at`)
+      const res = await api.get(`/${caseId}/updates?limit=50&sort=-created_at`)
       setUpdates(res.data.data || [])
     } catch (e) {
       console.error('Error fetching updates:', e)
@@ -88,7 +88,7 @@ export function CaseUpdates({ caseId }: CaseUpdatesProps) {
     setIsPosting(true)
     setPostError('')
     try {
-      const res = await api.post(`/cases/${caseId}/updates`, { contenido: content })
+      const res = await api.post(`/${caseId}/updates`, { content })
       setUpdates((prev) => [res.data.data, ...prev])
       setNewContent('')
       textareaRef.current?.focus()
@@ -118,7 +118,7 @@ export function CaseUpdates({ caseId }: CaseUpdatesProps) {
     setIsSaving(true)
     setEditError('')
     try {
-      const res = await api.patch(`/cases/${caseId}/updates/${editingId}`, { contenido: content })
+      const res = await api.patch(`/${caseId}/updates/${editingId}`, { content })
       setUpdates((prev) => prev.map((u) => (u.id === editingId ? res.data.data : u)))
       setEditingId(null)
     } catch (e: any) {
@@ -133,7 +133,7 @@ export function CaseUpdates({ caseId }: CaseUpdatesProps) {
     if (!deleteTarget) return
     setIsDeleting(true)
     try {
-      await api.delete(`/cases/${caseId}/updates/${deleteTarget}`)
+      await api.delete(`/${caseId}/updates/${deleteTarget}`)
       setUpdates((prev) => prev.filter((u) => u.id !== deleteTarget))
       setDeleteTarget(null)
     } catch (e: any) {
