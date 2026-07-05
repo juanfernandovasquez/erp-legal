@@ -38,6 +38,7 @@ from app.models.billing import BillingAdjustment
 from app.models.email_log import EmailLog
 from app.models.notification_rule import NotificationRule
 from app.models.client_alert import ClientAlertRule
+from app.models.error_log import ErrorLog
 
 __all__ = [
     # Base
@@ -103,4 +104,6 @@ __all__ = [
     "NotificationRule",
     # Client Alert Rules
     "ClientAlertRule",
+    # Error Monitoring
+    "ErrorLog",
 ]

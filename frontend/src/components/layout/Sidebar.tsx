@@ -13,6 +13,7 @@ import {
   Settings,
   LogOut,
   Mail,
+  Bug,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -43,6 +44,7 @@ export function Sidebar() {
     { icon: AlertCircle, label: 'Alertas', href: '/alerts' },
     { icon: Users, label: 'Clientes', href: '/clients' },
     ...(isAdmin ? [{ icon: UserCog, label: 'Usuarios', href: '/users' }] : []),
+    ...(isAdmin ? [{ icon: Bug, label: 'Monitor Errores', href: '/admin/errors' }] : []),
     { icon: Mail, label: 'Comunicaciones', href: '/emails' },
     { icon: Settings, label: 'Configuración', href: '/settings' },
   ]

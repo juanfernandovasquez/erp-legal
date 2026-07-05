@@ -1,7 +1,10 @@
 """Main FastAPI application."""
 
+import json
 import logging
+import traceback as tb_module
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import FastAPI, Request, HTTPException, status
@@ -10,7 +13,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
-from app.database import init_db, close_db
+from app.database import init_db, close_db, async_session_factory
 from app.middleware.rls import RLSContextMiddleware
 from app.middleware.audit import AuditMiddleware
 
@@ -93,6 +96,62 @@ async def root():
     }
 
 
+_SENSITIVE_KEYS = {"password", "token", "secret", "key", "authorization", "api_key", "access_token", "refresh_token"}
+
+
+def _sanitize_body(raw: dict) -> dict:
+    """Remove sensitive fields from request body before storing."""
+    return {
+        k: "***" if any(s in k.lower() for s in _SENSITIVE_KEYS) else v
+        for k, v in raw.items()
+    }
+
+
+async def _save_error_log(request: Request, exc: Exception) -> None:
+    """Persist an unhandled exception to error_logs. Never raises."""
+    try:
+        from app.models.error_log import ErrorLog
+
+        # Try to read body (limit to 10KB)
+        request_body = None
+        try:
+            raw_bytes = await request.body()
+            if raw_bytes:
+                raw_str = raw_bytes[:10_000].decode("utf-8", errors="replace")
+                try:
+                    parsed = json.loads(raw_str)
+                    if isinstance(parsed, dict):
+                        parsed = _sanitize_body(parsed)
+                    request_body = json.dumps(parsed, ensure_ascii=False)[:10_000]
+                except json.JSONDecodeError:
+                    request_body = raw_str[:500]
+        except Exception:
+            pass
+
+        user_id = getattr(request.state, "user_id", None)
+        user_email = getattr(request.state, "user_email", None)
+        law_firm_id = getattr(request.state, "law_firm_id", None)
+
+        entry = ErrorLog(
+            method=request.method,
+            path=str(request.url.path),
+            status_code=500,
+            error_type=type(exc).__name__,
+            error_message=str(exc)[:2000],
+            traceback=tb_module.format_exc()[:10_000],
+            user_id=user_id,
+            user_email=user_email,
+            law_firm_id=law_firm_id,
+            request_body=request_body,
+        )
+
+        async with async_session_factory() as session:
+            session.add(entry)
+            await session.commit()
+    except Exception as inner:
+        logger.error(f"Failed to save error log: {inner}")
+
+
 # Global exception handlers
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -106,8 +165,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
-    """Handle general exceptions."""
+    """Handle general exceptions and persist them to error_logs."""
     logger.error(f"Unhandled exception: {str(exc)}", exc_info=True)
+    await _save_error_log(request, exc)
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={
@@ -139,6 +199,7 @@ from app.routers.emails import router as emails_router
 from app.routers.notification_rules import router as notification_rules_router
 from app.routers.client_alerts import router as client_alerts_router
 from app.routers.ai_chat import router as ai_chat_router
+from app.routers.error_logs import router as error_logs_router
 
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["Autenticación"])
 app.include_router(law_firms_router, prefix="/api/v1/law-firms", tags=["Estudios Legales"])
@@ -159,6 +220,7 @@ app.include_router(emails_router, prefix="/api/v1", tags=["Emails"])
 app.include_router(notification_rules_router, prefix="/api/v1", tags=["Notificaciones"])
 app.include_router(client_alerts_router, prefix="/api/v1", tags=["Alertas de Cliente"])
 app.include_router(ai_chat_router, prefix="/api/v1", tags=["IA"])
+app.include_router(error_logs_router, prefix="/api/v1", tags=["Error Logs"])
 
 
 if __name__ == "__main__":
