@@ -35,8 +35,8 @@ export function DashboardPage() {
     try {
       // Fetch in parallel — each independently so one failure doesn't break all
       const results = await Promise.allSettled([
-        api.get('/cases?limit=6'),                          // recent cases
-        api.get('/tasks?limit=5&status=todo'),              // pending tasks
+        api.get('/cases?limit=3'),                           // recent cases
+        api.get('/tasks?limit=3&status=todo'),              // pending tasks
         api.get('/alerts?limit=5&status=pendiente'),        // alerts
         api.get('/admin/dashboard'),                        // stats
       ])
@@ -108,7 +108,7 @@ export function DashboardPage() {
           <StatCard
             icon={TrendingUp}
             title="Facturación Este Mes"
-            value={`S/ ${stats.billingThisMonth.toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+            value={`$ ${stats.billingThisMonth.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
             bgColor="green"
             onClick={() => navigate('/hours')}
           />
@@ -129,7 +129,15 @@ export function DashboardPage() {
               </div>
               <div className="grid grid-cols-1 gap-4">
                 {cases.length > 0 ? (
-                  cases.map((caso) => <CaseCard key={caso.id} caso={caso} />)
+                  <>
+                    {cases.map((caso) => <CaseCard key={caso.id} caso={caso} />)}
+                    <button
+                      onClick={() => navigate('/cases')}
+                      className="w-full py-2.5 text-sm text-primary-600 hover:text-primary-800 font-medium hover:bg-primary-50 rounded-lg border border-dashed border-primary-200 transition-colors"
+                    >
+                      Ver todos los procesos →
+                    </button>
+                  </>
                 ) : (
                   <div className="text-center py-10 text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                     No hay procesos registrados aún.{' '}
@@ -157,7 +165,21 @@ export function DashboardPage() {
               </div>
               <div className="grid grid-cols-1 gap-3">
                 {tasks.length > 0 ? (
-                  tasks.map((task) => <TaskCard key={task.id} task={task} />)
+                  <>
+                    {tasks.map((task) => (
+                      <TaskCard
+                        key={task.id}
+                        task={task}
+                        onClick={() => navigate(`/cases/${task.casoId}?tab=tareas`)}
+                      />
+                    ))}
+                    <button
+                      onClick={() => navigate('/tasks')}
+                      className="w-full py-2.5 text-sm text-primary-600 hover:text-primary-800 font-medium hover:bg-primary-50 rounded-lg border border-dashed border-primary-200 transition-colors"
+                    >
+                      Ver todas las tareas →
+                    </button>
+                  </>
                 ) : (
                   <div className="text-center py-10 text-slate-500 bg-slate-50 rounded-lg border border-dashed border-slate-200">
                     No hay tareas pendientes.
