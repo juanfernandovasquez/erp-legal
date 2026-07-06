@@ -23,7 +23,7 @@ ADMIN_ROLES = {"admin_firma", "super_admin"}
 
 
 def _require_admin(current_user: User) -> User:
-    if current_user.rol not in ADMIN_ROLES:
+    if current_user.role not in ADMIN_ROLES:
         raise HTTPException(status_code=403, detail="Solo administradores pueden acceder a los logs de error")
     return current_user
 
