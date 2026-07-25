@@ -130,6 +130,7 @@ async def create_user(
         phone=request.phone,
         law_firm_id=current_user.law_firm_id,
         role=request.role,
+        is_verified=True,  # admin-created accounts don't need email verification
         is_deleted=False,
     )
 
