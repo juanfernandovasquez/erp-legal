@@ -9,9 +9,14 @@ import { Caso, Tarea, Alerta } from '@/types'
 import { FileText, CheckSquare, AlertCircle, TrendingUp } from 'lucide-react'
 import api from '@/lib/axios'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import { useAuthStore } from '@/stores/authStore'
+
+const ADMIN_ROLES = ['admin_firma', 'super_admin']
 
 export function DashboardPage() {
   const navigate = useNavigate()
+  const { user: currentUser } = useAuthStore()
+  const isAdmin = ADMIN_ROLES.includes(currentUser?.rol ?? '')
   const [cases, setCases] = useState<Caso[]>([])
   const [tasks, setTasks] = useState<Tarea[]>([])
   const [alerts, setAlerts] = useState<Alerta[]>([])
@@ -80,7 +85,7 @@ export function DashboardPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className={`grid gap-4 mb-8 ${isAdmin ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-3'}`}>
           <StatCard
             icon={FileText}
             title="Procesos Activos"
@@ -105,13 +110,15 @@ export function DashboardPage() {
             bgColor="red"
             onClick={() => navigate('/alerts')}
           />
-          <StatCard
-            icon={TrendingUp}
-            title="Facturación Este Mes"
-            value={`$ ${stats.billingThisMonth.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-            bgColor="green"
-            onClick={() => navigate('/hours')}
-          />
+          {isAdmin && (
+            <StatCard
+              icon={TrendingUp}
+              title="Facturación Este Mes"
+              value={`$ ${stats.billingThisMonth.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+              bgColor="green"
+              onClick={() => navigate('/hours')}
+            />
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
