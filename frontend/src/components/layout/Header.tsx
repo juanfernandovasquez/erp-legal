@@ -47,7 +47,7 @@ export function Header() {
       {/* Hamburger — solo en móvil */}
       <button
         onClick={toggleSidebar}
-        className="lg:hidden flex-shrink-0 p-1.5 text-slate-600 hover:text-primary-700 hover:bg-slate-100 rounded-md transition-colors"
+        className="lg:hidden flex-shrink-0 p-1.5 text-slate-600 hover:text-primary-700 rounded-md transition-all duration-[250ms] ease"
         aria-label="Menú"
       >
         {sidebarOpen ? <X size={22} /> : <Menu size={22} />}
@@ -62,7 +62,7 @@ export function Header() {
         <div className="relative" ref={bellRef}>
           <button
             onClick={handleBellClick}
-            className="relative p-2 text-slate-600 hover:text-primary-700 hover:bg-slate-100 rounded-md transition-colors"
+            className="relative p-2 text-slate-600 hover:text-primary-700 rounded-md transition-all duration-[250ms] ease"
             aria-label="Alertas"
           >
             <Bell size={20} />

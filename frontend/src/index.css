@@ -32,19 +32,19 @@ body {
 
 @layer components {
   .btn-primary {
-    @apply px-4 py-2 bg-primary-700 text-white rounded-md font-medium hover:bg-primary-800 transition-colors;
+    @apply px-4 py-2 bg-primary-700 text-white border border-primary-700 rounded-md font-medium hover:bg-transparent hover:text-primary-700 transition-all duration-[250ms] ease;
   }
 
   .btn-secondary {
-    @apply px-4 py-2 bg-slate-200 text-slate-900 rounded-md font-medium hover:bg-slate-300 transition-colors;
+    @apply px-4 py-2 bg-transparent text-slate-700 border border-slate-300 rounded-md font-medium hover:bg-primary-700 hover:text-white hover:border-primary-700 transition-all duration-[250ms] ease;
   }
 
   .btn-ghost {
-    @apply px-4 py-2 text-slate-700 rounded-md font-medium hover:bg-slate-100 transition-colors;
+    @apply px-4 py-2 text-slate-700 rounded-md font-medium hover:text-primary-700 transition-all duration-[250ms] ease;
   }
 
   .btn-danger {
-    @apply px-4 py-2 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors;
+    @apply px-4 py-2 bg-red-600 text-white border border-red-600 rounded-md font-medium hover:bg-transparent hover:text-red-600 transition-all duration-[250ms] ease;
   }
 
   .card {

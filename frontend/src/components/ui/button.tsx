@@ -9,14 +9,14 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'default', size = 'md', isLoading, disabled, children, ...props }, ref) => {
-    const baseStyles = 'inline-flex items-center justify-center font-medium rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed'
+    const baseStyles = 'inline-flex items-center justify-center font-medium rounded-md transition-all duration-[250ms] ease focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed'
 
     const variants = {
-      default: 'bg-primary-700 text-white hover:bg-primary-800',
-      secondary: 'bg-slate-200 text-slate-900 hover:bg-slate-300',
-      danger: 'bg-red-600 text-white hover:bg-red-700',
-      ghost: 'text-slate-700 hover:bg-slate-100',
-      outline: 'border border-slate-300 text-slate-700 hover:bg-slate-50',
+      default: 'bg-primary-700 text-white border border-primary-700 hover:bg-transparent hover:text-primary-700',
+      secondary: 'bg-transparent text-slate-700 border border-slate-300 hover:bg-primary-700 hover:text-white hover:border-primary-700',
+      danger: 'bg-red-600 text-white border border-red-600 hover:bg-transparent hover:text-red-600',
+      ghost: 'text-slate-700 hover:text-primary-700 hover:bg-transparent',
+      outline: 'border border-primary-700 text-primary-700 hover:bg-primary-700 hover:text-white',
     }
 
     const sizes = {

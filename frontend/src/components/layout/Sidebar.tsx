@@ -85,10 +85,10 @@ export function Sidebar() {
                 to={item.href}
                 onClick={() => { if (sidebarOpen) toggleSidebar() }}
                 className={cn(
-                  'flex items-center gap-3 px-4 py-3 rounded-md transition-colors',
+                  'flex items-center gap-3 px-4 py-3 rounded-md transition-all duration-[250ms] ease border-l-2',
                   active
-                    ? 'bg-primary-600 text-white'
-                    : 'text-primary-100 hover:bg-primary-600'
+                    ? 'border-gold-400 bg-white/10 text-white'
+                    : 'border-transparent text-primary-100 hover:bg-white/10 hover:text-white'
                 )}
               >
                 <Icon size={20} />
@@ -110,7 +110,7 @@ export function Sidebar() {
           </div>
           <button
             onClick={() => logout()}
-            className="w-full flex items-center gap-3 px-4 py-2 text-primary-100 hover:bg-primary-600 rounded-md transition-colors"
+            className="w-full flex items-center gap-3 px-4 py-2 text-primary-100 hover:text-white hover:bg-white/10 rounded-md transition-all duration-[250ms] ease"
           >
             <LogOut size={18} />
             <span>Cerrar Sesión</span>
