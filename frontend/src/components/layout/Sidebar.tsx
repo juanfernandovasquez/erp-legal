@@ -67,9 +67,12 @@ export function Sidebar() {
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="p-6 border-b border-primary-600 shrink-0">
-          <h1 className="text-2xl font-bold">Legal ERP</h1>
-          <p className="text-primary-200 text-sm mt-1">Sistema de Gestión</p>
+        <div className="px-6 py-5 border-b border-primary-600 shrink-0 flex items-center">
+          <img
+            src="https://kdbweb-media-2026.s3.us-east-1.amazonaws.com/logos/ee6dcaa184fa42dda843f207ced4f855_Recurso-2.png"
+            alt="Katarzyna Legal & Tributario"
+            className="h-10 w-auto object-contain"
+          />
         </div>
 
         <nav className="flex-1 overflow-y-auto p-4 space-y-2">

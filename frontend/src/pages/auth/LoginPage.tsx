@@ -26,9 +26,15 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-700 to-primary-900 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <h1 className="text-3xl font-bold text-primary-700 mb-2">Legal ERP</h1>
+      <Card className="w-full max-w-md overflow-hidden">
+        <div className="bg-primary-700 flex justify-center items-center py-8 px-6">
+          <img
+            src="https://kdbweb-media-2026.s3.us-east-1.amazonaws.com/logos/ee6dcaa184fa42dda843f207ced4f855_Recurso-2.png"
+            alt="Katarzyna Legal & Tributario"
+            className="h-14 w-auto object-contain"
+          />
+        </div>
+        <CardHeader className="text-center pt-6">
           <CardTitle>Iniciar Sesión</CardTitle>
           <p className="text-sm text-slate-600 mt-2">Ingresa tus credenciales para acceder</p>
         </CardHeader>
