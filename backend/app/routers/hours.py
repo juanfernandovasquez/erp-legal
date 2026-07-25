@@ -313,14 +313,7 @@ async def register_hours(
     except (TypeError, ValueError):
         hourly_rate = 0.0
 
-    # Check permission to log for others
-    if user_id_str != str(current_user.id):
-        from app.utils.auth import check_role
-        if not check_role(current_user.role, ["admin_firma", "super_admin"]):
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="You can only register hours for yourself",
-            )
+    # All roles can log hours for any member of the same firm
 
     try:
         user_uuid = uuid_module.UUID(user_id_str)
@@ -442,15 +435,7 @@ async def update_hours(
     if not entry or entry.is_deleted or entry.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hour entry not found")
 
-    from app.utils.auth import check_role
-    is_self = str(entry.user_id) == str(current_user.id)
-    is_admin = check_role(current_user.role, ["admin_firma", "super_admin"])
-
-    if not is_self and not is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="You can only update your own hour entries",
-        )
+    # All roles can update any hour entry within the same firm
 
     # Accept Spanish or English field names — explicit None checks avoid falsy-value bugs (e.g. hours=0, description="")
     def _get(key_es: str, key_en: str):
@@ -531,12 +516,7 @@ async def delete_hours(
     if not entry or entry.is_deleted or entry.law_firm_id != current_user.law_firm_id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Hour entry not found")
 
-    from app.utils.auth import check_role
-    is_self = str(entry.user_id) == str(current_user.id)
-    is_admin = check_role(current_user.role, ["admin_firma", "super_admin"])
-
-    if not is_self and not is_admin:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Access denied")
+    # All roles can delete any hour entry within the same firm
 
     # Capture ids before deleting so we can recalculate flat billing
     case_id_for_flat = entry.case_id

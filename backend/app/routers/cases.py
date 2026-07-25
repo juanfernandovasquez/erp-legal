@@ -187,11 +187,7 @@ async def create_case(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    if not check_role(current_user.role, ["admin_firma", "abogado_senior", "super_admin"]):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only firm administrators and senior lawyers can create cases",
-        )
+    # All authenticated users can create cases
 
     case_number = await generate_case_number(db, str(current_user.law_firm_id))
 

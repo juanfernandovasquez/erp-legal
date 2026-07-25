@@ -34,6 +34,9 @@ import {
   LayoutGrid, List, ChevronUp, ChevronDown, ChevronsUpDown, AlertCircle, Trash2, RefreshCw,
 } from 'lucide-react'
 import api from '@/lib/axios'
+import { useAuthStore } from '@/stores/authStore'
+
+const ADMIN_ROLES = ['admin_firma', 'super_admin']
 
 // ── sort helpers ───────────────────────────────────────────────────────────────
 
@@ -73,6 +76,8 @@ export function CaseDetailPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const defaultTab = searchParams.get('tab') || 'info'
+  const { user: currentUser } = useAuthStore()
+  const isAdmin = ADMIN_ROLES.includes(currentUser?.rol ?? '')
   const { currentCase, isLoading: caseLoading, fetchCaseById, setCurrentCase } = useCases()
   const [caso, setCaso] = useState<Caso | null>(currentCase)
   const [tareas, setTareas] = useState<Tarea[]>([])
@@ -516,7 +521,7 @@ export function CaseDetailPage() {
               </p>
               <p className="font-medium text-slate-900 text-sm">{formatDate(caso.fechaApertura)}</p>
             </div>
-            {caso.tipoFacturacion && caso.precioFacturacion != null && (
+            {isAdmin && caso.tipoFacturacion && caso.precioFacturacion != null && (
               <div className="bg-white p-3 sm:p-4 rounded-lg border border-slate-200">
                 <p className="text-xs text-slate-500 uppercase font-semibold mb-0.5 flex items-center gap-1">
                   <DollarSign size={12} />
@@ -548,7 +553,7 @@ export function CaseDetailPage() {
             <TabsTrigger value="tareas">Tareas</TabsTrigger>
             {/* <TabsTrigger value="documentos">Documentos</TabsTrigger> */}
             <TabsTrigger value="equipo">Equipo</TabsTrigger>
-            <TabsTrigger value="horas">Facturación</TabsTrigger>
+            <TabsTrigger value="horas">{isAdmin ? 'Facturación' : 'Horas'}</TabsTrigger>
             <TabsTrigger value="actualizaciones">Actualizaciones</TabsTrigger>
             <TabsTrigger value="alertas">Alertas</TabsTrigger>
             <TabsTrigger value="ia">IA</TabsTrigger>
@@ -726,13 +731,15 @@ export function CaseDetailPage() {
                 />
               </div>
 
-              <div className="border-t border-slate-200 pt-6">
-                <BillingAdjustments
-                  caseId={caso.id}
-                  moneda={caso.monedaFacturacion ?? 'PEN'}
-                  refreshKey={billingKey}
-                />
-              </div>
+              {isAdmin && (
+                <div className="border-t border-slate-200 pt-6">
+                  <BillingAdjustments
+                    caseId={caso.id}
+                    moneda={caso.monedaFacturacion ?? 'PEN'}
+                    refreshKey={billingKey}
+                  />
+                </div>
+              )}
 
             </div>
           </TabsContent>

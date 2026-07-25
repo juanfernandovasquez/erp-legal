@@ -5,6 +5,9 @@ import { DateInput } from '@/components/ui/DateInput'
 import { formatDate } from '@/lib/utils'
 import { Loader, Trash2, Clock, DollarSign, TrendingUp, Pencil, Check, X, ChevronDown } from 'lucide-react'
 import api from '@/lib/axios'
+import { useAuthStore } from '@/stores/authStore'
+
+const ADMIN_ROLES = ['admin_firma', 'super_admin']
 
 interface HoursEntry {
   id: string
@@ -46,6 +49,8 @@ function formatDuration(horas: number): string {
 
 export function HoursTable({ caseId, tareas = [], moneda = 'PEN', tipoFacturacion, onUpdate }: HoursTableProps) {
   const simbolo = moneda === 'USD' ? '$' : 'S/'
+  const { user: currentUser } = useAuthStore()
+  const isAdmin = ADMIN_ROLES.includes(currentUser?.rol ?? '')
   const [horas, setHoras]             = useState<HoursEntry[]>([])
   const [isLoading, setIsLoading]     = useState(false)
   const [deleting, setDeleting]       = useState<string | null>(null)
@@ -175,7 +180,7 @@ export function HoursTable({ caseId, tareas = [], moneda = 'PEN', tipoFacturacio
 
         {/* Summary cards */}
         {horas.length > 0 && (
-          <div className="grid grid-cols-3 gap-2 sm:gap-4">
+          <div className={`grid gap-2 sm:gap-4 ${isAdmin ? 'grid-cols-3' : 'grid-cols-1'}`}>
             <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
               <div className="p-1.5 sm:p-2 bg-blue-50 rounded-lg flex-shrink-0"><Clock size={16} className="text-blue-600" /></div>
               <div className="min-w-0">
@@ -183,22 +188,26 @@ export function HoursTable({ caseId, tareas = [], moneda = 'PEN', tipoFacturacio
                 <p className="text-xs text-slate-500 hidden sm:block">{totalMin} min en total</p>
               </div>
             </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-green-50 rounded-lg flex-shrink-0"><DollarSign size={16} className="text-green-600" /></div>
-              <div className="min-w-0">
-                <p className="text-sm sm:text-xl font-bold text-slate-900 truncate">{simbolo} {totalMonto.toFixed(0)}</p>
-                <p className="text-xs text-slate-500 hidden sm:block">monto facturable</p>
+            {isAdmin && (
+              <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-green-50 rounded-lg flex-shrink-0"><DollarSign size={16} className="text-green-600" /></div>
+                <div className="min-w-0">
+                  <p className="text-sm sm:text-xl font-bold text-slate-900 truncate">{simbolo} {totalMonto.toFixed(0)}</p>
+                  <p className="text-xs text-slate-500 hidden sm:block">monto facturable</p>
+                </div>
               </div>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
-              <div className="p-1.5 sm:p-2 bg-purple-50 rounded-lg flex-shrink-0"><TrendingUp size={16} className="text-purple-600" /></div>
-              <div className="min-w-0">
-                <p className="text-sm sm:text-xl font-bold text-slate-900 truncate">
-                  {totalHoras > 0 ? `${simbolo}${(totalMonto / totalHoras).toFixed(0)}/h` : '—'}
-                </p>
-                <p className="text-xs text-slate-500 hidden sm:block">tarifa promedio</p>
+            )}
+            {isAdmin && (
+              <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+                <div className="p-1.5 sm:p-2 bg-purple-50 rounded-lg flex-shrink-0"><TrendingUp size={16} className="text-purple-600" /></div>
+                <div className="min-w-0">
+                  <p className="text-sm sm:text-xl font-bold text-slate-900 truncate">
+                    {totalHoras > 0 ? `${simbolo}${(totalMonto / totalHoras).toFixed(0)}/h` : '—'}
+                  </p>
+                  <p className="text-xs text-slate-500 hidden sm:block">tarifa promedio</p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -244,7 +253,7 @@ export function HoursTable({ caseId, tareas = [], moneda = 'PEN', tipoFacturacio
                           <span className="font-medium">{formatDuration(subtotalH)}</span>
                           <span className="text-xs text-slate-400">({subtotalMin} min)</span>
                         </span>
-                        {subtotalM > 0 && (
+                        {isAdmin && subtotalM > 0 && (
                           <span className="font-semibold text-green-700">
                             {simbolo} {subtotalM.toFixed(2)}
                           </span>
@@ -341,7 +350,7 @@ export function HoursTable({ caseId, tareas = [], moneda = 'PEN', tipoFacturacio
                               <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 flex-wrap">
                                 <span>{formatDate(h.fechaRegistro)}</span>
                                 {h.usuario?.nombre && <span>· {h.usuario.nombre}</span>}
-                                {getTarifa(h) > 0 && <span>· {simbolo} {getTarifa(h)}/h</span>}
+                                {isAdmin && getTarifa(h) > 0 && <span>· {simbolo} {getTarifa(h)}/h</span>}
                               </div>
                             </div>
                             <div className="flex items-center gap-3 flex-shrink-0 text-right">
@@ -349,7 +358,7 @@ export function HoursTable({ caseId, tareas = [], moneda = 'PEN', tipoFacturacio
                                 <p className="text-sm font-medium text-slate-700">{minH} min</p>
                                 <p className="text-xs text-slate-400">{getHoras(h).toFixed(2)} h</p>
                               </div>
-                              {getMonto(h) > 0 && (
+                              {isAdmin && getMonto(h) > 0 && (
                                 <div className="text-right">
                                   <p className="text-sm font-semibold text-green-700">{simbolo} {getMonto(h).toFixed(2)}</p>
                                 </div>

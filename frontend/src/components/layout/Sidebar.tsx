@@ -40,7 +40,7 @@ export function Sidebar() {
     { icon: LayoutDashboard, label: 'Panel de Control', href: '/dashboard' },
     { icon: FileText, label: 'Procesos', href: '/cases' },
     { icon: CheckSquare, label: 'Tareas', href: '/tasks' },
-    { icon: Receipt, label: 'Facturación', href: '/hours' },
+    ...(isAdmin ? [{ icon: Receipt, label: 'Facturación', href: '/hours' }] : []),
     { icon: AlertCircle, label: 'Alertas', href: '/alerts' },
     { icon: Users, label: 'Clientes', href: '/clients' },
     ...(isAdmin ? [{ icon: UserCog, label: 'Usuarios', href: '/users' }] : []),

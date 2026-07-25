@@ -162,8 +162,8 @@ export function HoursForm({
         />
       )}
 
-      {/* User selector — only admins can log hours for others */}
-      {isAdmin && userList.length > 0 && (
+      {/* User selector — all roles can log hours for any member of the firm */}
+      {userList.length > 0 && (
         <Select
           label="Profesional *"
           options={userList.map((u) => ({
@@ -223,7 +223,7 @@ export function HoursForm({
             <p className="text-xs text-slate-400 mt-1">= {horasDecimal.toFixed(2)} horas</p>
           )}
         </div>
-        {isFlat ? (
+        {isAdmin && (isFlat ? (
           <div className="flex flex-col justify-center">
             <p className="text-xs font-medium text-slate-500 mb-1.5">Valorización</p>
             <div className="bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-xs text-amber-700 leading-snug">
@@ -252,7 +252,7 @@ export function HoursForm({
               </p>
             )}
           </div>
-        )}
+        ))}
       </div>
 
       <div>
