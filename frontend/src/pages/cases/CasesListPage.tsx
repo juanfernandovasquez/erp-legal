@@ -17,6 +17,9 @@ import {
 import { CASE_STATUS_OPTIONS, formatDate } from '@/lib/utils'
 import { Caso } from '@/types'
 import api from '@/lib/axios'
+import { useAuthStore } from '@/stores/authStore'
+
+const ADMIN_ROLES = ['admin_firma', 'super_admin']
 
 // ── sort ──────────────────────────────────────────────────────────────────────
 
@@ -29,6 +32,8 @@ const STATUS_WEIGHT: Record<string, number> = { activo: 1, pendiente: 2, cerrado
 
 export function CasesListPage() {
   const navigate = useNavigate()
+  const { user: currentUser } = useAuthStore()
+  const isAdmin = ADMIN_ROLES.includes(currentUser?.rol ?? '')
   const { cases, isLoading, error, pagination, fetchCases } = useCases()
 
   const [view, setView]                   = useState<'grid' | 'list'>(() => window.innerWidth < 640 ? 'grid' : 'list')
@@ -162,9 +167,9 @@ export function CasesListPage() {
             <th className={`${thCls('vencimiento')} text-left hidden md:table-cell`} onClick={() => handleSort('vencimiento')}>
               Próx. vencimiento <SortIcon col="vencimiento" />
             </th>
-            <th className="px-4 py-3 font-semibold text-slate-700 text-left whitespace-nowrap hidden md:table-cell">Tarifa</th>
-            <th className="px-4 py-3 font-semibold text-slate-700 text-left whitespace-nowrap hidden md:table-cell">Tipo</th>
-            <th className="px-4 py-3 font-semibold text-slate-700 text-right whitespace-nowrap hidden sm:table-cell">Total facturado</th>
+            {isAdmin && <th className="px-4 py-3 font-semibold text-slate-700 text-left whitespace-nowrap hidden md:table-cell">Tarifa</th>}
+            {isAdmin && <th className="px-4 py-3 font-semibold text-slate-700 text-left whitespace-nowrap hidden md:table-cell">Tipo</th>}
+            {isAdmin && <th className="px-4 py-3 font-semibold text-slate-700 text-right whitespace-nowrap hidden sm:table-cell">Total facturado</th>}
           </tr>
         </thead>
         <tbody>
@@ -210,25 +215,31 @@ export function CasesListPage() {
                     <span className="text-slate-400 italic text-xs">Sin tareas</span>
                   )}
                 </td>
-                <td className="px-4 py-3 align-top text-sm text-slate-700 hidden md:table-cell">
-                  {caso.precioFacturacion != null
-                    ? `${simbolo} ${caso.precioFacturacion.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
-                    : <span className="text-slate-400 italic text-xs">—</span>}
-                </td>
-                <td className="px-4 py-3 align-top hidden md:table-cell">
-                  {caso.tipoFacturacion
-                    ? <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${caso.tipoFacturacion === 'por_horas' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
-                        {caso.tipoFacturacion === 'por_horas' ? 'Por horas' : 'Flat'}
-                      </span>
-                    : <span className="text-slate-400 italic text-xs">—</span>}
-                </td>
-                <td className="px-4 py-3 align-top text-right hidden sm:table-cell">
-                  {caso.tipoFacturacion
-                    ? <span className={`text-sm font-semibold ${(caso.totalFacturado ?? 0) > 0 ? 'text-green-700' : 'text-slate-400'}`}>
-                        {simbolo} {(caso.totalFacturado ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
-                      </span>
-                    : <span className="text-slate-400 text-xs">—</span>}
-                </td>
+                {isAdmin && (
+                  <td className="px-4 py-3 align-top text-sm text-slate-700 hidden md:table-cell">
+                    {caso.precioFacturacion != null
+                      ? `${simbolo} ${caso.precioFacturacion.toLocaleString('es-PE', { minimumFractionDigits: 2 })}`
+                      : <span className="text-slate-400 italic text-xs">—</span>}
+                  </td>
+                )}
+                {isAdmin && (
+                  <td className="px-4 py-3 align-top hidden md:table-cell">
+                    {caso.tipoFacturacion
+                      ? <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${caso.tipoFacturacion === 'por_horas' ? 'bg-blue-50 text-blue-700' : 'bg-purple-50 text-purple-700'}`}>
+                          {caso.tipoFacturacion === 'por_horas' ? 'Por horas' : 'Flat'}
+                        </span>
+                      : <span className="text-slate-400 italic text-xs">—</span>}
+                  </td>
+                )}
+                {isAdmin && (
+                  <td className="px-4 py-3 align-top text-right hidden sm:table-cell">
+                    {caso.tipoFacturacion
+                      ? <span className={`text-sm font-semibold ${(caso.totalFacturado ?? 0) > 0 ? 'text-green-700' : 'text-slate-400'}`}>
+                          {simbolo} {(caso.totalFacturado ?? 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}
+                        </span>
+                      : <span className="text-slate-400 text-xs">—</span>}
+                  </td>
+                )}
               </tr>
             )
           })}
