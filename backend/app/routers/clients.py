@@ -140,7 +140,7 @@ async def create_client(
         client_type=request.client_type or "individual",
         organization_name=request.organization_name,
         registration_number=request.registration_number,
-        tax_id=request.tax_id,
+        tax_id=request.tax_id.strip() if request.tax_id else request.tax_id,
         primary_contact_name=request.primary_contact_name,
         primary_contact_email=request.primary_contact_email,
         primary_contact_phone=request.primary_contact_phone,
@@ -346,7 +346,7 @@ async def update_client(
     if request.organization_name is not None:
         client.organization_name = request.organization_name
     if request.tax_id is not None:
-        client.tax_id = request.tax_id
+        client.tax_id = request.tax_id.strip() if request.tax_id else request.tax_id
     if request.notes is not None:
         client.notes = request.notes
     if request.is_active is not None:

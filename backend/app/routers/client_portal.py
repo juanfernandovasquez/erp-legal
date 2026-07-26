@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from sqlalchemy.orm import selectinload
+from sqlalchemy import func as sa_func
 
 from app.database import get_db
 from app.utils.responses import success_response, paginated_response
@@ -75,7 +76,7 @@ async def portal_login(
     result = await db.execute(
         select(Client).where(
             and_(
-                Client.tax_id == ruc,
+                sa_func.trim(Client.tax_id) == ruc,
                 Client.portal_access_enabled == True,
                 Client.is_deleted == False,
             )
