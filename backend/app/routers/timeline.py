@@ -434,7 +434,6 @@ async def create_update(
         if m.user
         and not m.user.is_deleted
         and m.user.email
-        and m.user.id != current_user.id
     ]
     if email_tasks:
         asyncio.ensure_future(asyncio.gather(*email_tasks, return_exceptions=True))
