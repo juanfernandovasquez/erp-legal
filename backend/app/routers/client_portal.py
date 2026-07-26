@@ -25,11 +25,11 @@ from app.models.user import User
 router = APIRouter(tags=["Portal Cliente"])
 
 CASE_STATUS_ES = {
-    "draft": "Borrador",
-    "active": "Activo",
-    "suspended": "Suspendido",
-    "closed": "Cerrado",
-    "archived": "Archivado",
+    "draft":     "Borrador",
+    "active":    "Activo",
+    "suspended": "Pendiente",
+    "closed":    "Culminado",
+    "archived":  "Archivado",
 }
 
 CASE_TYPE_ES = {

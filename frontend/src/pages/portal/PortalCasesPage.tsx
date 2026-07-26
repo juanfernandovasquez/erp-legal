@@ -4,11 +4,11 @@ import { PortalLayout } from '@/components/portal/PortalLayout'
 import portalApi from '@/lib/portalApi'
 
 const STATUS_STYLE: Record<string, { bg: string; color: string; bar: string }> = {
-  active:    { bg: '#eaf2fc', color: '#1a5ca8', bar: '#1a5ca8' },
-  suspended: { bg: '#fef9e7', color: '#d68910', bar: '#d68910' },
-  draft:     { bg: '#f1f5f9', color: '#475569', bar: '#94a3b8' },
-  closed:    { bg: '#e8f7f0', color: '#1a9e5c', bar: '#1a9e5c' },
-  archived:  { bg: '#f1f5f9', color: '#475569', bar: '#94a3b8' },
+  active:    { bg: '#dcfce7', color: '#166534', bar: '#166534' },
+  suspended: { bg: '#fef9c3', color: '#854d0e', bar: '#854d0e' },
+  draft:     { bg: '#f1f5f9', color: '#1e293b', bar: '#94a3b8' },
+  closed:    { bg: '#f3e8ff', color: '#6b21a8', bar: '#6b21a8' },
+  archived:  { bg: '#f1f5f9', color: '#1e293b', bar: '#94a3b8' },
 }
 
 interface Case {
@@ -93,7 +93,7 @@ export function PortalCasesPage() {
           </p>
           {total > 0 && (
             <p className="text-sm text-slate-500">
-              {total} asunto{total !== 1 ? 's' : ''} registrado{total !== 1 ? 's' : ''}
+              {total} proceso{total !== 1 ? 's' : ''} registrado{total !== 1 ? 's' : ''}
             </p>
           )}
         </div>
@@ -101,11 +101,11 @@ export function PortalCasesPage() {
 
       {/* List */}
       {loading ? (
-        <div className="py-16 text-center text-sm text-slate-400">Cargando asuntos…</div>
+        <div className="py-16 text-center text-sm text-slate-400">Cargando procesos…</div>
       ) : cases.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-xl py-16 text-center">
           <p className="text-3xl mb-3">⚖️</p>
-          <p className="font-bold text-primary-700 mb-1">Sin asuntos registrados</p>
+          <p className="font-bold text-primary-700 mb-1">Sin procesos registrados</p>
           <p className="text-sm text-slate-400">
             Cuando el estudio registre tus casos aparecerán aquí.
           </p>
@@ -115,7 +115,7 @@ export function PortalCasesPage() {
           <CaseCard
             key={c.id}
             caso={c}
-            onClick={() => navigate(`/portal/asuntos/${c.id}`)}
+            onClick={() => navigate(`/portal/procesos/${c.id}`)}
           />
         ))
       )}

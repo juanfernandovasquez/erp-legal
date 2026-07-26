@@ -176,11 +176,11 @@ export default function App() {
           element={<PortalProtectedRoute><PortalHomePage /></PortalProtectedRoute>}
         />
         <Route
-          path="/portal/asuntos"
+          path="/portal/procesos"
           element={<PortalProtectedRoute><PortalCasesPage /></PortalProtectedRoute>}
         />
         <Route
-          path="/portal/asuntos/:id"
+          path="/portal/procesos/:id"
           element={<PortalProtectedRoute><PortalCaseDetailPage /></PortalProtectedRoute>}
         />
         <Route

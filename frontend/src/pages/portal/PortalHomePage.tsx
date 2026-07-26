@@ -5,11 +5,11 @@ import { useClientPortalStore } from '@/stores/clientPortalStore'
 import portalApi from '@/lib/portalApi'
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
-  active:    { bg: '#eaf2fc', color: '#1a5ca8' },
-  suspended: { bg: '#fef9e7', color: '#d68910' },
-  draft:     { bg: '#f1f5f9', color: '#475569' },
-  closed:    { bg: '#e8f7f0', color: '#1a9e5c' },
-  archived:  { bg: '#f1f5f9', color: '#475569' },
+  active:    { bg: '#dcfce7', color: '#166534' },
+  suspended: { bg: '#fef9c3', color: '#854d0e' },
+  draft:     { bg: '#f1f5f9', color: '#1e293b' },
+  closed:    { bg: '#f3e8ff', color: '#6b21a8' },
+  archived:  { bg: '#f1f5f9', color: '#1e293b' },
 }
 
 interface Case {
@@ -108,17 +108,17 @@ export function PortalHomePage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <StatCard label="Asuntos activos"  value={loading ? '—' : activeCases} accent />
-        <StatCard label="Total de asuntos" value={loading ? '—' : total} />
-        <StatCard label="Cerrados"         value={loading ? '—' : closedCases} />
+        <StatCard label="Procesos activos"   value={loading ? '—' : activeCases} accent />
+        <StatCard label="Total de procesos" value={loading ? '—' : total} />
+        <StatCard label="Cerrados"          value={loading ? '—' : closedCases} />
       </div>
 
       {/* Recent cases */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
-          <p className="font-bold text-primary-700">⚖️ Mis Asuntos recientes</p>
+          <p className="font-bold text-primary-700">⚖️ Mis Procesos recientes</p>
           <button
-            onClick={() => navigate('/portal/asuntos')}
+            onClick={() => navigate('/portal/procesos')}
             className="text-sm font-semibold text-gold-600 hover:text-gold-700 transition-colors"
           >
             Ver todos →
@@ -129,7 +129,7 @@ export function PortalHomePage() {
           <div className="py-12 text-center text-sm text-slate-400">Cargando…</div>
         ) : cases.length === 0 ? (
           <div className="py-12 text-center text-sm text-slate-400">
-            No hay asuntos registrados aún.
+            No hay procesos registrados aún.
           </div>
         ) : (
           cases.map((c, idx) => (
@@ -137,7 +137,7 @@ export function PortalHomePage() {
               key={c.id}
               caso={c}
               hasBorder={idx < cases.length - 1}
-              onClick={() => navigate(`/portal/asuntos/${c.id}`)}
+              onClick={() => navigate(`/portal/procesos/${c.id}`)}
             />
           ))
         )}

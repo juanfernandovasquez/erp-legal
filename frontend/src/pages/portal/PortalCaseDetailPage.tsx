@@ -5,11 +5,11 @@ import { ArrowLeft } from 'lucide-react'
 import portalApi from '@/lib/portalApi'
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
-  active:    { bg: '#eaf2fc', color: '#1a5ca8' },
-  suspended: { bg: '#fef9e7', color: '#d68910' },
-  draft:     { bg: '#f1f5f9', color: '#475569' },
-  closed:    { bg: '#e8f7f0', color: '#1a9e5c' },
-  archived:  { bg: '#f1f5f9', color: '#475569' },
+  active:    { bg: '#dcfce7', color: '#166534' },
+  suspended: { bg: '#fef9c3', color: '#854d0e' },
+  draft:     { bg: '#f1f5f9', color: '#1e293b' },
+  closed:    { bg: '#f3e8ff', color: '#6b21a8' },
+  archived:  { bg: '#f1f5f9', color: '#1e293b' },
 }
 
 interface CaseDetail {
@@ -69,7 +69,7 @@ export function PortalCaseDetailPage() {
     if (!id) return
     portalApi.get(`/client/cases/${id}`)
       .then(res => setCaso(res.data.data))
-      .catch(() => navigate('/portal/asuntos'))
+      .catch(() => navigate('/portal/procesos'))
       .finally(() => setLoading(false))
 
     portalApi.get(`/client/cases/${id}/timeline`)
@@ -95,10 +95,10 @@ export function PortalCaseDetailPage() {
     <PortalLayout>
       {/* Back button */}
       <button
-        onClick={() => navigate('/portal/asuntos')}
+        onClick={() => navigate('/portal/procesos')}
         className="flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-primary-700 mb-4 transition-colors"
       >
-        <ArrowLeft size={15} /> Mis Asuntos
+        <ArrowLeft size={15} /> Mis Procesos
       </button>
 
       {/* Case header */}

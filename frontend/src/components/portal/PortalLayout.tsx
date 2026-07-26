@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { icon: Home,      label: 'Inicio',      href: '/portal/inicio'  },
-  { icon: Briefcase, label: 'Mis Asuntos', href: '/portal/asuntos' },
+  { icon: Briefcase, label: 'Mis Procesos', href: '/portal/procesos' },
   { icon: User,      label: 'Mi Perfil',   href: '/portal/perfil'  },
 ]
 
@@ -15,7 +15,7 @@ function getInitials(name: string) {
 }
 
 function isActive(href: string, pathname: string) {
-  if (href === '/portal/inicio') return pathname === href
+  if (href === '/portal/inicio' || href === '/portal/perfil') return pathname === href
   return pathname.startsWith(href)
 }
 
@@ -27,10 +27,10 @@ export function PortalLayout({ children }: { children: React.ReactNode }) {
   const handleLogout = () => { logout(); navigate('/portal/login') }
 
   const getPageTitle = () => {
-    if (location.pathname === '/portal/inicio')            return 'Inicio'
-    if (location.pathname === '/portal/asuntos')           return 'Mis Asuntos'
-    if (location.pathname.startsWith('/portal/asuntos/'))  return 'Detalle del Asunto'
-    if (location.pathname === '/portal/perfil')            return 'Mi Perfil'
+    if (location.pathname === '/portal/inicio')             return 'Inicio'
+    if (location.pathname === '/portal/procesos')           return 'Mis Procesos'
+    if (location.pathname.startsWith('/portal/procesos/')) return 'Detalle del Proceso'
+    if (location.pathname === '/portal/perfil')             return 'Mi Perfil'
     return 'Portal'
   }
 
