@@ -30,6 +30,7 @@ interface ClientData {
   usuarioSol: string | null
   claveSol: string | null
   portalAccessEnabled: boolean
+  portalPasswordPlain: string | null
   createdAt: string
   updatedAt: string
 }
@@ -635,6 +636,16 @@ export function ClientDetailPage() {
                     </span>
                   )}
                 </div>
+
+                {/* Contraseña visible */}
+                {client.portalAccessEnabled && client.portalPasswordPlain && (
+                  <div className="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg px-4 py-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-0.5">Contraseña del portal</p>
+                      <p className="text-sm font-mono font-semibold text-slate-700">{client.portalPasswordPlain}</p>
+                    </div>
+                  </div>
+                )}
 
                 {portalMsg && (
                   <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{portalMsg}</p>

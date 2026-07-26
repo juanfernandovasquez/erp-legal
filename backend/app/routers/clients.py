@@ -44,6 +44,7 @@ def _format_client(client: Client) -> dict:
         "usuarioSol": client.usuario_sol,
         "claveSol": client.clave_sol,
         "portalAccessEnabled": getattr(client, "portal_access_enabled", False),
+        "portalPasswordPlain": getattr(client, "portal_password_plain", None),
         "createdAt": client.created_at.isoformat() if client.created_at else None,
         "updatedAt": client.updated_at.isoformat() if client.updated_at else None,
     }
@@ -496,6 +497,7 @@ async def set_portal_password(
         )
 
     client.portal_password_hash = get_password_hash(password)
+    client.portal_password_plain = password
     client.portal_access_enabled = True
     client.updated_at = datetime.utcnow()
     await db.commit()
@@ -532,6 +534,7 @@ async def revoke_portal_access(
 
     client.portal_access_enabled = False
     client.portal_password_hash = None
+    client.portal_password_plain = None
     client.updated_at = datetime.utcnow()
     await db.commit()
 

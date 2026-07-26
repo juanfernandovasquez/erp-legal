@@ -67,6 +67,7 @@ class Client(BaseModel):
 
     # Portal access
     portal_password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    portal_password_plain: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     portal_access_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     # Status
