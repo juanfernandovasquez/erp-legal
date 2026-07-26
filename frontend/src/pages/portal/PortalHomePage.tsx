@@ -88,7 +88,6 @@ export function PortalHomePage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const firstName   = client?.nombre?.split(' ')[0] ?? ''
   const activeCases = cases.filter(c => c.estado === 'active').length
   const closedCases = cases.filter(c => c.estado === 'closed' || c.estado === 'archived').length
 
@@ -99,7 +98,7 @@ export function PortalHomePage() {
         <span className="text-2xl shrink-0">⚖️</span>
         <div>
           <p className="text-white font-bold text-base">
-            Bienvenido{firstName ? `, ${firstName}` : ''}
+            {client?.nombre ? `Bienvenido, ${client.nombre}` : 'Bienvenido'}
           </p>
           <p className="text-primary-200 text-sm mt-0.5">
             Portal de seguimiento legal · RUC {client?.ruc}
