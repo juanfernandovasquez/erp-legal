@@ -156,6 +156,34 @@ async def get_current_user(
     return user
 
 
+async def get_current_client(
+    token: str = Depends(get_bearer_token),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get current authenticated portal client from JWT token."""
+    from app.models.client import Client
+
+    payload = decode_token(token)
+    if payload.get("role") != "cliente":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Portal client access required",
+        )
+
+    client_id: str = payload.get("sub")
+    if not client_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    client = await db.get(Client, client_id)
+    if not client or client.is_deleted or not client.portal_access_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Portal access not authorized",
+        )
+
+    return client
+
+
 def check_role(user_role: str, allowed_roles: List[str]) -> bool:
     """
     Check if user's role is in allowed roles.

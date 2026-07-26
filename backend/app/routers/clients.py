@@ -13,7 +13,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.utils.responses import success_response, paginated_response
-from app.utils.auth import get_current_user, check_role
+from app.utils.auth import get_current_user, check_role, get_password_hash
 from app.schemas.client import ClientCreate, ClientUpdate
 from app.models import User, Client, Case, CaseClient
 from app.models.task import Task
@@ -43,6 +43,7 @@ def _format_client(client: Client) -> dict:
         "isPreferred": client.is_preferred,
         "usuarioSol": client.usuario_sol,
         "claveSol": client.clave_sol,
+        "portalAccessEnabled": getattr(client, "portal_access_enabled", False),
         "createdAt": client.created_at.isoformat() if client.created_at else None,
         "updatedAt": client.updated_at.isoformat() if client.updated_at else None,
     }
@@ -461,3 +462,77 @@ async def get_client_cases(
 
     pages = (total + limit - 1) // limit if total > 0 else 1
     return paginated_response(data=data, total=total, page=page, pages=pages, limit=limit, meta={})
+
+
+@router.post(
+    "/{client_id}/portal-password",
+    response_model=dict,
+    summary="Set or reset client portal password (admin only)",
+)
+async def set_portal_password(
+    client_id: str,
+    request: dict,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not check_role(current_user.role, ["admin_firma", "super_admin"]):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo administradores")
+
+    client = await db.get(Client, client_id)
+    if not client or client.is_deleted or client.law_firm_id != current_user.law_firm_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+
+    if not client.tax_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El cliente debe tener RUC para acceder al portal",
+        )
+
+    password = request.get("password", "")
+    if len(password) < 6:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La contraseña debe tener al menos 6 caracteres",
+        )
+
+    client.portal_password_hash = get_password_hash(password)
+    client.portal_access_enabled = True
+    client.updated_at = datetime.utcnow()
+    await db.commit()
+
+    await audit_log(
+        db=db,
+        law_firm_id=current_user.law_firm_id,
+        user_id=current_user.id,
+        action="UPDATE",
+        entity_type="Client",
+        entity_id=client.id,
+        description=f"Portal access configured for client: {client.name}",
+    )
+
+    return success_response(data={"message": "Acceso al portal configurado correctamente"}, meta={})
+
+
+@router.delete(
+    "/{client_id}/portal-access",
+    response_model=dict,
+    summary="Revoke client portal access (admin only)",
+)
+async def revoke_portal_access(
+    client_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not check_role(current_user.role, ["admin_firma", "super_admin"]):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo administradores")
+
+    client = await db.get(Client, client_id)
+    if not client or client.is_deleted or client.law_firm_id != current_user.law_firm_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+
+    client.portal_access_enabled = False
+    client.portal_password_hash = None
+    client.updated_at = datetime.utcnow()
+    await db.commit()
+
+    return success_response(data={"message": "Acceso al portal revocado"}, meta={})

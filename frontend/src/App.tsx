@@ -23,6 +23,12 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
+import { PortalLoginPage } from '@/pages/portal/PortalLoginPage'
+import { PortalHomePage } from '@/pages/portal/PortalHomePage'
+import { PortalCasesPage } from '@/pages/portal/PortalCasesPage'
+import { PortalCaseDetailPage } from '@/pages/portal/PortalCaseDetailPage'
+import { PortalProfilePage } from '@/pages/portal/PortalProfilePage'
+import { PortalProtectedRoute } from '@/components/portal/PortalProtectedRoute'
 
 export default function App() {
   const { isAuthenticated, isLoading, checkAuth } = useAuth()
@@ -162,6 +168,26 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Client Portal — separate auth, no AppLayout */}
+        <Route path="/portal/login" element={<PortalLoginPage />} />
+        <Route
+          path="/portal/inicio"
+          element={<PortalProtectedRoute><PortalHomePage /></PortalProtectedRoute>}
+        />
+        <Route
+          path="/portal/asuntos"
+          element={<PortalProtectedRoute><PortalCasesPage /></PortalProtectedRoute>}
+        />
+        <Route
+          path="/portal/asuntos/:id"
+          element={<PortalProtectedRoute><PortalCaseDetailPage /></PortalProtectedRoute>}
+        />
+        <Route
+          path="/portal/perfil"
+          element={<PortalProtectedRoute><PortalProfilePage /></PortalProtectedRoute>}
+        />
+        <Route path="/portal" element={<Navigate to="/portal/login" />} />
 
         <Route path="/" element={<Navigate to="/dashboard" />} />
         <Route path="*" element={<NotFoundPage />} />

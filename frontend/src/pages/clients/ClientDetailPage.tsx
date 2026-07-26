@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { CaseStatusBadge } from '@/components/cases/CaseStatusBadge'
-import { ArrowLeft, Edit2, Save, X, Trash2, Mail, Phone, MapPin, Building2, FileText, Hash, Eye, EyeOff, KeyRound, Copy, Check } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, Trash2, Mail, Phone, MapPin, Building2, FileText, Hash, Eye, EyeOff, KeyRound, Copy, Check, Globe, ShieldCheck, ShieldOff } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import api from '@/lib/axios'
 import { ClientAlerts } from '@/components/clients/ClientAlerts'
@@ -29,6 +29,7 @@ interface ClientData {
   isPreferred: boolean
   usuarioSol: string | null
   claveSol: string | null
+  portalAccessEnabled: boolean
   createdAt: string
   updatedAt: string
 }
@@ -64,6 +65,12 @@ export function ClientDetailPage() {
   const [error, setError] = useState('')
   const [showClave, setShowClave] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
+  const [portalPassword, setPortalPassword] = useState('')
+  const [portalPasswordConfirm, setPortalPasswordConfirm] = useState('')
+  const [isSettingPortal, setIsSettingPortal] = useState(false)
+  const [portalMsg, setPortalMsg] = useState('')
+  const [portalError, setPortalError] = useState('')
+  const [showPortalForm, setShowPortalForm] = useState(false)
 
   const copyToClipboard = (key: string, value: string) => {
     if (!value) return
@@ -202,6 +209,44 @@ export function ClientDetailPage() {
       const res = await api.patch(`/clients/${id}`, { is_active: !client.isActive })
       setClient(res.data.data)
     } catch {}
+  }
+
+  const handleSetPortalPassword = async () => {
+    setPortalError('')
+    setPortalMsg('')
+    if (portalPassword.length < 6) {
+      setPortalError('La contraseña debe tener al menos 6 caracteres')
+      return
+    }
+    if (portalPassword !== portalPasswordConfirm) {
+      setPortalError('Las contraseñas no coinciden')
+      return
+    }
+    setIsSettingPortal(true)
+    try {
+      await api.post(`/clients/${id}/portal-password`, { password: portalPassword })
+      setPortalMsg('Acceso al portal configurado correctamente')
+      setPortalPassword('')
+      setPortalPasswordConfirm('')
+      setShowPortalForm(false)
+      fetchClient()
+    } catch (err: any) {
+      setPortalError(err?.response?.data?.detail || 'Error al configurar el acceso')
+    } finally {
+      setIsSettingPortal(false)
+    }
+  }
+
+  const handleRevokePortal = async () => {
+    setPortalError('')
+    setPortalMsg('')
+    try {
+      await api.delete(`/clients/${id}/portal-access`)
+      setPortalMsg('Acceso al portal revocado')
+      fetchClient()
+    } catch (err: any) {
+      setPortalError(err?.response?.data?.detail || 'Error al revocar el acceso')
+    }
   }
 
   if (isLoading) return <AppLayout><div className="flex justify-center py-24"><LoadingSpinner /></div></AppLayout>
@@ -560,6 +605,102 @@ export function ClientDetailPage() {
                       </dd>
                     </div>
                   </dl>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Portal del Cliente */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe size={18} />
+                  Portal del Cliente
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {/* Status */}
+                <div className="flex items-center gap-3">
+                  {client.portalAccessEnabled ? (
+                    <span className="flex items-center gap-1.5 text-sm text-green-700 bg-green-50 border border-green-200 px-3 py-1.5 rounded-full font-medium">
+                      <ShieldCheck size={14} /> Acceso activo
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5 text-sm text-slate-500 bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-full font-medium">
+                      <ShieldOff size={14} /> Sin acceso
+                    </span>
+                  )}
+                  {client.taxId ? null : (
+                    <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full border border-amber-200">
+                      Requiere RUC
+                    </span>
+                  )}
+                </div>
+
+                {portalMsg && (
+                  <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">{portalMsg}</p>
+                )}
+                {portalError && (
+                  <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{portalError}</p>
+                )}
+
+                {/* Actions */}
+                {!showPortalForm ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      className="text-sm"
+                      onClick={() => { setShowPortalForm(true); setPortalMsg(''); setPortalError('') }}
+                      disabled={!client.taxId}
+                    >
+                      {client.portalAccessEnabled ? 'Cambiar contraseña' : 'Activar portal'}
+                    </Button>
+                    {client.portalAccessEnabled && (
+                      <Button
+                        variant="ghost"
+                        className="text-sm text-red-600 hover:text-red-700 hover:bg-red-50"
+                        onClick={handleRevokePortal}
+                      >
+                        Revocar acceso
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3 border border-slate-200 rounded-lg p-4 bg-slate-50">
+                    <p className="text-sm font-medium text-slate-700">
+                      {client.portalAccessEnabled ? 'Nueva contraseña para el portal' : 'Crear contraseña de acceso'}
+                    </p>
+                    <p className="text-xs text-slate-500">El cliente ingresará con RUC <span className="font-mono font-medium">{client.taxId}</span> y esta contraseña.</p>
+                    <input
+                      type="password"
+                      value={portalPassword}
+                      onChange={(e) => setPortalPassword(e.target.value)}
+                      placeholder="Contraseña (mín. 6 caracteres)"
+                      className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <input
+                      type="password"
+                      value={portalPasswordConfirm}
+                      onChange={(e) => setPortalPasswordConfirm(e.target.value)}
+                      placeholder="Confirmar contraseña"
+                      className="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        className="text-sm"
+                        onClick={handleSetPortalPassword}
+                        disabled={isSettingPortal}
+                      >
+                        {isSettingPortal ? 'Guardando...' : 'Guardar'}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="text-sm"
+                        onClick={() => { setShowPortalForm(false); setPortalPassword(''); setPortalPasswordConfirm(''); setPortalError('') }}
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>

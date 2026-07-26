@@ -65,6 +65,10 @@ class Client(BaseModel):
     usuario_sol: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     clave_sol: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
+    # Portal access
+    portal_password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    portal_access_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_preferred: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
