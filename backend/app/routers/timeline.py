@@ -3,6 +3,7 @@ Case timeline endpoints.
 Handles events (immutable) and updates (mutable) chronologically.
 """
 
+import asyncio
 import uuid as uuid_module
 from datetime import datetime, timezone
 from typing import Optional
@@ -10,14 +11,18 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
+from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.utils.responses import success_response, paginated_response
 from app.utils.auth import get_current_user
 from app.schemas.timeline import CaseEventCreate, CaseEventUpdate, CaseUpdateCreate
 from app.models import User, Case, CaseEvent, CaseUpdate
+from app.models.case import CaseTeam
+from app.models.alert import CaseAlert
 from app.services.audit_service import audit_log
 from app.services.case_service import check_case_team_access
+from app.services.email_service import notify_case_update
 
 router = APIRouter(tags=["timeline"])
 
@@ -388,6 +393,53 @@ async def create_update(
     )
 
     creator_name = f"{current_user.first_name} {current_user.last_name}".strip() or current_user.email
+
+    # ── Notificaciones al equipo del caso ─────────────────────────────
+    team_result = await db.execute(
+        select(CaseTeam)
+        .where(and_(CaseTeam.case_id == case_uuid, CaseTeam.is_deleted == False))
+        .options(selectinload(CaseTeam.user))
+    )
+    team_members = team_result.scalars().all()
+
+    # In-app alert (una sola, visible para toda la firma)
+    alert = CaseAlert(
+        case_id=case_uuid,
+        law_firm_id=current_user.law_firm_id,
+        alert_type="custom",
+        severity="info",
+        title=f"Nueva actualización: {update.title}",
+        message=f"El usuario {creator_name} publicó una nueva actualización en el caso «{case.title}».",
+        alert_date=datetime.now(timezone.utc),
+        source="auto",
+        is_read=False,
+        is_acknowledged=False,
+        is_resolved=False,
+        is_deleted=False,
+    )
+    db.add(alert)
+    await db.commit()
+
+    # Emails a cada miembro del equipo (excepto quien creó la actualización)
+    email_tasks = [
+        notify_case_update(
+            to_email=m.user.email,
+            to_name=f"{m.user.first_name} {m.user.last_name}".strip() or m.user.email,
+            case_title=case.title,
+            update_title=update.title,
+            update_content=update.content,
+            created_by=creator_name,
+        )
+        for m in team_members
+        if m.user
+        and not m.user.is_deleted
+        and m.user.email
+        and m.user.id != current_user.id
+    ]
+    if email_tasks:
+        asyncio.ensure_future(asyncio.gather(*email_tasks, return_exceptions=True))
+    # ──────────────────────────────────────────────────────────────────
+
     return success_response(data=_format_update(update, {str(current_user.id): creator_name}), meta={})
 
 
