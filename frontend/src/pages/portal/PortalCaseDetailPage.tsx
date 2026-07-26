@@ -1,100 +1,105 @@
 import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { PortalLayout } from '@/components/portal/PortalLayout'
-import { LoadingSpinner } from '@/components/common/LoadingSpinner'
-import { ArrowLeft, Users, Calendar, MapPin, Clock, CheckCircle } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 import portalApi from '@/lib/portalApi'
 
-const STATUS_COLOR: Record<string, string> = {
-  active: 'bg-green-100 text-green-700',
-  closed: 'bg-slate-100 text-slate-600',
-  suspended: 'bg-yellow-100 text-yellow-700',
-  draft: 'bg-blue-100 text-blue-600',
-  archived: 'bg-slate-100 text-slate-500',
-}
-
-const TIMELINE_TYPE_COLOR: Record<string, string> = {
-  evento: 'bg-primary-100 text-primary-700',
-  actualizacion: 'bg-amber-100 text-amber-700',
+const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
+  active:    { bg: '#eaf2fc', color: '#1a5ca8' },
+  suspended: { bg: '#fef9e7', color: '#d68910' },
+  draft:     { bg: '#f0f0f4', color: '#5a6a7e' },
+  closed:    { bg: '#e8f7f0', color: '#1a9e5c' },
+  archived:  { bg: '#f0f0f4', color: '#5a6a7e' },
 }
 
 interface CaseDetail {
-  id: string
-  caseNumber: string
-  titulo: string
-  descripcion: string | null
-  estado: string
-  estadoLabel: string
-  tipoLabel: string
-  openedDate: string | null
-  closedDate: string | null
-  courtName: string | null
-  courtLocation: string | null
-  judgeName: string | null
-  plaintiff: string | null
-  defendant: string | null
+  id: string; caseNumber: string; titulo: string; descripcion: string | null
+  estado: string; estadoLabel: string; tipoLabel: string
+  openedDate: string | null; closedDate: string | null
+  courtName: string | null; courtLocation: string | null
+  judgeName: string | null; plaintiff: string | null; defendant: string | null
   team: { nombre: string; rol: string; esLider: boolean }[]
 }
 
 interface TimelineItem {
-  id: string
-  tipo: 'evento' | 'actualizacion'
-  tipoLabel: string
-  titulo: string
-  descripcion: string | null
-  fecha: string | null
-  location: string | null
-  isCompleted: boolean | null
+  id: string; tipo: 'evento' | 'actualizacion'; tipoLabel: string
+  titulo: string; descripcion: string | null
+  fecha: string | null; location: string | null; isCompleted: boolean | null
 }
 
-function formatDate(iso: string | null) {
+function fmt(iso: string | null) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+function fmtDt(iso: string | null) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('es-PE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
+    day: '2-digit', month: 'short', year: 'numeric',
   })
 }
 
-function formatDateTime(iso: string | null) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('es-PE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{
+      background: '#fff', border: '1px solid #e2e8f5',
+      borderRadius: 12, overflow: 'hidden',
+    }}>
+      <div style={{
+        padding: '13px 20px', borderBottom: '1px solid #e2e8f5',
+        fontSize: 13, fontWeight: 800, color: '#06186d',
+      }}>
+        {title}
+      </div>
+      <div style={{ padding: '16px 20px' }}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: string | null }) {
+  if (!value) return null
+  return (
+    <div style={{
+      display: 'flex', gap: 8,
+      paddingBottom: 10, marginBottom: 10,
+      borderBottom: '1px solid #f0f2f7',
+    }}>
+      <p style={{ fontSize: 10.5, fontWeight: 700, color: '#7b8aa0', textTransform: 'uppercase', letterSpacing: '.5px', width: 100, flexShrink: 0, paddingTop: 1 }}>
+        {label}
+      </p>
+      <p style={{ fontSize: 13, fontWeight: 600, color: '#2b2b2b', flex: 1 }}>{value}</p>
+    </div>
+  )
 }
 
 export function PortalCaseDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
-  const [caso, setCaso] = useState<CaseDetail | null>(null)
+  const { id }     = useParams<{ id: string }>()
+  const navigate   = useNavigate()
+  const [caso, setCaso]         = useState<CaseDetail | null>(null)
   const [timeline, setTimeline] = useState<TimelineItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [timelineLoading, setTimelineLoading] = useState(true)
+  const [loading, setLoading]   = useState(true)
+  const [tlLoading, setTlLoading] = useState(true)
 
   useEffect(() => {
     if (!id) return
-    portalApi
-      .get(`/client/cases/${id}`)
-      .then((res) => setCaso(res.data.data))
+    portalApi.get(`/client/cases/${id}`)
+      .then(res => setCaso(res.data.data))
       .catch(() => navigate('/portal/asuntos'))
-      .finally(() => setIsLoading(false))
+      .finally(() => setLoading(false))
 
-    portalApi
-      .get(`/client/cases/${id}/timeline`)
-      .then((res) => setTimeline(res.data.data || []))
+    portalApi.get(`/client/cases/${id}/timeline`)
+      .then(res => setTimeline(res.data.data || []))
       .catch(() => {})
-      .finally(() => setTimelineLoading(false))
+      .finally(() => setTlLoading(false))
   }, [id])
 
-  if (isLoading) {
+  if (loading) {
     return (
       <PortalLayout>
-        <div className="flex justify-center py-20">
-          <LoadingSpinner inline />
+        <div style={{ textAlign: 'center', padding: '80px 20px', color: '#7b8aa0' }}>
+          Cargando…
         </div>
       </PortalLayout>
     )
@@ -102,158 +107,218 @@ export function PortalCaseDetailPage() {
 
   if (!caso) return null
 
+  const st = STATUS_STYLE[caso.estado] ?? { bg: '#f0f0f4', color: '#5a6a7e' }
+  const hasCourtInfo = !!(caso.courtName || caso.judgeName)
+  const hasParties   = !!(caso.plaintiff || caso.defendant)
+
   return (
     <PortalLayout>
-      <div className="space-y-5">
-        {/* Back + header */}
-        <div>
-          <button
-            onClick={() => navigate('/portal/asuntos')}
-            className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 mb-3 transition-colors"
-          >
-            <ArrowLeft size={15} />
-            Mis Asuntos
-          </button>
-          <div className="flex items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-slate-900 leading-tight">{caso.titulo}</h1>
-              <p className="text-sm text-slate-500 mt-0.5">
-                {caso.caseNumber} · {caso.tipoLabel}
-              </p>
-            </div>
-            <span
-              className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 mt-0.5 ${STATUS_COLOR[caso.estado] ?? 'bg-slate-100 text-slate-600'}`}
-            >
-              {caso.estadoLabel}
-            </span>
-          </div>
+      {/* Back */}
+      <button
+        onClick={() => navigate('/portal/asuntos')}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          fontSize: 13, fontWeight: 600, color: '#7b8aa0',
+          background: 'none', border: 'none', cursor: 'pointer',
+          marginBottom: 16, padding: 0, fontFamily: 'inherit',
+        }}
+      >
+        <ArrowLeft size={15} /> Mis Asuntos
+      </button>
+
+      {/* Case header */}
+      <div style={{
+        background: '#fff', border: '1px solid #e2e8f5', borderRadius: 12,
+        padding: '20px 24px', marginBottom: 16,
+        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16,
+      }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#7b8aa0', marginBottom: 6 }}>
+            {caso.caseNumber} · {caso.tipoLabel}
+          </p>
+          <h1 style={{ fontSize: 20, fontWeight: 900, color: '#06186d', lineHeight: 1.2, marginBottom: 0 }}>
+            {caso.titulo}
+          </h1>
+          {caso.descripcion && (
+            <p style={{ fontSize: 13, color: '#5a6a7e', marginTop: 10, lineHeight: 1.6, fontWeight: 500 }}>
+              {caso.descripcion}
+            </p>
+          )}
         </div>
+        <span style={{
+          fontSize: 11, fontWeight: 700,
+          padding: '5px 12px', borderRadius: 20,
+          background: st.bg, color: st.color,
+          whiteSpace: 'nowrap', flexShrink: 0,
+        }}>
+          {caso.estadoLabel}
+        </span>
+      </div>
 
-        {/* Description */}
-        {caso.descripcion && (
-          <div className="bg-white rounded-xl border border-slate-200 px-5 py-4">
-            <p className="text-sm text-slate-600 leading-relaxed">{caso.descripcion}</p>
-          </div>
+      <div style={{ display: 'grid', gridTemplateColumns: hasCourtInfo ? '1fr 1fr' : '1fr', gap: 14, marginBottom: 16 }}>
+        {/* Dates */}
+        <InfoCard title="📅 Fechas">
+          <InfoRow label="Inicio"  value={fmt(caso.openedDate)} />
+          {caso.closedDate && <InfoRow label="Cierre" value={fmt(caso.closedDate)} />}
+        </InfoCard>
+
+        {/* Court info */}
+        {hasCourtInfo && (
+          <InfoCard title="🏛️ Juzgado">
+            {caso.courtName     && <InfoRow label="Juzgado"  value={caso.courtName} />}
+            {caso.courtLocation && <InfoRow label="Sede"     value={caso.courtLocation} />}
+            {caso.judgeName     && <InfoRow label="Juez"     value={caso.judgeName} />}
+          </InfoCard>
         )}
+      </div>
 
-        {/* Info cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {/* Dates */}
-          <div className="bg-white rounded-xl border border-slate-200 px-5 py-4 space-y-3">
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Fechas</h3>
-            <div className="flex items-start gap-2 text-sm">
-              <Calendar size={15} className="text-slate-400 mt-0.5 shrink-0" />
+      {/* Parties */}
+      {hasParties && (
+        <InfoCard title="👤 Partes">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {caso.plaintiff && (
               <div>
-                <span className="text-slate-500">Inicio: </span>
-                <span className="text-slate-800 font-medium">{formatDate(caso.openedDate)}</span>
+                <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#7b8aa0', marginBottom: 4 }}>Demandante</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#2b2b2b' }}>{caso.plaintiff}</p>
               </div>
-            </div>
-            {caso.closedDate && (
-              <div className="flex items-start gap-2 text-sm">
-                <CheckCircle size={15} className="text-slate-400 mt-0.5 shrink-0" />
-                <div>
-                  <span className="text-slate-500">Cierre: </span>
-                  <span className="text-slate-800 font-medium">{formatDate(caso.closedDate)}</span>
-                </div>
+            )}
+            {caso.defendant && (
+              <div>
+                <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#7b8aa0', marginBottom: 4 }}>Demandado</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#2b2b2b' }}>{caso.defendant}</p>
               </div>
             )}
           </div>
+        </InfoCard>
+      )}
 
-          {/* Court info */}
-          {(caso.courtName || caso.judgeName) && (
-            <div className="bg-white rounded-xl border border-slate-200 px-5 py-4 space-y-3">
-              <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Juzgado</h3>
-              {caso.courtName && (
-                <div className="flex items-start gap-2 text-sm">
-                  <MapPin size={15} className="text-slate-400 mt-0.5 shrink-0" />
-                  <span className="text-slate-800">{caso.courtName}</span>
-                </div>
-              )}
-              {caso.courtLocation && (
-                <p className="text-xs text-slate-500 ml-5">{caso.courtLocation}</p>
-              )}
-              {caso.judgeName && (
-                <p className="text-sm text-slate-600 ml-5">
-                  <span className="text-slate-400">Juez: </span>{caso.judgeName}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Team */}
-        {caso.team.length > 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 px-5 py-4">
-            <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Users size={13} /> Equipo asignado
-            </h3>
-            <div className="space-y-2">
+      {/* Team */}
+      {caso.team.length > 0 && (
+        <div style={{ marginTop: 14 }}>
+          <InfoCard title="👥 Equipo asignado">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {caso.team.map((m, i) => (
-                <div key={i} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-semibold">
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 34, height: 34, borderRadius: '50%',
+                      background: '#06186d', color: '#d4a355',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 12, fontWeight: 800, flexShrink: 0,
+                    }}>
                       {m.nombre.charAt(0)}
                     </div>
-                    <span className="text-sm text-slate-800">{m.nombre}</span>
-                    {m.esLider && (
-                      <span className="text-xs bg-gold-100 text-gold-700 px-1.5 py-0.5 rounded font-medium">
-                        Responsable
-                      </span>
-                    )}
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: '#06186d' }}>{m.nombre}</p>
+                      <p style={{ fontSize: 11, color: '#7b8aa0', fontWeight: 500 }}>{m.rol}</p>
+                    </div>
                   </div>
-                  <span className="text-xs text-slate-400">{m.rol}</span>
+                  {m.esLider && (
+                    <span style={{
+                      fontSize: 10.5, fontWeight: 700,
+                      background: '#f5e9d5', color: '#b07d2f',
+                      padding: '3px 10px', borderRadius: 6,
+                    }}>
+                      Responsable
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          </InfoCard>
+        </div>
+      )}
 
-        {/* Timeline */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="px-5 py-4 border-b border-slate-100">
-            <h3 className="font-semibold text-slate-800 flex items-center gap-2">
-              <Clock size={16} className="text-slate-400" />
-              Línea de tiempo
-            </h3>
-          </div>
+      {/* Timeline */}
+      <div style={{
+        background: '#fff', border: '1px solid #e2e8f5',
+        borderRadius: 12, overflow: 'hidden', marginTop: 14,
+      }}>
+        <div style={{
+          padding: '13px 20px', borderBottom: '1px solid #e2e8f5',
+          fontSize: 13, fontWeight: 800, color: '#06186d',
+        }}>
+          🕐 Línea de tiempo
+        </div>
 
-          {timelineLoading ? (
-            <div className="flex justify-center py-10">
-              <LoadingSpinner inline />
-            </div>
-          ) : timeline.length === 0 ? (
-            <div className="text-center py-10 text-sm text-slate-400">
-              Sin eventos registrados aún.
-            </div>
-          ) : (
-            <ul className="divide-y divide-slate-100">
-              {timeline.map((item) => (
-                <li key={item.id} className="px-5 py-4">
-                  <div className="flex items-start gap-3">
-                    <span
-                      className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 mt-0.5 ${TIMELINE_TYPE_COLOR[item.tipo] ?? 'bg-slate-100 text-slate-600'}`}
-                    >
-                      {item.tipoLabel}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-slate-900">{item.titulo}</p>
-                      {item.descripcion && (
-                        <p className="text-sm text-slate-500 mt-0.5 leading-relaxed">{item.descripcion}</p>
+        {tlLoading ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#7b8aa0', fontSize: 13 }}>
+            Cargando…
+          </div>
+        ) : timeline.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#7b8aa0', fontSize: 13 }}>
+            Sin eventos registrados aún.
+          </div>
+        ) : (
+          <div style={{ padding: '16px 20px' }}>
+            {timeline.map((item, idx) => {
+              const isEvento = item.tipo === 'evento'
+              const dotColor = item.isCompleted === true
+                ? '#1a9e5c'
+                : isEvento ? '#b07d2f' : '#1a5ca8'
+              const isLast = idx === timeline.length - 1
+
+              return (
+                <div key={item.id} style={{ display: 'flex', gap: 12, marginBottom: isLast ? 0 : 10 }}>
+                  {/* Dot + line */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                    <div style={{
+                      width: 10, height: 10, borderRadius: '50%',
+                      background: dotColor, flexShrink: 0, marginTop: 3,
+                      boxShadow: `0 0 0 3px ${dotColor}22`,
+                    }} />
+                    {!isLast && (
+                      <div style={{
+                        width: 1, flex: 1, background: '#e2e8f5',
+                        minHeight: 20, marginTop: 3,
+                      }} />
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div style={{ flex: 1, paddingBottom: isLast ? 0 : 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
+                      <p style={{ fontSize: 12.5, fontWeight: 600, color: '#06186d', flex: 1 }}>
+                        {item.titulo}
+                      </p>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700,
+                        padding: '2px 8px', borderRadius: 6,
+                        background: isEvento ? '#eaf2fc' : '#f5e9d5',
+                        color: isEvento ? '#1a5ca8' : '#b07d2f',
+                        whiteSpace: 'nowrap', flexShrink: 0,
+                      }}>
+                        {item.tipoLabel}
+                      </span>
+                    </div>
+                    {item.descripcion && (
+                      <p style={{ fontSize: 12, color: '#5a6a7e', marginTop: 3, lineHeight: 1.5, fontWeight: 500 }}>
+                        {item.descripcion}
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
+                      {item.fecha && (
+                        <span style={{ fontSize: 10.5, color: '#7b8aa0', fontWeight: 500 }}>
+                          {fmtDt(item.fecha)}
+                        </span>
                       )}
-                      <div className="flex items-center gap-3 mt-1.5 text-xs text-slate-400">
-                        {item.fecha && <span>{formatDateTime(item.fecha)}</span>}
-                        {item.location && <span>· {item.location}</span>}
-                        {item.isCompleted === true && (
-                          <span className="text-green-600 font-medium">· Completado</span>
-                        )}
-                      </div>
+                      {item.location && (
+                        <span style={{ fontSize: 10.5, color: '#7b8aa0', fontWeight: 500 }}>
+                          · 📍 {item.location}
+                        </span>
+                      )}
+                      {item.isCompleted === true && (
+                        <span style={{ fontSize: 10.5, color: '#1a9e5c', fontWeight: 700 }}>
+                          · ✓ Completado
+                        </span>
+                      )}
                     </div>
                   </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </PortalLayout>
   )
