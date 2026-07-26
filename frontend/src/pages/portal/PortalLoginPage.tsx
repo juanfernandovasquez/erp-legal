@@ -1,23 +1,12 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useClientPortalStore } from '@/stores/clientPortalStore'
 
 export function PortalLoginPage() {
   const navigate  = useNavigate()
   const { login, isLoading, error } = useClientPortalStore()
-  const [ruc, setRuc]         = useState('')
+  const [ruc, setRuc]           = useState('')
   const [password, setPassword] = useState('')
-  const [pwVisible, setPwVisible] = useState(false)
-
-  useEffect(() => {
-    if (!document.getElementById('portal-montserrat')) {
-      const link = document.createElement('link')
-      link.id   = 'portal-montserrat'
-      link.rel  = 'stylesheet'
-      link.href = 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap'
-      document.head.appendChild(link)
-    }
-  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -30,160 +19,81 @@ export function PortalLoginPage() {
   }
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(160deg, #071331 0%, #06186d 100%)',
-      display: 'flex', flexDirection: 'column',
-      alignItems: 'center', justifyContent: 'center',
-      padding: '24px 16px',
-      fontFamily: "'Montserrat', 'Segoe UI', system-ui, sans-serif",
-    }}>
-      {/* Decorative top accent */}
-      <div style={{
-        position: 'absolute', top: 0, left: 0, right: 0, height: 4,
-        background: 'linear-gradient(90deg, #b07d2f, #d4a355, #b07d2f)',
-      }} />
-
-      <div style={{ width: '100%', maxWidth: 400 }}>
-        {/* Logo area */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <img
-            src="https://kdbweb-media-2026.s3.us-east-1.amazonaws.com/logos/ee6dcaa184fa42dda843f207ced4f855_Recurso-2.png"
-            alt="Katarzyna Legal"
-            style={{ height: 48, objectFit: 'contain', display: 'inline-block', marginBottom: 12 }}
-          />
-          <p style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: '2px',
-            textTransform: 'uppercase', color: '#d4a355', marginTop: 4,
-          }}>
-            Legal &amp; Tributario
-          </p>
-        </div>
-
-        {/* Card */}
-        <div style={{
-          background: '#fff', borderRadius: 16,
-          boxShadow: '0 20px 60px rgba(0,0,0,.35)',
-          padding: '36px 36px 32px',
-          border: '1px solid rgba(176,125,47,.15)',
-        }}>
-          {/* Card header */}
-          <div style={{ marginBottom: 28 }}>
-            <p style={{ fontSize: 22, fontWeight: 900, color: '#06186d', lineHeight: 1.1 }}>
-              Portal del Cliente
-            </p>
-            <p style={{ fontSize: 13, color: '#7b8aa0', marginTop: 6, fontWeight: 500 }}>
-              Ingresa con tu RUC y contraseña de acceso
-            </p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-700 to-primary-900 p-4">
+      <div className="w-full max-w-md">
+        {/* Card — mismo patrón que ERP LoginPage */}
+        <div className="bg-white rounded-2xl overflow-hidden shadow-2xl">
+          {/* Logo area — igual al ERP */}
+          <div className="bg-primary-700 flex justify-center items-center py-8 px-6">
+            <img
+              src="https://kdbweb-media-2026.s3.us-east-1.amazonaws.com/logos/ee6dcaa184fa42dda843f207ced4f855_Recurso-2.png"
+              alt="Katarzyna Legal & Tributario"
+              className="h-14 w-auto object-contain"
+            />
           </div>
 
-          <form onSubmit={handleSubmit}>
-            {/* RUC */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{
-                display: 'block', fontSize: 11, fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '.5px',
-                color: '#7b8aa0', marginBottom: 6,
-              }}>
-                RUC
-              </label>
-              <input
-                type="text"
-                value={ruc}
-                onChange={e => setRuc(e.target.value)}
-                placeholder="20123456789"
-                required
-                autoComplete="username"
-                style={{
-                  width: '100%', boxSizing: 'border-box',
-                  border: '1.5px solid #e2e8f5', borderRadius: 8,
-                  padding: '11px 14px', fontSize: 14, color: '#2b2b2b',
-                  outline: 'none', fontFamily: 'inherit',
-                  background: '#fff',
-                }}
-                onFocus={e => (e.currentTarget.style.borderColor = '#06186d')}
-                onBlur={e => (e.currentTarget.style.borderColor = '#e2e8f5')}
-              />
+          {/* Form */}
+          <div className="px-8 py-8">
+            <div className="text-center mb-6">
+              <h1 className="text-xl font-bold text-slate-900">Portal del Cliente</h1>
+              <p className="text-sm text-slate-500 mt-1">Ingresa con tu RUC y contraseña de acceso</p>
             </div>
 
-            {/* Password */}
-            <div style={{ marginBottom: 24 }}>
-              <label style={{
-                display: 'block', fontSize: 11, fontWeight: 700,
-                textTransform: 'uppercase', letterSpacing: '.5px',
-                color: '#7b8aa0', marginBottom: 6,
-              }}>
-                Contraseña
-              </label>
-              <div style={{ position: 'relative' }}>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              {/* RUC */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  RUC
+                </label>
                 <input
-                  type={pwVisible ? 'text' : 'password'}
+                  type="text"
+                  value={ruc}
+                  onChange={e => setRuc(e.target.value)}
+                  placeholder="20123456789"
+                  required
+                  autoComplete="username"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                />
+              </div>
+
+              {/* Contraseña */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Contraseña
+                </label>
+                <input
+                  type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
-                  style={{
-                    width: '100%', boxSizing: 'border-box',
-                    border: '1.5px solid #e2e8f5', borderRadius: 8,
-                    padding: '11px 40px 11px 14px', fontSize: 14, color: '#2b2b2b',
-                    outline: 'none', fontFamily: 'inherit', background: '#fff',
-                  }}
-                  onFocus={e => (e.currentTarget.style.borderColor = '#06186d')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#e2e8f5')}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                 />
-                <button
-                  type="button"
-                  onClick={() => setPwVisible(v => !v)}
-                  style={{
-                    position: 'absolute', right: 12, top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    color: '#7b8aa0', fontSize: 11, fontFamily: 'inherit', padding: 0,
-                  }}
-                >
-                  {pwVisible ? 'Ocultar' : 'Ver'}
-                </button>
               </div>
-            </div>
 
-            {/* Error */}
-            {error && (
-              <div style={{
-                background: '#fdf0ee', border: '1px solid #f5c6c0',
-                borderRadius: 8, padding: '10px 14px', marginBottom: 16,
-                fontSize: 13, color: '#c0392b', fontWeight: 500,
-              }}>
-                {error}
-              </div>
-            )}
+              {/* Error */}
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">{error}</p>
+                </div>
+              )}
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              style={{
-                width: '100%', padding: '12px 0',
-                background: isLoading ? '#8a9ad9' : '#06186d',
-                color: '#fff', border: 'none', borderRadius: 9,
-                fontSize: 14, fontWeight: 800, cursor: isLoading ? 'not-allowed' : 'pointer',
-                fontFamily: 'inherit', transition: 'background .15s',
-                letterSpacing: '.3px',
-              }}
-            >
-              {isLoading ? 'Verificando…' : 'Ingresar al portal →'}
-            </button>
-          </form>
+              {/* Botón */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-primary-700 hover:bg-primary-800 disabled:opacity-60 text-white font-semibold py-2.5 rounded-lg transition-colors"
+              >
+                {isLoading ? 'Verificando…' : 'Ingresar al Portal'}
+              </button>
+            </form>
+
+            <p className="text-center text-xs text-slate-400 mt-6">
+              ¿Problemas para ingresar? Contacta a tu abogado responsable.
+            </p>
+          </div>
         </div>
-
-        {/* Footer note */}
-        <p style={{
-          textAlign: 'center', color: 'rgba(255,255,255,.35)',
-          fontSize: 11, marginTop: 20, fontWeight: 500, lineHeight: 1.5,
-        }}>
-          ¿Problemas para ingresar?<br />
-          Contacta a tu abogado responsable.
-        </p>
       </div>
     </div>
   )

@@ -7,9 +7,9 @@ import portalApi from '@/lib/portalApi'
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   active:    { bg: '#eaf2fc', color: '#1a5ca8' },
   suspended: { bg: '#fef9e7', color: '#d68910' },
-  draft:     { bg: '#f0f0f4', color: '#5a6a7e' },
+  draft:     { bg: '#f1f5f9', color: '#475569' },
   closed:    { bg: '#e8f7f0', color: '#1a9e5c' },
-  archived:  { bg: '#f0f0f4', color: '#5a6a7e' },
+  archived:  { bg: '#f1f5f9', color: '#475569' },
 }
 
 interface CaseDetail {
@@ -32,55 +32,38 @@ function fmt(iso: string | null) {
   return new Date(iso).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function fmtDt(iso: string | null) {
-  if (!iso) return '—'
-  return new Date(iso).toLocaleDateString('es-PE', {
-    day: '2-digit', month: 'short', year: 'numeric',
-  })
-}
-
-function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div style={{
-      background: '#fff', border: '1px solid #e2e8f5',
-      borderRadius: 12, overflow: 'hidden',
-    }}>
-      <div style={{
-        padding: '13px 20px', borderBottom: '1px solid #e2e8f5',
-        fontSize: 13, fontWeight: 800, color: '#06186d',
-      }}>
+    <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+      <div className="px-5 py-3.5 border-b border-slate-100 font-bold text-primary-700 text-sm">
         {title}
       </div>
-      <div style={{ padding: '16px 20px' }}>
+      <div className="px-5 py-4">
         {children}
       </div>
     </div>
   )
 }
 
-function InfoRow({ label, value }: { label: string; value: string | null }) {
+function DataRow({ label, value }: { label: string; value: string | null }) {
   if (!value) return null
   return (
-    <div style={{
-      display: 'flex', gap: 8,
-      paddingBottom: 10, marginBottom: 10,
-      borderBottom: '1px solid #f0f2f7',
-    }}>
-      <p style={{ fontSize: 10.5, fontWeight: 700, color: '#7b8aa0', textTransform: 'uppercase', letterSpacing: '.5px', width: 100, flexShrink: 0, paddingTop: 1 }}>
+    <div className="flex gap-3 py-2 border-b border-slate-50 last:border-0">
+      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide w-24 shrink-0 pt-0.5">
         {label}
       </p>
-      <p style={{ fontSize: 13, fontWeight: 600, color: '#2b2b2b', flex: 1 }}>{value}</p>
+      <p className="text-sm font-medium text-slate-700 flex-1">{value}</p>
     </div>
   )
 }
 
 export function PortalCaseDetailPage() {
-  const { id }     = useParams<{ id: string }>()
-  const navigate   = useNavigate()
-  const [caso, setCaso]         = useState<CaseDetail | null>(null)
-  const [timeline, setTimeline] = useState<TimelineItem[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [tlLoading, setTlLoading] = useState(true)
+  const { id }   = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const [caso, setCaso]             = useState<CaseDetail | null>(null)
+  const [timeline, setTimeline]     = useState<TimelineItem[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [tlLoading, setTlLoading]   = useState(true)
 
   useEffect(() => {
     if (!id) return
@@ -98,219 +81,167 @@ export function PortalCaseDetailPage() {
   if (loading) {
     return (
       <PortalLayout>
-        <div style={{ textAlign: 'center', padding: '80px 20px', color: '#7b8aa0' }}>
-          Cargando…
-        </div>
+        <div className="py-20 text-center text-sm text-slate-400">Cargando…</div>
       </PortalLayout>
     )
   }
-
   if (!caso) return null
 
-  const st = STATUS_STYLE[caso.estado] ?? { bg: '#f0f0f4', color: '#5a6a7e' }
+  const st           = STATUS_STYLE[caso.estado] ?? { bg: '#f1f5f9', color: '#475569' }
   const hasCourtInfo = !!(caso.courtName || caso.judgeName)
   const hasParties   = !!(caso.plaintiff || caso.defendant)
 
   return (
     <PortalLayout>
-      {/* Back */}
+      {/* Back button */}
       <button
         onClick={() => navigate('/portal/asuntos')}
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          fontSize: 13, fontWeight: 600, color: '#7b8aa0',
-          background: 'none', border: 'none', cursor: 'pointer',
-          marginBottom: 16, padding: 0, fontFamily: 'inherit',
-        }}
+        className="flex items-center gap-1.5 text-sm font-medium text-slate-400 hover:text-primary-700 mb-4 transition-colors"
       >
         <ArrowLeft size={15} /> Mis Asuntos
       </button>
 
       {/* Case header */}
-      <div style={{
-        background: '#fff', border: '1px solid #e2e8f5', borderRadius: 12,
-        padding: '20px 24px', marginBottom: 16,
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16,
-      }}>
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1px', color: '#7b8aa0', marginBottom: 6 }}>
+      <div className="bg-white border border-slate-200 rounded-xl px-6 py-5 mb-4 flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
             {caso.caseNumber} · {caso.tipoLabel}
           </p>
-          <h1 style={{ fontSize: 20, fontWeight: 900, color: '#06186d', lineHeight: 1.2, marginBottom: 0 }}>
-            {caso.titulo}
-          </h1>
+          <h1 className="text-xl font-bold text-primary-700 leading-tight">{caso.titulo}</h1>
           {caso.descripcion && (
-            <p style={{ fontSize: 13, color: '#5a6a7e', marginTop: 10, lineHeight: 1.6, fontWeight: 500 }}>
-              {caso.descripcion}
-            </p>
+            <p className="text-sm text-slate-500 mt-2 leading-relaxed">{caso.descripcion}</p>
           )}
         </div>
-        <span style={{
-          fontSize: 11, fontWeight: 700,
-          padding: '5px 12px', borderRadius: 20,
-          background: st.bg, color: st.color,
-          whiteSpace: 'nowrap', flexShrink: 0,
-        }}>
+        <span
+          className="text-xs font-semibold px-3 py-1 rounded-full whitespace-nowrap shrink-0"
+          style={{ background: st.bg, color: st.color }}
+        >
           {caso.estadoLabel}
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: hasCourtInfo ? '1fr 1fr' : '1fr', gap: 14, marginBottom: 16 }}>
-        {/* Dates */}
-        <InfoCard title="📅 Fechas">
-          <InfoRow label="Inicio"  value={fmt(caso.openedDate)} />
-          {caso.closedDate && <InfoRow label="Cierre" value={fmt(caso.closedDate)} />}
-        </InfoCard>
+      {/* Info grid */}
+      <div className={`grid gap-4 mb-4 ${hasCourtInfo ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        <SectionCard title="📅 Fechas">
+          <DataRow label="Inicio"  value={fmt(caso.openedDate)} />
+          {caso.closedDate && <DataRow label="Cierre" value={fmt(caso.closedDate)} />}
+        </SectionCard>
 
-        {/* Court info */}
         {hasCourtInfo && (
-          <InfoCard title="🏛️ Juzgado">
-            {caso.courtName     && <InfoRow label="Juzgado"  value={caso.courtName} />}
-            {caso.courtLocation && <InfoRow label="Sede"     value={caso.courtLocation} />}
-            {caso.judgeName     && <InfoRow label="Juez"     value={caso.judgeName} />}
-          </InfoCard>
+          <SectionCard title="🏛️ Juzgado">
+            <DataRow label="Juzgado"  value={caso.courtName} />
+            <DataRow label="Sede"     value={caso.courtLocation} />
+            <DataRow label="Juez"     value={caso.judgeName} />
+          </SectionCard>
         )}
       </div>
 
       {/* Parties */}
       {hasParties && (
-        <InfoCard title="👤 Partes">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            {caso.plaintiff && (
-              <div>
-                <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#7b8aa0', marginBottom: 4 }}>Demandante</p>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#2b2b2b' }}>{caso.plaintiff}</p>
-              </div>
-            )}
-            {caso.defendant && (
-              <div>
-                <p style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#7b8aa0', marginBottom: 4 }}>Demandado</p>
-                <p style={{ fontSize: 13, fontWeight: 600, color: '#2b2b2b' }}>{caso.defendant}</p>
-              </div>
-            )}
-          </div>
-        </InfoCard>
+        <div className="mb-4">
+          <SectionCard title="👤 Partes">
+            <div className="grid grid-cols-2 gap-4">
+              {caso.plaintiff && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Demandante</p>
+                  <p className="text-sm font-semibold text-slate-700">{caso.plaintiff}</p>
+                </div>
+              )}
+              {caso.defendant && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1">Demandado</p>
+                  <p className="text-sm font-semibold text-slate-700">{caso.defendant}</p>
+                </div>
+              )}
+            </div>
+          </SectionCard>
+        </div>
       )}
 
       {/* Team */}
       {caso.team.length > 0 && (
-        <div style={{ marginTop: 14 }}>
-          <InfoCard title="👥 Equipo asignado">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div className="mb-4">
+          <SectionCard title="👥 Equipo asignado">
+            <div className="space-y-3">
               {caso.team.map((m, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{
-                      width: 34, height: 34, borderRadius: '50%',
-                      background: '#06186d', color: '#d4a355',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 12, fontWeight: 800, flexShrink: 0,
-                    }}>
+                <div key={i} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 rounded-full bg-primary-700 text-white flex items-center justify-center text-sm font-bold shrink-0">
                       {m.nombre.charAt(0)}
                     </div>
                     <div>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: '#06186d' }}>{m.nombre}</p>
-                      <p style={{ fontSize: 11, color: '#7b8aa0', fontWeight: 500 }}>{m.rol}</p>
+                      <p className="text-sm font-semibold text-primary-700">{m.nombre}</p>
+                      <p className="text-xs text-slate-400">{m.rol}</p>
                     </div>
                   </div>
                   {m.esLider && (
-                    <span style={{
-                      fontSize: 10.5, fontWeight: 700,
-                      background: '#f5e9d5', color: '#b07d2f',
-                      padding: '3px 10px', borderRadius: 6,
-                    }}>
+                    <span className="text-xs font-semibold bg-gold-100 text-gold-700 px-2.5 py-0.5 rounded-full">
                       Responsable
                     </span>
                   )}
                 </div>
               ))}
             </div>
-          </InfoCard>
+          </SectionCard>
         </div>
       )}
 
       {/* Timeline */}
-      <div style={{
-        background: '#fff', border: '1px solid #e2e8f5',
-        borderRadius: 12, overflow: 'hidden', marginTop: 14,
-      }}>
-        <div style={{
-          padding: '13px 20px', borderBottom: '1px solid #e2e8f5',
-          fontSize: 13, fontWeight: 800, color: '#06186d',
-        }}>
+      <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-slate-100 font-bold text-primary-700 text-sm">
           🕐 Línea de tiempo
         </div>
 
         {tlLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#7b8aa0', fontSize: 13 }}>
-            Cargando…
-          </div>
+          <div className="py-10 text-center text-sm text-slate-400">Cargando…</div>
         ) : timeline.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px 20px', color: '#7b8aa0', fontSize: 13 }}>
+          <div className="py-10 text-center text-sm text-slate-400">
             Sin eventos registrados aún.
           </div>
         ) : (
-          <div style={{ padding: '16px 20px' }}>
+          <div className="px-5 py-4">
             {timeline.map((item, idx) => {
               const isEvento = item.tipo === 'evento'
               const dotColor = item.isCompleted === true
                 ? '#1a9e5c'
-                : isEvento ? '#b07d2f' : '#1a5ca8'
-              const isLast = idx === timeline.length - 1
+                : isEvento ? '#1e35a3' : '#b07d2f'
+              const isLast   = idx === timeline.length - 1
 
               return (
-                <div key={item.id} style={{ display: 'flex', gap: 12, marginBottom: isLast ? 0 : 10 }}>
+                <div key={item.id} className="flex gap-3" style={{ marginBottom: isLast ? 0 : 8 }}>
                   {/* Dot + line */}
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <div style={{
-                      width: 10, height: 10, borderRadius: '50%',
-                      background: dotColor, flexShrink: 0, marginTop: 3,
-                      boxShadow: `0 0 0 3px ${dotColor}22`,
-                    }} />
+                  <div className="flex flex-col items-center">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full shrink-0 mt-1"
+                      style={{ background: dotColor, boxShadow: `0 0 0 3px ${dotColor}22` }}
+                    />
                     {!isLast && (
-                      <div style={{
-                        width: 1, flex: 1, background: '#e2e8f5',
-                        minHeight: 20, marginTop: 3,
-                      }} />
+                      <div className="w-px flex-1 bg-slate-200 mt-1 min-h-[20px]" />
                     )}
                   </div>
 
                   {/* Content */}
-                  <div style={{ flex: 1, paddingBottom: isLast ? 0 : 10 }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
-                      <p style={{ fontSize: 12.5, fontWeight: 600, color: '#06186d', flex: 1 }}>
-                        {item.titulo}
-                      </p>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700,
-                        padding: '2px 8px', borderRadius: 6,
-                        background: isEvento ? '#eaf2fc' : '#f5e9d5',
-                        color: isEvento ? '#1a5ca8' : '#b07d2f',
-                        whiteSpace: 'nowrap', flexShrink: 0,
-                      }}>
+                  <div className={`flex-1 ${isLast ? '' : 'pb-3'}`}>
+                    <div className="flex items-start gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-primary-700 flex-1">{item.titulo}</p>
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded shrink-0"
+                        style={{
+                          background: isEvento ? '#eaf2fc' : '#fdf6e8',
+                          color:      isEvento ? '#1a5ca8' : '#b07d2f',
+                        }}
+                      >
                         {item.tipoLabel}
                       </span>
                     </div>
                     {item.descripcion && (
-                      <p style={{ fontSize: 12, color: '#5a6a7e', marginTop: 3, lineHeight: 1.5, fontWeight: 500 }}>
-                        {item.descripcion}
-                      </p>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">{item.descripcion}</p>
                     )}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
-                      {item.fecha && (
-                        <span style={{ fontSize: 10.5, color: '#7b8aa0', fontWeight: 500 }}>
-                          {fmtDt(item.fecha)}
-                        </span>
-                      )}
-                      {item.location && (
-                        <span style={{ fontSize: 10.5, color: '#7b8aa0', fontWeight: 500 }}>
-                          · 📍 {item.location}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-2 mt-1 text-xs text-slate-400 flex-wrap">
+                      {item.fecha && <span>{fmt(item.fecha)}</span>}
+                      {item.location && <span>· 📍 {item.location}</span>}
                       {item.isCompleted === true && (
-                        <span style={{ fontSize: 10.5, color: '#1a9e5c', fontWeight: 700 }}>
-                          · ✓ Completado
-                        </span>
+                        <span className="text-green-600 font-semibold">· ✓ Completado</span>
                       )}
                     </div>
                   </div>

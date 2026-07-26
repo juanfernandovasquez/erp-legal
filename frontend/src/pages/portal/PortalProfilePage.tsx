@@ -25,25 +25,13 @@ function getInitials(name: string) {
 function ProfileRow({ icon, label, value }: { icon: string; label: string; value: string | null }) {
   if (!value) return null
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '11px 20px', borderBottom: '1px solid #e2e8f5',
-    }}>
-      <div style={{
-        width: 32, height: 32, borderRadius: 8,
-        background: 'rgba(6,24,109,.06)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 15, flexShrink: 0,
-      }}>
+    <div className="flex items-center gap-3 px-5 py-3 border-b border-slate-100 last:border-0">
+      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-sm shrink-0">
         {icon}
       </div>
-      <div style={{ flex: 1 }}>
-        <p style={{ fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#7b8aa0' }}>
-          {label}
-        </p>
-        <p style={{ fontSize: 12.5, fontWeight: 600, color: '#06186d', marginTop: 1 }}>
-          {value}
-        </p>
+      <div className="flex-1">
+        <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
+        <p className="text-sm font-semibold text-slate-700 mt-0.5">{value}</p>
       </div>
     </div>
   )
@@ -63,13 +51,10 @@ export function PortalProfilePage() {
   if (loading) {
     return (
       <PortalLayout>
-        <div style={{ textAlign: 'center', padding: '80px 20px', color: '#7b8aa0', fontSize: 13 }}>
-          Cargando…
-        </div>
+        <div className="py-20 text-center text-sm text-slate-400">Cargando…</div>
       </PortalLayout>
     )
   }
-
   if (!profile) return null
 
   const initials  = getInitials(profile.nombre)
@@ -79,18 +64,12 @@ export function PortalProfilePage() {
 
   return (
     <PortalLayout>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', gap: 18, alignItems: 'start' }}>
+      <div className="grid grid-cols-[1fr_250px] gap-5 items-start">
         {/* Left — data sections */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Personal data */}
-          <div style={{
-            background: '#fff', border: '1px solid #e2e8f5',
-            borderRadius: 12, overflow: 'hidden',
-          }}>
-            <div style={{
-              padding: '14px 20px', borderBottom: '1px solid #e2e8f5',
-              fontSize: 13, fontWeight: 800, color: '#06186d',
-            }}>
+        <div className="space-y-4">
+          {/* Contact data */}
+          <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-slate-100 font-bold text-primary-700 text-sm">
               👤 Datos de contacto
             </div>
             <div>
@@ -102,14 +81,8 @@ export function PortalProfilePage() {
 
           {/* Company data */}
           {(profile.organizationName || address) && (
-            <div style={{
-              background: '#fff', border: '1px solid #e2e8f5',
-              borderRadius: 12, overflow: 'hidden',
-            }}>
-              <div style={{
-                padding: '14px 20px', borderBottom: '1px solid #e2e8f5',
-                fontSize: 13, fontWeight: 800, color: '#06186d',
-              }}>
+            <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-slate-100 font-bold text-primary-700 text-sm">
                 🏢 Datos de empresa
               </div>
               <div>
@@ -119,69 +92,41 @@ export function PortalProfilePage() {
             </div>
           )}
 
-          {/* Note */}
-          <div style={{
-            background: 'rgba(176,125,47,.06)', border: '1px solid rgba(176,125,47,.2)',
-            borderRadius: 10, padding: '12px 16px',
-            display: 'flex', alignItems: 'flex-start', gap: 10,
-          }}>
-            <span style={{ fontSize: 16, flexShrink: 0 }}>ℹ️</span>
-            <p style={{ fontSize: 12, color: '#5a6a7e', fontWeight: 500, lineHeight: 1.5 }}>
+          {/* Info note */}
+          <div className="bg-primary-50 border border-primary-100 rounded-xl px-4 py-3 flex gap-3">
+            <span className="text-base shrink-0">ℹ️</span>
+            <p className="text-xs text-primary-700 font-medium leading-relaxed">
               Tus datos son gestionados por el estudio legal. Para actualizarlos, contacta a tu abogado responsable.
             </p>
           </div>
         </div>
 
         {/* Right — avatar card */}
-        <div>
-          <div style={{
-            background: '#fff', border: '1px solid #e2e8f5',
-            borderRadius: 12, padding: '24px 20px', textAlign: 'center',
-          }}>
-            {/* Avatar */}
-            <div style={{
-              width: 70, height: 70, borderRadius: '50%',
-              background: '#06186d', color: '#d4a355',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 26, fontWeight: 900,
-              margin: '0 auto 14px',
-            }}>
+        <div className="space-y-4">
+          {/* Avatar card */}
+          <div className="bg-white border border-slate-200 rounded-xl p-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary-700 text-white flex items-center justify-center text-2xl font-bold mx-auto mb-3">
               {initials}
             </div>
-            <p style={{ fontSize: 15, fontWeight: 800, color: '#06186d', marginBottom: 4 }}>
-              {profile.nombre}
-            </p>
+            <p className="font-bold text-primary-700 text-base">{profile.nombre}</p>
             {profile.organizationName && (
-              <p style={{ fontSize: 12, color: '#7b8aa0', fontWeight: 500, marginBottom: 4 }}>
-                {profile.organizationName}
-              </p>
+              <p className="text-sm text-slate-500 mt-1">{profile.organizationName}</p>
             )}
-            <span style={{
-              display: 'inline-block', marginTop: 6,
-              fontSize: 11, fontWeight: 700,
-              background: '#eaf2fc', color: '#1a5ca8',
-              padding: '3px 10px', borderRadius: 20,
-            }}>
+            <span className="inline-block mt-3 text-xs font-semibold bg-primary-100 text-primary-700 px-3 py-1 rounded-full">
               {typeLabel}
             </span>
           </div>
 
-          {/* Portal access info */}
-          <div style={{
-            background: '#fff', border: '1px solid #e2e8f5',
-            borderRadius: 12, padding: '16px 20px', marginTop: 12,
-          }}>
-            <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.5px', color: '#7b8aa0', marginBottom: 10 }}>
+          {/* Access status */}
+          <div className="bg-white border border-slate-200 rounded-xl p-4">
+            <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">
               Acceso al portal
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: '#1a9e5c', flexShrink: 0,
-              }} />
-              <p style={{ fontSize: 12, fontWeight: 600, color: '#1a9e5c' }}>Acceso activo</p>
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
+              <p className="text-sm font-semibold text-green-700">Acceso activo</p>
             </div>
-            <p style={{ fontSize: 11, color: '#7b8aa0', fontWeight: 500, marginTop: 6, lineHeight: 1.4 }}>
+            <p className="text-xs text-slate-400 leading-relaxed">
               Ingreso con tu RUC y contraseña configurada por el estudio.
             </p>
           </div>
