@@ -41,6 +41,7 @@ interface AdjEntry {
 interface CasoInfo {
   id: string
   titulo: string
+  descripcion?: string | null
   clienteId?: string
   clienteNombre?: string
   tipoFacturacion?: string | null
@@ -674,6 +675,7 @@ export function HoursPage() {
       const mapCase = (c: any): CasoInfo => ({
         id: c.id,
         titulo: c.titulo || c.title || c.id,
+        descripcion: c.descripcion || c.description || null,
         clienteId: c.clienteId,
         clienteNombre: c.cliente?.nombre,
         tipoFacturacion: c.tipoFacturacion,

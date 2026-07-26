@@ -31,8 +31,9 @@ import { AIChatTab } from '@/components/cases/AIChatTab'
 import { NotificationRules } from '@/components/notifications/NotificationRules'
 import {
   ArrowLeft, Calendar, DollarSign, User, Plus, Pencil, Check, X,
-  LayoutGrid, List, ChevronUp, ChevronDown, ChevronsUpDown, AlertCircle, Trash2, RefreshCw,
+  LayoutGrid, List, ChevronUp, ChevronDown, ChevronsUpDown, AlertCircle, Trash2, RefreshCw, Download,
 } from 'lucide-react'
+import { generateBillingExcel } from '@/components/billing/ExportBillingModal'
 import api from '@/lib/axios'
 import { useAuthStore } from '@/stores/authStore'
 
@@ -89,6 +90,55 @@ export function CaseDetailPage() {
   const [horasKey, setHorasKey] = useState(0)
   const [billingKey, setBillingKey] = useState(0)
   const [showHorasForm, setShowHorasForm] = useState(false)
+  const [showCaseExport, setShowCaseExport] = useState(false)
+  const [caseExportTC, setCaseExportTC]     = useState(3.75)
+  const [caseExporting, setCaseExporting]   = useState(false)
+
+  const handleCaseExport = async () => {
+    if (!caso) return
+    setCaseExporting(true)
+    try {
+      const [hoursRes, firmRes] = await Promise.allSettled([
+        api.get(`/cases/${caso.id}/hours`),
+        api.get('/law-firms/current'),
+      ])
+      const rawHours = hoursRes.status === 'fulfilled' ? (hoursRes.value.data.data || []) : []
+      const lawFirm  = firmRes.status  === 'fulfilled' ? (firmRes.value.data.data  ?? null) : null
+
+      const allHours = rawHours.map((h: any) => ({
+        casoId: caso.id,
+        fechaRegistro: h.fechaRegistro || h.work_date || h.created_at,
+        montoTotal: h.montoTotal ?? h.total_amount ?? 0,
+        horas: h.horas ?? h.horasTrabajas ?? h.hours ?? 0,
+      }))
+
+      const casesMap = {
+        [caso.id]: {
+          id: caso.id,
+          titulo: caso.titulo,
+          descripcion: caso.descripcion ?? null,
+          clienteId: caso.clienteId,
+          monedaFacturacion: caso.monedaFacturacion ?? 'PEN',
+        },
+      }
+
+      const clients = caso.cliente ? [{
+        id: caso.clienteId,
+        nombre: caso.cliente.nombre,
+        ruc: (caso.cliente as any).ruc || (caso.cliente as any).taxId || '',
+        direccion: (caso.cliente as any).direccion || (caso.cliente as any).streetAddress || '',
+      }] : []
+
+      const year = new Date().getFullYear()
+      const months = [1,2,3,4,5,6,7,8,9,10,11,12]
+      generateBillingExcel({ year, months, allHours, casesMap, clients, lawFirm, tipoCambio: caseExportTC })
+      setShowCaseExport(false)
+    } catch {
+      // silent — user can retry
+    } finally {
+      setCaseExporting(false)
+    }
+  }
 
   // Sort
   const [sortKey, setSortKey] = useState<SortKey | null>(null)
@@ -710,7 +760,18 @@ export function CaseDetailPage() {
           <TabsContent value="horas">
             <div className="space-y-6">
               <div className="space-y-4">
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-2">
+                  {isAdmin && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => setShowCaseExport(true)}
+                    >
+                      <Download size={15} />
+                      Exportar Excel
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     className="gap-2"
@@ -913,6 +974,59 @@ export function CaseDetailPage() {
         onConfirm={handleDeleteCase}
         variant="danger"
       />
+
+      {/* Modal: exportar Excel del caso */}
+      {showCaseExport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <div>
+                <h2 className="text-base font-semibold text-slate-900">Exportar facturación del caso</h2>
+                <p className="text-xs text-slate-500 mt-0.5 truncate max-w-[220px]">{caso.titulo}</p>
+              </div>
+              <button onClick={() => setShowCaseExport(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <p className="text-xs text-slate-500">
+                Se exportarán todas las horas registradas en este caso, agrupadas por mes (año en curso), convertidas a Soles.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                  Tipo de cambio{' '}
+                  <span className="text-slate-400 font-normal">(USD → S/)</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-500">1 USD =</span>
+                  <input
+                    type="number"
+                    min={1}
+                    step={0.01}
+                    value={caseExportTC}
+                    onChange={e => setCaseExportTC(parseFloat(e.target.value) || 3.75)}
+                    className="w-24 border border-slate-300 rounded-md px-3 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-slate-500">S/</span>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
+              <Button variant="ghost" size="sm" onClick={() => setShowCaseExport(false)}>Cancelar</Button>
+              <Button
+                size="sm"
+                onClick={handleCaseExport}
+                disabled={caseExporting}
+                isLoading={caseExporting}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+              >
+                {!caseExporting && <Download size={14} />}
+                Descargar Excel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </AppLayout>
   )
