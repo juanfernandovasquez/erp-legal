@@ -17,8 +17,6 @@ export interface HEntry {
   casoId: string
   fechaRegistro: string
   montoTotal?: number
-  horas?: number
-  horasTrabajas?: number
 }
 
 export interface CasoInfo {
@@ -47,21 +45,46 @@ interface Props {
 }
 
 const MONTH_NAMES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre',
 ]
-const MONTH_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']
+const MONTH_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']
 
 const currentYear = new Date().getFullYear()
 const YEARS = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
 
-// ── Styles ──────────────────────────────────────────────────────────────────────
+// Fila del tipo de cambio (0-indexed en JS → Excel row = TC_ROW_JS + 1)
+const TC_ROW_JS = 6
 
-const border = (color = 'E2E8F0') => ({
-  top:    { style: 'thin', color: { rgb: color } },
-  bottom: { style: 'thin', color: { rgb: color } },
-  left:   { style: 'thin', color: { rgb: color } },
-  right:  { style: 'thin', color: { rgb: color } },
+// ── Helpers ────────────────────────────────────────────────────────────────────
+function colLetter(c: number): string {
+  let s = ''
+  for (let n = c + 1; n > 0; n = Math.floor((n - 1) / 26))
+    s = String.fromCharCode(65 + (n - 1) % 26) + s
+  return s
+}
+
+// Referencia absoluta al TC del mes i: e.g. $E$7, $F$7, …
+function tcRef(monthIdx: number): string {
+  return `$${colLetter(4 + monthIdx)}$${TC_ROW_JS + 1}`
+}
+
+function clientName(cl: Cliente | undefined): string { return cl?.nombre || cl?.name || '—' }
+function clientRuc(cl: Cliente | undefined): string  { return cl?.ruc || cl?.taxId || '' }
+function clientAddr(cl: Cliente | undefined): string { return cl?.direccion || cl?.streetAddress || '' }
+
+// ── Estilos ────────────────────────────────────────────────────────────────────
+const thinBorder = (rgb = 'E2E8F0') => ({
+  top:    { style: 'thin', color: { rgb } },
+  bottom: { style: 'thin', color: { rgb } },
+  left:   { style: 'thin', color: { rgb } },
+  right:  { style: 'thin', color: { rgb } },
+})
+const medBorder = (rgb = '047857') => ({
+  top:    { style: 'medium', color: { rgb } },
+  bottom: { style: 'medium', color: { rgb } },
+  left:   { style: 'medium', color: { rgb } },
+  right:  { style: 'medium', color: { rgb } },
 })
 
 const S = {
@@ -70,135 +93,123 @@ const S = {
     fill: { fgColor: { rgb: '1E3A5F' } },
     alignment: { horizontal: 'center', vertical: 'center' },
   },
-  headerEmpty: { fill: { fgColor: { rgb: '1E3A5F' } } },
-  firmLabel: {
+  hdrEmpty: { fill: { fgColor: { rgb: '1E3A5F' } } },
+  firmLbl: {
     font: { sz: 9, color: { rgb: '93C5FD' } },
     fill: { fgColor: { rgb: '1E3A5F' } },
     alignment: { horizontal: 'right', vertical: 'center' },
   },
-  firmValue: {
+  firmVal: {
     font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
     fill: { fgColor: { rgb: '1E3A5F' } },
     alignment: { horizontal: 'left', vertical: 'center' },
   },
-  tcRow: {
-    font: { sz: 9, italic: true, color: { rgb: '475569' } },
-    fill: { fgColor: { rgb: 'F8FAFC' } },
-    alignment: { horizontal: 'left', vertical: 'center' },
-    border: border('E2E8F0'),
+  sep: { fill: { fgColor: { rgb: 'E2E8F0' } } },
+  tcLabel: {
+    font: { bold: true, sz: 10, color: { rgb: '92400E' } },
+    fill: { fgColor: { rgb: 'FEF9C3' } },
+    alignment: { horizontal: 'right', vertical: 'center' },
+    border: thinBorder('FDE68A'),
   },
-  colHeader: {
+  // Celda de valor TC por mes — en amarillo para que el contador la identifique fácilmente
+  tcValue: {
+    font: { bold: true, sz: 11, color: { rgb: '78350F' } },
+    fill: { fgColor: { rgb: 'FEF08A' } },
+    alignment: { horizontal: 'center', vertical: 'center' },
+    border: {
+      top:    { style: 'medium', color: { rgb: 'F59E0B' } },
+      bottom: { style: 'medium', color: { rgb: 'F59E0B' } },
+      left:   { style: 'medium', color: { rgb: 'F59E0B' } },
+      right:  { style: 'medium', color: { rgb: 'F59E0B' } },
+    },
+  },
+  tcTotalEmpty: {
+    fill: { fgColor: { rgb: 'FEF9C3' } },
+    border: thinBorder('FDE68A'),
+  },
+  colHdrC: {
     font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
     fill: { fgColor: { rgb: '2563EB' } },
     alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-    border: border('93C5FD'),
+    border: thinBorder('93C5FD'),
   },
-  colHeaderLeft: {
+  colHdrL: {
     font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
     fill: { fgColor: { rgb: '2563EB' } },
     alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
-    border: border('93C5FD'),
+    border: thinBorder('93C5FD'),
   },
-  clientHeader: {
+  clientHdr: {
     font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
     fill: { fgColor: { rgb: '1E3A5F' } },
     alignment: { horizontal: 'left', vertical: 'center' },
-    border: border('2563EB'),
-  },
-  clientHeaderNum: {
-    font: { bold: true, sz: 10, color: { rgb: 'BFDBFE' } },
-    fill: { fgColor: { rgb: '1E3A5F' } },
-    alignment: { horizontal: 'center', vertical: 'center' },
-    border: border('2563EB'),
+    border: thinBorder('2563EB'),
   },
   caseRow: (even: boolean) => ({
     font: { sz: 10, color: { rgb: '1E293B' } },
     fill: { fgColor: { rgb: even ? 'F0F4FF' : 'FFFFFF' } },
     alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
-    border: border('DBEAFE'),
+    border: thinBorder('DBEAFE'),
   }),
-  caseRowNum: (even: boolean) => ({
+  caseDesc: (even: boolean) => ({
+    font: { sz: 9, italic: true, color: { rgb: '64748B' } },
+    fill: { fgColor: { rgb: even ? 'F0F4FF' : 'FFFFFF' } },
+    alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
+    border: thinBorder('DBEAFE'),
+  }),
+  caseNum: (even: boolean) => ({
     font: { sz: 10, color: { rgb: '1E293B' } },
     fill: { fgColor: { rgb: even ? 'F0F4FF' : 'FFFFFF' } },
     alignment: { horizontal: 'right', vertical: 'center' },
-    border: border('DBEAFE'),
-    numFmt: '#,##0.00',
+    border: thinBorder('DBEAFE'),
+  }),
+  caseNumBold: (even: boolean) => ({
+    font: { bold: true, sz: 10, color: { rgb: '1E3A5F' } },
+    fill: { fgColor: { rgb: even ? 'F0F4FF' : 'FFFFFF' } },
+    alignment: { horizontal: 'right', vertical: 'center' },
+    border: thinBorder('DBEAFE'),
   }),
   caseMoneda: (even: boolean) => ({
     font: { sz: 9, italic: true, color: { rgb: '475569' } },
     fill: { fgColor: { rgb: even ? 'F0F4FF' : 'FFFFFF' } },
     alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
-    border: border('DBEAFE'),
+    border: thinBorder('DBEAFE'),
   }),
-  subtotalLabel: {
+  subLbl: {
     font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
     fill: { fgColor: { rgb: '059669' } },
     alignment: { horizontal: 'left', vertical: 'center' },
-    border: border('047857'),
+    border: thinBorder('047857'),
   },
-  subtotalNum: {
+  subNum: {
     font: { bold: true, sz: 10, color: { rgb: 'FFFFFF' } },
     fill: { fgColor: { rgb: '059669' } },
     alignment: { horizontal: 'right', vertical: 'center' },
-    numFmt: '#,##0.00',
-    border: border('047857'),
+    border: thinBorder('047857'),
   },
-  grandTotalLabel: {
+  grandLbl: {
     font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
     fill: { fgColor: { rgb: '047857' } },
     alignment: { horizontal: 'left', vertical: 'center' },
-    border: { top: { style: 'medium', color: { rgb: '064E3B' } }, bottom: { style: 'medium', color: { rgb: '064E3B' } }, left: { style: 'medium', color: { rgb: '064E3B' } }, right: { style: 'medium', color: { rgb: '064E3B' } } },
+    border: medBorder(),
   },
-  grandTotalNum: {
+  grandNum: {
     font: { bold: true, sz: 11, color: { rgb: 'FFFFFF' } },
     fill: { fgColor: { rgb: '047857' } },
     alignment: { horizontal: 'right', vertical: 'center' },
-    numFmt: '#,##0.00',
-    border: { top: { style: 'medium', color: { rgb: '064E3B' } }, bottom: { style: 'medium', color: { rgb: '064E3B' } }, left: { style: 'medium', color: { rgb: '064E3B' } }, right: { style: 'medium', color: { rgb: '064E3B' } } },
+    border: medBorder(),
   },
-  spacer: { fill: { fgColor: { rgb: 'F1F5F9' } } },
 }
 
-function cell(v: any, s: any): any {
-  return { v, s, t: typeof v === 'number' ? 'n' : 's' }
-}
+function staticNum(v: number, s: any): any               { return { v, s, t: 'n', z: '#,##0.00' } }
+// v = valor cacheado inicial; Excel lo reemplaza al evaluar la fórmula.
+// Sin v, xlsx-js-style renderiza la celda en blanco en vez de fórmula.
+function formulaNum(f: string, s: any, v = 0): any      { return { v, f, s, t: 'n', z: '#,##0.00' } }
+function textCell(v: string, s: any): any               { return { v, s, t: 's' } }
 
-function numCell(v: number, s: any): any {
-  return { v, s, t: 'n', z: '#,##0.00' }
-}
-
-function colLetter(c: number): string {
-  let s = ''
-  for (let n = c + 1; n > 0; n = Math.floor((n - 1) / 26))
-    s = String.fromCharCode(65 + (n - 1) % 26) + s
-  return s
-}
-
-function clientName(cl: Cliente | undefined): string {
-  if (!cl) return '—'
-  return cl.nombre || cl.name || '—'
-}
-
-function clientRuc(cl: Cliente | undefined): string {
-  if (!cl) return ''
-  return cl.ruc || cl.taxId || ''
-}
-
-function clientAddr(cl: Cliente | undefined): string {
-  if (!cl) return ''
-  return cl.direccion || cl.streetAddress || ''
-}
-
-// ── Excel generator (exported for reuse) ────────────────────────────────────────
-
+// ── Generador principal (exportado para reutilizar en CaseDetailPage) ──────────
 export function generateBillingExcel({
-  year,
-  months,
-  allHours,
-  casesMap,
-  clients,
-  lawFirm,
-  tipoCambio,
+  year, months, allHours, casesMap, clients, lawFirm, tipoCambio,
 }: {
   year: number
   months: number[]
@@ -210,13 +221,13 @@ export function generateBillingExcel({
 }) {
   const sortedMonths = [...months].sort((a, b) => a - b)
   const N = sortedMonths.length
-  // Cols: Concepto | RUC | Info | Moneda | [months N] | Total S/
-  const TOTAL_COLS = 4 + N + 1
+  // Cols: 0=Concepto | 1=RUC | 2=Info | 3=Moneda | 4..3+N=meses | 4+N=Total S/
+  const TOTAL_COLS = 5 + N
 
   const clientsById: Record<string, Cliente> = {}
-  clients.forEach(c => { clientsById[c.id] = c })
+  clients.forEach(cl => { clientsById[cl.id] = cl })
 
-  // ── Build tree: clientId → caseId → month → montoPEN ──────────────────────
+  // ── Acumular montos brutos (en moneda original) por [cliente][caso][mes] ─────
   const tree: Record<string, Record<string, Record<number, number>>> = {}
   const caseCurrency: Record<string, string> = {}
 
@@ -228,96 +239,97 @@ export function generateBillingExcel({
     const m = date.getMonth() + 1
     if (!sortedMonths.includes(m)) return
     const monto = h.montoTotal ?? 0
-    const moneda = caso.monedaFacturacion ?? 'PEN'
-    const montoPEN = moneda === 'USD' ? monto * tipoCambio : monto
-    caseCurrency[h.casoId] = moneda
+    caseCurrency[h.casoId] = caso.monedaFacturacion ?? 'PEN'
     if (!tree[caso.clienteId]) tree[caso.clienteId] = {}
     if (!tree[caso.clienteId][h.casoId]) tree[caso.clienteId][h.casoId] = {}
-    tree[caso.clienteId][h.casoId][m] = (tree[caso.clienteId][h.casoId][m] ?? 0) + montoPEN
+    tree[caso.clienteId][h.casoId][m] = (tree[caso.clienteId][h.casoId][m] ?? 0) + monto
   })
 
   const clientIds = Object.keys(tree).sort((a, b) =>
     clientName(clientsById[a]).localeCompare(clientName(clientsById[b]), 'es')
   )
 
-  const hasUSD = Object.values(caseCurrency).some(c => c === 'USD')
-
-  // ── Build worksheet ─────────────────────────────────────────────────────────
+  // ── Construir hoja ──────────────────────────────────────────────────────────
   const ws: any = {}
   const range = { s: { r: 0, c: 0 }, e: { r: 0, c: 0 } }
   const merges: any[] = []
 
-  const setCell = (r: number, c: number, val: any) => {
-    ws[XLSXStyle.utils.encode_cell({ r, c })] = val
-    if (r > range.e.r) range.e.r = r
-    if (c > range.e.c) range.e.c = c
+  const setCell = (r: number, col: number, val: any) => {
+    ws[XLSXStyle.utils.encode_cell({ r, c: col })] = val
+    if (r   > range.e.r) range.e.r = r
+    if (col > range.e.c) range.e.c = col
   }
-
   const merge = (r1: number, c1: number, r2: number, c2: number) =>
     merges.push({ s: { r: r1, c: c1 }, e: { r: r2, c: c2 } })
 
+  const today = new Date()
+  const todayStr = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`
+  const firmAddr = lawFirm ? [lawFirm.street_address, lawFirm.city].filter(Boolean).join(', ') : ''
   const periodStr = sortedMonths.length === 12
     ? `Año ${year}`
     : sortedMonths.length === 1
     ? `${MONTH_NAMES[sortedMonths[0] - 1]} ${year}`
     : `${MONTH_NAMES[sortedMonths[0] - 1]} – ${MONTH_NAMES[sortedMonths[sortedMonths.length - 1] - 1]} ${year}`
 
-  const today = new Date()
-  const todayStr = `${String(today.getDate()).padStart(2,'0')}/${String(today.getMonth()+1).padStart(2,'0')}/${today.getFullYear()}`
-  const firmAddr = lawFirm ? [lawFirm.street_address, lawFirm.city].filter(Boolean).join(', ') : ''
   const cLabel = TOTAL_COLS - 2
   const cValue = TOTAL_COLS - 1
 
-  // Row 0: title
-  setCell(0, 0, cell('REPORTE DE FACTURACIÓN', S.title))
-  for (let c = 1; c < TOTAL_COLS; c++) setCell(0, c, cell('', S.headerEmpty))
+  // ── Cabecera firma (filas 0-4) ──────────────────────────────────────────────
+  setCell(0, 0, textCell('REPORTE DE FACTURACIÓN', S.title))
+  for (let col = 1; col < TOTAL_COLS; col++) setCell(0, col, textCell('', S.hdrEmpty))
   merge(0, 0, 0, TOTAL_COLS - 1)
 
-  // Rows 1-4: firm info
   const infoRows = [
-    { label: 'Razón Social:', value: lawFirm?.name ?? '',                rLabel: 'Período:',     rValue: periodStr },
-    { label: 'RUC:',          value: lawFirm?.registration_number ?? '', rLabel: 'Generado el:', rValue: todayStr  },
-    { label: 'Dirección:',    value: firmAddr,                            rLabel: '',              rValue: ''        },
-    { label: 'Teléfono:',     value: lawFirm?.phone ?? '',               rLabel: '',              rValue: ''        },
+    { lbl: 'Razón Social:', val: lawFirm?.name ?? '',                rLbl: 'Período:',     rVal: periodStr },
+    { lbl: 'RUC:',          val: lawFirm?.registration_number ?? '', rLbl: 'Generado el:', rVal: todayStr  },
+    { lbl: 'Dirección:',    val: firmAddr,                            rLbl: '',              rVal: ''        },
+    { lbl: 'Teléfono:',     val: lawFirm?.phone ?? '',               rLbl: '',              rVal: ''        },
   ]
-  infoRows.forEach(({ label, value, rLabel, rValue }, i) => {
+  infoRows.forEach(({ lbl, val, rLbl, rVal }, i) => {
     const row = i + 1
-    setCell(row, 0, cell(label, S.firmLabel))
-    setCell(row, 1, cell(value, S.firmValue))
-    for (let c = 2; c < cLabel; c++) setCell(row, c, cell('', S.headerEmpty))
-    setCell(row, cLabel, cell(rLabel, S.firmLabel))
-    setCell(row, cValue, cell(rValue, S.firmValue))
+    setCell(row, 0, textCell(lbl, S.firmLbl))
+    setCell(row, 1, textCell(val, S.firmVal))
+    for (let col = 2; col < cLabel; col++) setCell(row, col, textCell('', S.hdrEmpty))
+    setCell(row, cLabel, textCell(rLbl, S.firmLbl))
+    setCell(row, cValue, textCell(rVal, S.firmVal))
     merge(row, 1, row, cLabel - 1)
   })
 
-  // Row 5: separator
-  for (let c = 0; c < TOTAL_COLS; c++) setCell(5, c, cell('', S.spacer))
+  // Fila 5: separador
+  for (let col = 0; col < TOTAL_COLS; col++) setCell(5, col, textCell('', S.sep))
   merge(5, 0, 5, TOTAL_COLS - 1)
 
-  // Row 6: tipo de cambio info
-  const tcLabel = hasUSD
-    ? `Tipo de cambio aplicado: 1 USD = S/ ${tipoCambio.toFixed(2)}  ·  Todos los montos expresados en Soles (S/)`
-    : 'Todos los montos expresados en Soles (S/)'
-  setCell(6, 0, cell(tcLabel, S.tcRow))
-  for (let c = 1; c < TOTAL_COLS; c++) setCell(6, c, cell('', S.tcRow))
-  merge(6, 0, 6, TOTAL_COLS - 1)
+  // ── Fila 6: TIPO DE CAMBIO por mes (TC_ROW_JS = 6 → Excel fila 7) ────────────
+  // Cols 0-3 merged → etiqueta descriptiva
+  // Col 4+i         → TC editable para el mes i (celdas en amarillo)
+  // Col 4+N         → nota orientativa
+  setCell(6, 0, textCell('Tipo de cambio USD → S/ (por mes):', S.tcLabel))
+  setCell(6, 1, textCell('', S.tcLabel))
+  setCell(6, 2, textCell('', S.tcLabel))
+  setCell(6, 3, textCell('', S.tcLabel))
+  merge(6, 0, 6, 3)
 
-  // Row 7: separator
-  for (let c = 0; c < TOTAL_COLS; c++) setCell(7, c, cell('', S.spacer))
+  sortedMonths.forEach((_, i) => {
+    // Un valor TC independiente por mes — el contador puede cambiarlos en Excel
+    setCell(6, 4 + i, { v: tipoCambio, s: S.tcValue, t: 'n', z: '#,##0.000' })
+  })
+  setCell(6, 4 + N, textCell('← modificar por mes', S.tcTotalEmpty))
+
+  // Fila 7: separador
+  for (let col = 0; col < TOTAL_COLS; col++) setCell(7, col, textCell('', S.sep))
   merge(7, 0, 7, TOTAL_COLS - 1)
 
-  // Row 8: column headers
-  setCell(8, 0, cell('Concepto', S.colHeaderLeft))
-  setCell(8, 1, cell('RUC', S.colHeader))
-  setCell(8, 2, cell('Dirección / Descripción', S.colHeaderLeft))
-  setCell(8, 3, cell('Moneda', S.colHeader))
-  sortedMonths.forEach((m, i) => setCell(8, 4 + i, cell(MONTH_NAMES[m - 1], S.colHeader)))
-  setCell(8, 4 + N, cell('TOTAL S/', S.colHeader))
+  // ── Fila 8: encabezados de columna ──────────────────────────────────────────
+  setCell(8, 0, textCell('Concepto', S.colHdrL))
+  setCell(8, 1, textCell('RUC', S.colHdrC))
+  setCell(8, 2, textCell('Dirección / Descripción', S.colHdrL))
+  setCell(8, 3, textCell('Moneda', S.colHdrC))
+  sortedMonths.forEach((m, i) => setCell(8, 4 + i, textCell(MONTH_NAMES[m - 1], S.colHdrC)))
+  setCell(8, 4 + N, textCell('TOTAL S/', S.colHdrC))
 
-  // ── Data rows ───────────────────────────────────────────────────────────────
+  // ── Filas de datos ──────────────────────────────────────────────────────────
   let row = 9
-  const grandMonths: Record<number, number> = {}
-  let grandTotal = 0
+  const clientSubtotalExcelRows: number[] = []
 
   clientIds.forEach(clientId => {
     const cl = clientsById[clientId]
@@ -325,92 +337,134 @@ export function generateBillingExcel({
       (casesMap[a]?.titulo ?? a).localeCompare(casesMap[b]?.titulo ?? b, 'es')
     )
 
-    // Client header row
-    setCell(row, 0, cell(`▶  ${clientName(cl)}`, S.clientHeader))
-    setCell(row, 1, cell(clientRuc(cl), S.clientHeader))
-    setCell(row, 2, cell(clientAddr(cl), S.clientHeader))
-    setCell(row, 3, cell('', S.clientHeader))
-    for (let i = 0; i < N; i++) setCell(row, 4 + i, cell('', S.clientHeaderNum))
-    setCell(row, 4 + N, cell('', S.clientHeaderNum))
+    // Cabecera del cliente
+    setCell(row, 0, textCell(`▶  ${clientName(cl)}`, S.clientHdr))
+    setCell(row, 1, textCell(clientRuc(cl), S.clientHdr))
+    setCell(row, 2, textCell(clientAddr(cl), S.clientHdr))
+    setCell(row, 3, textCell('', S.clientHdr))
+    for (let i = 0; i <= N; i++) setCell(row, 4 + i, textCell('', S.clientHdr))
+    merge(row, 0, row, 2)
     row++
 
-    // Case rows
-    const clientMonths: Record<number, number> = {}
-    let clientTotal = 0
+    const firstCaseJSRow = row
+
     let caseIdx = 0
-
     caseIds.forEach(caseId => {
-      const caso = casesMap[caseId]
-      const moneda = caseCurrency[caseId] ?? 'PEN'
-      const monedaLabel = moneda === 'USD' ? `USD → S/ ×${tipoCambio.toFixed(2)}` : 'S/.'
-      const even = caseIdx % 2 === 0
-      const caseTotal = sortedMonths.reduce((sum, m) => sum + (tree[clientId][caseId][m] ?? 0), 0)
+      const caso   = casesMap[caseId]
+      const moneda = caseCurrency[caseId] ?? caso?.monedaFacturacion ?? 'PEN'
+      const isUSD  = moneda === 'USD'
+      const even   = caseIdx % 2 === 0
+      const excelRow = row + 1
 
-      setCell(row, 0, cell(`   └  ${caso?.titulo ?? caseId}`, S.caseRow(even)))
-      setCell(row, 1, cell('', S.caseRow(even)))
-      setCell(row, 2, cell(caso?.descripcion ?? '', { ...S.caseRow(even), font: { sz: 9, color: { rgb: '64748B' }, italic: true } }))
-      setCell(row, 3, cell(monedaLabel, S.caseMoneda(even)))
+      setCell(row, 0, textCell(`   └  ${caso?.titulo ?? caseId}`, S.caseRow(even)))
+      setCell(row, 1, textCell('', S.caseRow(even)))
+      setCell(row, 2, textCell(caso?.descripcion ?? '', S.caseDesc(even)))
+      setCell(row, 3, textCell(isUSD ? 'USD' : 'S/.', S.caseMoneda(even)))
 
+      let caseTotalSoles = 0
       sortedMonths.forEach((m, i) => {
-        const v = tree[clientId][caseId][m] ?? 0
-        setCell(row, 4 + i, numCell(v, S.caseRowNum(even)))
-        clientMonths[m] = (clientMonths[m] ?? 0) + v
-        grandMonths[m]  = (grandMonths[m]  ?? 0) + v
+        const rawAmount = tree[clientId][caseId][m] ?? 0
+        if (isUSD) {
+          // Fórmula: monto_bruto_USD × TC_del_mes_i  →  resultado en S/
+          // tcRef(i) → $E$7 para mes 0, $F$7 para mes 1, etc. (ref. absoluta)
+          // v = valor cacheado con el TC por defecto; Excel lo recalcula al abrir.
+          const cached = rawAmount * tipoCambio
+          setCell(row, 4 + i, formulaNum(`${rawAmount}*${tcRef(i)}`, S.caseNum(even), cached))
+          caseTotalSoles += cached
+        } else {
+          setCell(row, 4 + i, staticNum(rawAmount, S.caseNum(even)))
+          caseTotalSoles += rawAmount
+        }
       })
-      setCell(row, 4 + N, numCell(caseTotal, { ...S.caseRowNum(even), font: { bold: true, sz: 10, color: { rgb: '1E3A5F' } } }))
-      clientTotal += caseTotal
-      grandTotal  += caseTotal
+
+      // Total del caso = SUM de sus columnas mensuales (ya en S/)
+      const firstMonthL = colLetter(4)
+      const lastMonthL  = colLetter(4 + N - 1)
+      setCell(row, 4 + N, formulaNum(
+        `SUM(${firstMonthL}${excelRow}:${lastMonthL}${excelRow})`,
+        S.caseNumBold(even),
+        caseTotalSoles,
+      ))
 
       row++
       caseIdx++
     })
 
-    // Client subtotal row
-    setCell(row, 0, cell(`SUBTOTAL  ${clientName(cl)}`, S.subtotalLabel))
-    setCell(row, 1, cell('', S.subtotalLabel))
-    setCell(row, 2, cell('', S.subtotalLabel))
-    setCell(row, 3, cell('S/.', S.subtotalLabel))
+    const lastCaseJSRow = row - 1
+    const subtotalExcelRow = row + 1
+    clientSubtotalExcelRows.push(subtotalExcelRow)
+
+    // Subtotal del cliente
+    setCell(row, 0, textCell(`SUBTOTAL  ${clientName(cl)}`, S.subLbl))
+    setCell(row, 1, textCell('', S.subLbl))
+    setCell(row, 2, textCell('', S.subLbl))
+    setCell(row, 3, textCell('S/.', S.subLbl))
     merge(row, 0, row, 2)
-    sortedMonths.forEach((m, i) => setCell(row, 4 + i, numCell(clientMonths[m] ?? 0, S.subtotalNum)))
-    setCell(row, 4 + N, numCell(clientTotal, S.subtotalNum))
+
+    const fromExcelRow = firstCaseJSRow + 1
+    const toExcelRow   = lastCaseJSRow  + 1
+
+    sortedMonths.forEach((_, i) => {
+      const colL = colLetter(4 + i)
+      setCell(row, 4 + i, formulaNum(
+        `SUM(${colL}${fromExcelRow}:${colL}${toExcelRow})`,
+        S.subNum,
+      ))
+    })
+    const totalColL = colLetter(4 + N)
+    setCell(row, 4 + N, formulaNum(
+      `SUM(${totalColL}${fromExcelRow}:${totalColL}${toExcelRow})`,
+      S.subNum,
+    ))
     row++
 
-    // Blank spacer between clients
-    for (let c = 0; c < TOTAL_COLS; c++) setCell(row, c, cell('', S.spacer))
+    // Separador entre clientes
+    for (let col = 0; col < TOTAL_COLS; col++) setCell(row, col, textCell('', S.sep))
     merge(row, 0, row, TOTAL_COLS - 1)
     row++
   })
 
-  // Grand total row
-  setCell(row, 0, cell('TOTAL GENERAL', S.grandTotalLabel))
-  setCell(row, 1, cell('', S.grandTotalLabel))
-  setCell(row, 2, cell('', S.grandTotalLabel))
-  setCell(row, 3, cell('S/.', S.grandTotalLabel))
+  // ── TOTAL GENERAL ───────────────────────────────────────────────────────────
+  setCell(row, 0, textCell('TOTAL GENERAL', S.grandLbl))
+  setCell(row, 1, textCell('', S.grandLbl))
+  setCell(row, 2, textCell('', S.grandLbl))
+  setCell(row, 3, textCell('S/.', S.grandLbl))
   merge(row, 0, row, 2)
-  sortedMonths.forEach((m, i) => setCell(row, 4 + i, numCell(grandMonths[m] ?? 0, S.grandTotalNum)))
-  setCell(row, 4 + N, numCell(grandTotal, S.grandTotalNum))
 
-  // ── Sheet config ────────────────────────────────────────────────────────────
+  if (clientSubtotalExcelRows.length > 0) {
+    sortedMonths.forEach((_, i) => {
+      const colL = colLetter(4 + i)
+      const refs = clientSubtotalExcelRows.map(r => `${colL}${r}`).join(',')
+      setCell(row, 4 + i, formulaNum(`SUM(${refs})`, S.grandNum))
+    })
+    const totalColL = colLetter(4 + N)
+    const refs = clientSubtotalExcelRows.map(r => `${totalColL}${r}`).join(',')
+    setCell(row, 4 + N, formulaNum(`SUM(${refs})`, S.grandNum))
+  } else {
+    for (let i = 0; i <= N; i++) setCell(row, 4 + i, staticNum(0, S.grandNum))
+  }
+
+  // ── Configuración del sheet ─────────────────────────────────────────────────
   ws['!ref'] = XLSXStyle.utils.encode_range(range)
   ws['!merges'] = merges
   ws['!cols'] = [
     { wch: 36 }, // Concepto
     { wch: 14 }, // RUC
     { wch: 38 }, // Dirección / Descripción
-    { wch: 14 }, // Moneda
-    ...sortedMonths.map(() => ({ wch: 13 })),
+    { wch: 10 }, // Moneda
+    ...sortedMonths.map(() => ({ wch: 14 })),
     { wch: 14 }, // Total S/
   ]
   ws['!rows'] = [
-    { hpt: 30 }, // 0 title
-    { hpt: 18 }, // 1-4 firm info
+    { hpt: 30 },
     { hpt: 18 },
     { hpt: 18 },
     { hpt: 18 },
-    { hpt: 4  }, // 5 sep
-    { hpt: 16 }, // 6 TC
-    { hpt: 4  }, // 7 sep
-    { hpt: 30 }, // 8 col headers
+    { hpt: 18 },
+    { hpt: 5  },
+    { hpt: 26 }, // fila TC por mes
+    { hpt: 5  },
+    { hpt: 30 }, // headers
   ]
 
   const wb = XLSXStyle.utils.book_new()
@@ -419,14 +473,13 @@ export function generateBillingExcel({
   XLSXStyle.writeFile(wb, fileName)
 }
 
-// ── Modal component ──────────────────────────────────────────────────────────────
-
+// ── Componente modal ───────────────────────────────────────────────────────────
 export function ExportBillingModal({ onClose, allHours, casesMap, clients }: Props) {
-  const [year, setYear]         = useState(currentYear)
-  const [months, setMonths]     = useState<number[]>([1,2,3,4,5,6,7,8,9,10,11,12])
-  const [tipoCambio, setTC]     = useState(3.75)
-  const [exporting, setExporting] = useState(false)
-  const [lawFirm, setLawFirm]   = useState<LawFirm | null>(null)
+  const [year, setYear]       = useState(currentYear)
+  const [months, setMonths]   = useState<number[]>([1,2,3,4,5,6,7,8,9,10,11,12])
+  const [tipoCambio, setTC]   = useState(3.75)
+  const [exporting, setEx]    = useState(false)
+  const [lawFirm, setLawFirm] = useState<LawFirm | null>(null)
 
   useEffect(() => {
     api.get('/law-firms/current').then(r => setLawFirm(r.data.data ?? null)).catch(() => {})
@@ -435,15 +488,19 @@ export function ExportBillingModal({ onClose, allHours, casesMap, clients }: Pro
   const hasUSD = Object.values(casesMap).some(c => c.monedaFacturacion === 'USD')
 
   const toggleMonth = (m: number) =>
-    setMonths(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m].sort((a, b) => a - b))
+    setMonths(prev =>
+      prev.includes(m)
+        ? prev.filter(x => x !== m)
+        : [...prev, m].sort((a, b) => a - b)
+    )
 
   const handleExport = () => {
     if (months.length === 0) return
-    setExporting(true)
+    setEx(true)
     try {
       generateBillingExcel({ year, months, allHours, casesMap, clients, lawFirm, tipoCambio })
     } finally {
-      setExporting(false)
+      setEx(false)
     }
   }
 
@@ -460,9 +517,9 @@ export function ExportBillingModal({ onClose, allHours, casesMap, clients }: Pro
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div>
             <h2 className="text-base font-semibold text-slate-900">Exportar facturación a Excel</h2>
-            <p className="text-xs text-slate-500 mt-0.5">Desglose por cliente y caso · Todo en Soles</p>
+            <p className="text-xs text-slate-500 mt-0.5">Desglose por cliente y caso · Todo formulado en Soles</p>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
             <X size={20} />
           </button>
         </div>
@@ -476,8 +533,12 @@ export function ExportBillingModal({ onClose, allHours, casesMap, clients }: Pro
               {YEARS.map(y => (
                 <button key={y} onClick={() => setYear(y)}
                   className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
-                    year === y ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'
-                  }`}>{y}</button>
+                    year === y
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'
+                  }`}>
+                  {y}
+                </button>
               ))}
             </div>
           </div>
@@ -487,9 +548,11 @@ export function ExportBillingModal({ onClose, allHours, casesMap, clients }: Pro
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium text-slate-700">Meses a exportar</label>
               <div className="flex gap-2">
-                <button onClick={() => setMonths([1,2,3,4,5,6,7,8,9,10,11,12])} className="text-xs text-blue-600 hover:text-blue-800 font-medium">Todos</button>
+                <button onClick={() => setMonths([1,2,3,4,5,6,7,8,9,10,11,12])}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium">Todos</button>
                 <span className="text-slate-300">·</span>
-                <button onClick={() => setMonths([])} className="text-xs text-slate-500 hover:text-slate-700">Limpiar</button>
+                <button onClick={() => setMonths([])}
+                  className="text-xs text-slate-500 hover:text-slate-700">Limpiar</button>
               </div>
             </div>
             <div className="grid grid-cols-4 gap-1.5">
@@ -499,7 +562,9 @@ export function ExportBillingModal({ onClose, allHours, casesMap, clients }: Pro
                 return (
                   <button key={m} onClick={() => toggleMonth(m)}
                     className={`relative py-2 rounded-lg text-xs font-medium border transition-all ${
-                      sel ? 'bg-blue-50 text-blue-700 border-blue-400 ring-1 ring-blue-300' : 'bg-white text-slate-500 border-slate-200 hover:border-blue-200 hover:text-blue-500'
+                      sel
+                        ? 'bg-blue-50 text-blue-700 border-blue-400 ring-1 ring-blue-300'
+                        : 'bg-white text-slate-500 border-slate-200 hover:border-blue-200 hover:text-blue-500'
                     }`}>
                     {sel && (
                       <span className="absolute top-0.5 right-0.5 w-3 h-3 bg-blue-600 rounded-full flex items-center justify-center">
@@ -516,38 +581,38 @@ export function ExportBillingModal({ onClose, allHours, casesMap, clients }: Pro
             )}
           </div>
 
-          {/* Tipo de cambio (siempre visible para que el contador pueda anotarlo) */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">
-              Tipo de cambio{' '}
-              <span className="text-slate-400 font-normal">(USD → S/)</span>
-              {!hasUSD && <span className="ml-2 text-xs text-slate-400 italic">No hay casos en USD</span>}
+          {/* Tipo de cambio */}
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+            <label className="block text-sm font-medium text-amber-900 mb-1.5">
+              Tipo de cambio inicial <span className="font-normal text-amber-700">(USD → S/)</span>
+              {!hasUSD && (
+                <span className="ml-2 text-xs text-amber-600 italic">No hay casos en USD actualmente</span>
+              )}
             </label>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500 font-medium">1 USD =</span>
+              <span className="text-sm text-amber-700 font-medium">1 USD =</span>
               <input
-                type="number"
-                min={1}
-                step={0.01}
-                value={tipoCambio}
+                type="number" min={1} step={0.001} value={tipoCambio}
                 onChange={e => setTC(parseFloat(e.target.value) || 3.75)}
-                className="w-28 border border-slate-300 rounded-md px-3 py-1.5 text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-28 border border-amber-300 rounded-md px-3 py-1.5 text-sm text-right bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
-              <span className="text-sm text-slate-500 font-medium">S/</span>
+              <span className="text-sm text-amber-700 font-medium">S/</span>
             </div>
+            <p className="text-xs text-amber-600 mt-1.5 leading-relaxed">
+              Valor inicial aplicado a todos los meses. En el Excel, cada mes tiene su propia
+              celda TC en la fila 7 (resaltada en amarillo) — el contador puede ajustar cada
+              mes de forma independiente y todos los totales se recalculan automáticamente.
+            </p>
           </div>
 
         </div>
 
         <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-3">
           <Button variant="ghost" size="sm" onClick={onClose}>Cancelar</Button>
-          <Button
-            size="sm"
-            onClick={handleExport}
+          <Button size="sm" onClick={handleExport}
             disabled={months.length === 0 || exporting}
             isLoading={exporting}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-          >
+            className="bg-emerald-600 hover:bg-emerald-700 text-white">
             {!exporting && <Download size={14} className="mr-1.5" />}
             Descargar Excel
           </Button>
