@@ -6,7 +6,7 @@ Handles client CRUD and case-client relationships.
 from datetime import datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, case as sa_case
 from sqlalchemy.orm import selectinload
@@ -17,6 +17,7 @@ from app.utils.auth import get_current_user, check_role, get_password_hash
 from app.schemas.client import ClientCreate, ClientUpdate
 from app.models import User, Client, Case, CaseClient
 from app.models.task import Task
+from app.models.client_credential import ClientCredential
 from app.services.audit_service import audit_log
 
 router = APIRouter(tags=["clients"])
@@ -539,3 +540,151 @@ async def revoke_portal_access(
     await db.commit()
 
     return success_response(data={"message": "Acceso al portal revocado"}, meta={})
+
+
+# ── Credenciales institucionales ──────────────────────────────────────────────
+
+def _format_credential(cred: ClientCredential) -> dict:
+    return {
+        "id": str(cred.id),
+        "titulo": cred.titulo,
+        "usuario": cred.usuario,
+        "clave": cred.clave,
+        "createdAt": cred.created_at.isoformat() if cred.created_at else None,
+    }
+
+
+@router.get(
+    "/{client_id}/credentials",
+    response_model=dict,
+    summary="List client credentials",
+)
+async def list_credentials(
+    client_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    client = await db.get(Client, client_id)
+    if not client or client.is_deleted or client.law_firm_id != current_user.law_firm_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+
+    result = await db.execute(
+        select(ClientCredential).where(
+            and_(
+                ClientCredential.client_id == client.id,
+                ClientCredential.is_deleted == False,
+            )
+        ).order_by(ClientCredential.created_at)
+    )
+    creds = result.scalars().all()
+    return success_response(data=[_format_credential(c) for c in creds], meta={})
+
+
+@router.post(
+    "/{client_id}/credentials",
+    response_model=dict,
+    summary="Create client credential",
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_credential(
+    client_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    client = await db.get(Client, client_id)
+    if not client or client.is_deleted or client.law_firm_id != current_user.law_firm_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+
+    body = await request.json()
+    titulo = (body.get("titulo") or "").strip()
+    if not titulo:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El título es obligatorio")
+
+    cred = ClientCredential(
+        client_id=client.id,
+        law_firm_id=current_user.law_firm_id,
+        titulo=titulo,
+        usuario=body.get("usuario") or None,
+        clave=body.get("clave") or None,
+    )
+    db.add(cred)
+    await db.commit()
+    await db.refresh(cred)
+    return success_response(data=_format_credential(cred), meta={})
+
+
+@router.patch(
+    "/{client_id}/credentials/{cred_id}",
+    response_model=dict,
+    summary="Update client credential",
+)
+async def update_credential(
+    client_id: str,
+    cred_id: str,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    import uuid as _uuid
+    client = await db.get(Client, client_id)
+    if not client or client.is_deleted or client.law_firm_id != current_user.law_firm_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+
+    try:
+        cred_uuid = _uuid.UUID(cred_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Credencial no encontrada")
+
+    cred = await db.get(ClientCredential, cred_uuid)
+    if not cred or cred.is_deleted or cred.client_id != client.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Credencial no encontrada")
+
+    body = await request.json()
+    if "titulo" in body:
+        titulo = (body["titulo"] or "").strip()
+        if not titulo:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El título es obligatorio")
+        cred.titulo = titulo
+    if "usuario" in body:
+        cred.usuario = body["usuario"] or None
+    if "clave" in body:
+        cred.clave = body["clave"] or None
+
+    await db.commit()
+    await db.refresh(cred)
+    return success_response(data=_format_credential(cred), meta={})
+
+
+@router.delete(
+    "/{client_id}/credentials/{cred_id}",
+    response_model=dict,
+    summary="Delete client credential",
+)
+async def delete_credential(
+    client_id: str,
+    cred_id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    import uuid as _uuid
+    from datetime import datetime
+
+    client = await db.get(Client, client_id)
+    if not client or client.is_deleted or client.law_firm_id != current_user.law_firm_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
+
+    try:
+        cred_uuid = _uuid.UUID(cred_id)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Credencial no encontrada")
+
+    cred = await db.get(ClientCredential, cred_uuid)
+    if not cred or cred.is_deleted or cred.client_id != client.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Credencial no encontrada")
+
+    cred.is_deleted = True
+    cred.deleted_at = datetime.utcnow()
+    cred.deleted_by = current_user.id
+    await db.commit()
+    return success_response(data={"message": "Credencial eliminada"}, meta={})

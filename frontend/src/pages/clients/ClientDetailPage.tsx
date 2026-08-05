@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { LoadingSpinner } from '@/components/common/LoadingSpinner'
 import { CaseStatusBadge } from '@/components/cases/CaseStatusBadge'
-import { ArrowLeft, Edit2, Save, X, Trash2, Mail, Phone, MapPin, Building2, FileText, Hash, Eye, EyeOff, KeyRound, Copy, Check, Globe, ShieldCheck, ShieldOff } from 'lucide-react'
+import { ArrowLeft, Edit2, Save, X, Trash2, Mail, Phone, MapPin, Building2, FileText, Hash, Eye, EyeOff, KeyRound, Copy, Check, Globe, ShieldCheck, ShieldOff, Plus } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import api from '@/lib/axios'
 import { ClientAlerts } from '@/components/clients/ClientAlerts'
@@ -44,6 +44,14 @@ interface ClientCase {
   createdAt: string
 }
 
+interface ClientCredential {
+  id: string
+  titulo: string
+  usuario: string | null
+  clave: string | null
+  createdAt: string
+}
+
 const CLIENT_TYPE_LABELS: Record<string, string> = {
   individual: 'Persona natural',
   business: 'Empresa',
@@ -64,7 +72,6 @@ export function ClientDetailPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState('')
-  const [showClave, setShowClave] = useState(false)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
   const [portalPassword, setPortalPassword] = useState('')
   const [portalPasswordConfirm, setPortalPasswordConfirm] = useState('')
@@ -72,6 +79,15 @@ export function ClientDetailPage() {
   const [portalMsg, setPortalMsg] = useState('')
   const [portalError, setPortalError] = useState('')
   const [showPortalForm, setShowPortalForm] = useState(false)
+
+  // Credenciales institucionales
+  const [credentials, setCredentials] = useState<ClientCredential[]>([])
+  const [visibleClave, setVisibleClave] = useState<Record<string, boolean>>({})
+  const [showAddCred, setShowAddCred] = useState(false)
+  const [newCred, setNewCred] = useState({ titulo: '', usuario: '', clave: '' })
+  const [savingCred, setSavingCred] = useState(false)
+  const [credError, setCredError] = useState('')
+  const [deletingCred, setDeletingCred] = useState<string | null>(null)
 
   const copyToClipboard = (key: string, value: string) => {
     if (!value) return
@@ -102,6 +118,7 @@ export function ClientDetailPage() {
     if (id) {
       fetchClient()
       fetchCases()
+      fetchCredentials()
     }
   }, [id])
 
@@ -131,6 +148,15 @@ export function ClientDetailPage() {
       setError('No se pudo cargar el cliente.')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const fetchCredentials = async () => {
+    try {
+      const res = await api.get(`/clients/${id}/credentials`)
+      setCredentials(res.data.data || [])
+    } catch {
+      // silently fail
     }
   }
 
@@ -235,6 +261,41 @@ export function ClientDetailPage() {
       setPortalError(err?.response?.data?.detail || 'Error al configurar el acceso')
     } finally {
       setIsSettingPortal(false)
+    }
+  }
+
+  const handleAddCredential = async () => {
+    setCredError('')
+    if (!newCred.titulo.trim()) {
+      setCredError('El título es obligatorio')
+      return
+    }
+    setSavingCred(true)
+    try {
+      const res = await api.post(`/clients/${id}/credentials`, {
+        titulo: newCred.titulo.trim(),
+        usuario: newCred.usuario.trim() || null,
+        clave: newCred.clave || null,
+      })
+      setCredentials(prev => [...prev, res.data.data])
+      setNewCred({ titulo: '', usuario: '', clave: '' })
+      setShowAddCred(false)
+    } catch (err: any) {
+      setCredError(err?.response?.data?.detail || 'Error al guardar la credencial')
+    } finally {
+      setSavingCred(false)
+    }
+  }
+
+  const handleDeleteCredential = async (credId: string) => {
+    setDeletingCred(credId)
+    try {
+      await api.delete(`/clients/${id}/credentials/${credId}`)
+      setCredentials(prev => prev.filter(c => c.id !== credId))
+    } catch {
+      // silently fail
+    } finally {
+      setDeletingCred(null)
     }
   }
 
@@ -537,75 +598,150 @@ export function ClientDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Credenciales SOL */}
+            {/* Credenciales institucionales */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <KeyRound size={18} />
-                  Credenciales SOL
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <KeyRound size={18} />
+                    Credenciales
+                  </CardTitle>
+                  {!showAddCred && (
+                    <button
+                      onClick={() => { setShowAddCred(true); setCredError('') }}
+                      className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors"
+                    >
+                      <Plus size={16} />
+                      Agregar
+                    </button>
+                  )}
+                </div>
               </CardHeader>
-              <CardContent>
-                {isEditing ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <CardContent className="space-y-3">
+                {/* Formulario para nueva credencial */}
+                {showAddCred && (
+                  <div className="border border-slate-200 rounded-lg p-4 bg-slate-50 space-y-3">
+                    <p className="text-sm font-medium text-slate-700">Nueva credencial</p>
                     <Input
-                      label="Usuario SOL"
-                      value={form.usuario_sol}
-                      onChange={(e) => setForm({ ...form, usuario_sol: e.target.value })}
-                      placeholder="Ej. RAMIREZ20"
+                      label="Institución *"
+                      value={newCred.titulo}
+                      onChange={(e) => setNewCred({ ...newCred, titulo: e.target.value })}
+                      placeholder="Ej. SUNAT SOL, SUNARP, SBS..."
+                      autoFocus
                     />
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Clave SOL</label>
-                      <div className="relative">
-                        <input
-                          type={showClave ? 'text' : 'password'}
-                          value={form.clave_sol}
-                          onChange={(e) => setForm({ ...form, clave_sol: e.target.value })}
-                          placeholder="Clave SOL"
-                          className="w-full border border-slate-300 rounded-md px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowClave(v => !v)}
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                        >
-                          {showClave ? <EyeOff size={15} /> : <Eye size={15} />}
-                        </button>
-                      </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Input
+                        label="Usuario"
+                        value={newCred.usuario}
+                        onChange={(e) => setNewCred({ ...newCred, usuario: e.target.value })}
+                        placeholder="Usuario o RUC"
+                      />
+                      <Input
+                        label="Contraseña"
+                        type="text"
+                        value={newCred.clave}
+                        onChange={(e) => setNewCred({ ...newCred, clave: e.target.value })}
+                        placeholder="Contraseña"
+                      />
+                    </div>
+                    {credError && (
+                      <p className="text-xs text-red-600">{credError}</p>
+                    )}
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={handleAddCredential} disabled={savingCred}>
+                        {savingCred ? 'Guardando...' : 'Guardar'}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => { setShowAddCred(false); setNewCred({ titulo: '', usuario: '', clave: '' }); setCredError('') }}
+                        disabled={savingCred}
+                      >
+                        Cancelar
+                      </Button>
                     </div>
                   </div>
+                )}
+
+                {/* Lista de credenciales */}
+                {credentials.length === 0 && !showAddCred ? (
+                  <p className="text-sm text-slate-400 text-center py-4">
+                    No hay credenciales guardadas.{' '}
+                    <button
+                      onClick={() => setShowAddCred(true)}
+                      className="text-primary-600 hover:underline"
+                    >
+                      Agregar una
+                    </button>
+                  </p>
                 ) : (
-                  <dl className="grid grid-cols-2 gap-4">
-                    <div>
-                      <dt className="text-xs text-slate-500 uppercase font-semibold mb-1">Usuario SOL</dt>
-                      <dd className="text-sm text-slate-900 flex items-center gap-1.5">
-                        <span className="font-mono">{client.usuarioSol || <span className="text-slate-400 font-sans">—</span>}</span>
-                        {client.usuarioSol && (
-                          <button onClick={() => copyToClipboard('usuarioSol', client.usuarioSol!)} className="p-1 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Copiar usuario SOL">
-                            {copiedKey === 'usuarioSol' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+                  <div className="space-y-2">
+                    {credentials.map((cred) => (
+                      <div key={cred.id} className="border border-slate-200 rounded-lg px-4 py-3 bg-white">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                            {cred.titulo}
+                          </p>
+                          <button
+                            onClick={() => handleDeleteCredential(cred.id)}
+                            disabled={deletingCred === cred.id}
+                            className="text-slate-300 hover:text-red-500 transition-colors mt-0.5"
+                            title="Eliminar credencial"
+                          >
+                            <Trash2 size={13} />
                           </button>
-                        )}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt className="text-xs text-slate-500 uppercase font-semibold mb-1">Clave SOL</dt>
-                      <dd className="text-sm text-slate-900 flex items-center gap-2">
-                        {client.claveSol ? (
-                          <>
-                            <span className="font-mono">{showClave ? client.claveSol : '••••••••'}</span>
-                            <button onClick={() => setShowClave(v => !v)} className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
-                              {showClave ? <EyeOff size={13} /> : <Eye size={13} />}
-                            </button>
-                            <button onClick={() => copyToClipboard('claveSol', client.claveSol!)} className="p-1 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Copiar clave SOL">
-                              {copiedKey === 'claveSol' ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-                            </button>
-                          </>
-                        ) : (
-                          <span className="text-slate-400">—</span>
-                        )}
-                      </dd>
-                    </div>
-                  </dl>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {/* Usuario */}
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase font-semibold mb-0.5">Usuario</p>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-sm font-mono text-slate-800">
+                                {cred.usuario || <span className="text-slate-400 font-sans text-xs">—</span>}
+                              </span>
+                              {cred.usuario && (
+                                <button
+                                  onClick={() => copyToClipboard(`u-${cred.id}`, cred.usuario!)}
+                                  className="p-1 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                  title="Copiar usuario"
+                                >
+                                  {copiedKey === `u-${cred.id}` ? <Check size={11} className="text-green-500" /> : <Copy size={11} />}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          {/* Clave */}
+                          <div>
+                            <p className="text-[10px] text-slate-400 uppercase font-semibold mb-0.5">Contraseña</p>
+                            <div className="flex items-center gap-1.5">
+                              {cred.clave ? (
+                                <>
+                                  <span className="text-sm font-mono text-slate-800">
+                                    {visibleClave[cred.id] ? cred.clave : '••••••••'}
+                                  </span>
+                                  <button
+                                    onClick={() => setVisibleClave(prev => ({ ...prev, [cred.id]: !prev[cred.id] }))}
+                                    className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                                  >
+                                    {visibleClave[cred.id] ? <EyeOff size={12} /> : <Eye size={12} />}
+                                  </button>
+                                  <button
+                                    onClick={() => copyToClipboard(`c-${cred.id}`, cred.clave!)}
+                                    className="p-1 rounded text-blue-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                    title="Copiar contraseña"
+                                  >
+                                    {copiedKey === `c-${cred.id}` ? <Check size={11} className="text-green-500" /> : <Copy size={11} />}
+                                  </button>
+                                </>
+                              ) : (
+                                <span className="text-slate-400 text-xs">—</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </CardContent>
             </Card>
